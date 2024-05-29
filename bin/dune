@@ -1,0 +1,4 @@
+(executable
+ (public_name jvmilia_verify)
+ (name main)
+ (libraries jvmilia))
