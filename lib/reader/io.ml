@@ -1,31 +1,39 @@
-let read_bytes (ch : in_channel) (size : int) (reader : bytes -> int -> 'a) : 'a
-    =
-  let buf = Bytes.create size in
-  let () = Stdlib.really_input ch buf 0 size in
-  reader buf 0
+type reader = bytes -> int -> unit option
 
-let read_u4 (ch : in_channel) : int32 = read_bytes ch 4 Bytes.get_int32_be
+let ch_reader (ch : in_channel) : reader =
+ fun buf size -> In_channel.really_input ch buf 0 size
+
+let really_read (r : reader) (buf : bytes) (size : int) : unit =
+  let res = r buf size in
+  match res with Some () -> () | None -> raise End_of_file
+
+let read_bytes (r : reader) (size : int) (decoder : bytes -> int -> 'a) : 'a =
+  let buf = Bytes.create size in
+  let () = really_read r buf size in
+  decoder buf 0
+
+let read_u4 (r : reader) : int32 = read_bytes r 4 Bytes.get_int32_be
 let hex_u4 (num : int32) = Printf.sprintf "0x%04lX" num
-let read_u2 (ch : in_channel) : int = read_bytes ch 2 Bytes.get_int16_be
+let read_u2 (r : reader) : int = read_bytes r 2 Bytes.get_int16_be
 let hex_u2 (num : int) = Printf.sprintf "0x%04X" num
-let read_u1 (ch : in_channel) : int = read_bytes ch 1 Bytes.get_int8
+let read_u1 (r : reader) : int = read_bytes r 1 Bytes.get_int8
 let hex_u1 (num : int) = Printf.sprintf "0x%04X" num
 
-let read_list (ch : in_channel) (reader : in_channel -> 'a) : 'a list =
-  let len = read_u2 ch in
+let read_list (r : reader) (decoder : reader -> 'a) : 'a list =
+  let len = read_u2 r in
   let rec reads (list : 'a list) (n : int) : 'a list =
-    if n = 0 then list else reads (list @ [ reader ch ]) (n - 1)
+    if n = 0 then list else reads (list @ [ decoder r ]) (n - 1)
   in
   reads [] len
 
-let read_list0 (ch : in_channel) (reader : in_channel -> 'a) : 'a list =
-  let len = read_u2 ch - 1 in
+let read_list0 (r : reader) (decoder : reader -> 'a) : 'a list =
+  let len = read_u2 r - 1 in
   let rec reads (list : 'a list) (n : int) : 'a list =
-    if n = 0 then list else reads (list @ [ reader ch ]) (n - 1)
+    if n = 0 then list else reads (list @ [ decoder r ]) (n - 1)
   in
   reads [] len
 
-let assert_end_of_file (ch : in_channel) : unit =
+let assert_end_of_file (r : reader) : unit =
   let buf = Bytes.create 1 in
-  let res = In_channel.really_input ch buf 0 1 in
+  let res = r buf 1 in
   match res with Some () -> failwith "Expected end of file" | None -> ()

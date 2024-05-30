@@ -7,31 +7,31 @@ type cp_info =
   | MethodRefInfo of { class_idx : int; nat_idx : int }
   | NameAndTypeInfo of { name_idx : int; desc_idx : int }
 
-let read_cp_utf8 (ch : in_channel) =
-  let bytes = read_list ch read_u1 in
+let read_cp_utf8 (r : Io.reader) =
+  let bytes = read_list r read_u1 in
   let s =
     (* suboptimal *)
     String.init (List.length bytes) (fun i -> Char.chr (List.nth bytes i))
   in
   Utf8Info s
 
-let read_cp_class (ch : in_channel) = ClassInfo { name_idx = read_u2 ch }
+let read_cp_class (r : Io.reader) = ClassInfo { name_idx = read_u2 r }
 
-let read_cp_method_ref (ch : in_channel) =
-  let cls = read_u2 ch in
-  let nat = read_u2 ch in
+let read_cp_method_ref (r : Io.reader) =
+  let cls = read_u2 r in
+  let nat = read_u2 r in
   MethodRefInfo { class_idx = cls; nat_idx = nat }
 
-let read_cp_name_and_type (ch : in_channel) =
-  NameAndTypeInfo { name_idx = read_u2 ch; desc_idx = read_u2 ch }
+let read_cp_name_and_type (r : Io.reader) =
+  NameAndTypeInfo { name_idx = read_u2 r; desc_idx = read_u2 r }
 
-let read_const_pool_info (ch : in_channel) : cp_info =
-  let tag = read_u1 ch in
+let read_const_pool_info (r : Io.reader) : cp_info =
+  let tag = read_u1 r in
   match tag with
-  | 1 -> read_cp_utf8 ch
-  | 7 -> read_cp_class ch
-  | 10 -> read_cp_method_ref ch
-  | 12 -> read_cp_name_and_type ch
+  | 1 -> read_cp_utf8 r
+  | 7 -> read_cp_class r
+  | 10 -> read_cp_method_ref r
+  | 12 -> read_cp_name_and_type r
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
 type cp_class = { name : string }
@@ -102,13 +102,53 @@ let const_pool_utf8 (cp : cp_entry list) (index : int) : string =
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"
 
-type attribute = Unknown of string * bytes
+type exception_table_entry = {
+  start_pc : int;
+  end_pc : int;
+  handler_pc : int;
+  catch_type : cp_class option;
+}
 
-let read_attribute (const_pool : cp_entry list) (ch : in_channel) : attribute =
-  let name = const_pool_utf8 const_pool (Io.read_u2 ch - 1) in
-  let length = Int32.to_int (Io.read_u4 ch) in
+let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
+    exception_table_entry =
+  let start_pc = Io.read_u2 r in
+  let end_pc = Io.read_u2 r in
+  let handler_pc = Io.read_u2 r in
+  let catch_type_index = Io.read_u2 r in
+  let catch_type =
+    if catch_type_index = 0 then None
+    else Some (const_pool_class const_pool (catch_type_index - 1))
+  in
+  { start_pc; end_pc; handler_pc; catch_type }
+
+type code_attribute = {
+  max_stack : int;
+  max_locals : int;
+  code : bytes;
+  exception_table : exception_table_entry list;
+  attributes : attribute list;
+}
+
+and attribute = Unknown of string * bytes | Code of code_attribute
+
+let rec read_code_attribute (const_pool : cp_entry list) (r : Io.reader) :
+    code_attribute =
+  let max_stack = Io.read_u2 r in
+  let max_locals = Io.read_u2 r in
+  let length = Int32.to_int (Io.read_u4 r) in
   let bytes = Bytes.create length in
-  let () = Stdlib.really_input ch bytes 0 length in
+  let () = Io.really_read r bytes length in
+  let exception_table =
+    Io.read_list r (read_exception_table_entry const_pool)
+  in
+  let attributes = Io.read_list r (read_attribute const_pool) in
+  { max_stack; max_locals; code = bytes; exception_table; attributes }
+
+and read_attribute (const_pool : cp_entry list) (r : Io.reader) : attribute =
+  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let length = Int32.to_int (Io.read_u4 r) in
+  let bytes = Bytes.create length in
+  let () = Io.really_read r bytes length in
   Unknown (name, bytes)
 
 type field_info = {
@@ -118,12 +158,11 @@ type field_info = {
   attributes : attribute list;
 }
 
-let read_field_info (const_pool : cp_entry list) (ch : in_channel) : field_info
-    =
-  let access_flags = field_access_flags_of_int (Io.read_u2 ch) in
-  let name = const_pool_utf8 const_pool (Io.read_u2 ch - 1) in
-  let descriptor = const_pool_utf8 const_pool (Io.read_u2 ch - 1) in
-  let attributes = Io.read_list ch (read_attribute const_pool) in
+let read_field_info (const_pool : cp_entry list) (r : Io.reader) : field_info =
+  let access_flags = field_access_flags_of_int (Io.read_u2 r) in
+  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let descriptor = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let attributes = Io.read_list r (read_attribute const_pool) in
   { access_flags; name; descriptor; attributes }
 
 type method_info = {
@@ -133,12 +172,12 @@ type method_info = {
   attributes : attribute list;
 }
 
-let read_method_info (const_pool : cp_entry list) (ch : in_channel) :
-    method_info =
-  let access_flags = method_access_flags_of_int (Io.read_u2 ch) in
-  let name = const_pool_utf8 const_pool (Io.read_u2 ch - 1) in
-  let descriptor = const_pool_utf8 const_pool (Io.read_u2 ch - 1) in
-  let attributes = Io.read_list ch (read_attribute const_pool) in
+let read_method_info (const_pool : cp_entry list) (r : Io.reader) : method_info
+    =
+  let access_flags = method_access_flags_of_int (Io.read_u2 r) in
+  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let descriptor = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let attributes = Io.read_list r (read_attribute const_pool) in
   { access_flags; name; descriptor; attributes }
 
 type class_file = {
@@ -155,29 +194,30 @@ type class_file = {
 }
 
 let read_class_file (ch : in_channel) : class_file =
-  let magic = Io.read_u4 ch in
+  let r = Io.ch_reader ch in
+  let magic = Io.read_u4 r in
   if magic <> 0xCAFEBABEl then
     failwith
       (Printf.sprintf "Invalid magic: %s, expected 0xCAFEBABE" (Io.hex_u4 magic));
-  let minor_version = Io.read_u2 ch in
-  let major_version = Io.read_u2 ch in
-  let const_pool_raw = Io.read_list0 ch read_const_pool_info in
+  let minor_version = Io.read_u2 r in
+  let major_version = Io.read_u2 r in
+  let const_pool_raw = Io.read_list0 r read_const_pool_info in
   let const_pool = resolve_const_pool const_pool_raw in
-  let access_flags = class_access_flags_of_int (Io.read_u2 ch) in
-  let this_class = const_pool_class const_pool (Io.read_u2 ch - 1) in
-  let super_class_index = Io.read_u2 ch in
+  let access_flags = class_access_flags_of_int (Io.read_u2 r) in
+  let this_class = const_pool_class const_pool (Io.read_u2 r - 1) in
+  let super_class_index = Io.read_u2 r in
   let super_class =
     if super_class_index = 0 then None
     else Some (const_pool_class const_pool (super_class_index - 1))
   in
-  let interfaces_indices = Io.read_list ch Io.read_u2 in
+  let interfaces_indices = Io.read_list r Io.read_u2 in
   let interfaces =
     List.map (fun x -> const_pool_class const_pool (x - 1)) interfaces_indices
   in
-  let fields = Io.read_list ch (read_field_info const_pool) in
-  let methods = Io.read_list ch (read_method_info const_pool) in
-  let attributes = Io.read_list ch (read_attribute const_pool) in
-  let () = Io.assert_end_of_file ch in
+  let fields = Io.read_list r (read_field_info const_pool) in
+  let methods = Io.read_list r (read_method_info const_pool) in
+  let attributes = Io.read_list r (read_attribute const_pool) in
+  let () = Io.assert_end_of_file r in
   {
     major_version;
     minor_version;
