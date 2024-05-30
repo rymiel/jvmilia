@@ -496,6 +496,11 @@ let targetIsTypeSafe (env : jenvironment) (frame : frame) (target : int) : bool
 
 let exceptionStackFrame (frame : frame) : frame = { frame with stack = [] }
 
+let loadable_vtype (c : loadable_constant) : vtype =
+  match c with
+  | Integer _ -> Int
+  | String _ -> Class ("java/lang/String", Loader.bootstrap_loader)
+
 let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
@@ -571,17 +576,38 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (* let popped = canPop frame arg_list in *)
       (* TODO: passesProtectedCheck *)
       (Frame n, exceptionStackFrame frame)
+  | Invokestatic m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let stack_arg_list = List.rev op_args in
+      let n = validTypeTransition env stack_arg_list r frame in
+      (Frame n, exceptionStackFrame frame)
   | Return ->
       if env.return = Void then
         if frame.flags.is_this_uninit then
           failwith "return: Cannot return when this is uninitialized"
         else (AfterGoto, exceptionStackFrame frame)
       else failwith "return: Function must return void"
+  | Areturn ->
+      if isAssignable env.return Reference then
+        let _ = canPop frame [ env.return ] in
+        (AfterGoto, exceptionStackFrame frame)
+      else failwith "areturn: Function must return reference"
+  | Ireturn ->
+      if env.return = Int then
+        let _ = canPop frame [ Int ] in
+        (AfterGoto, exceptionStackFrame frame)
+      else failwith "ireturn: Function must return int"
   | Iconst_m1 ->
       let next_frame = validTypeTransition env [] Int frame in
       (Frame next_frame, exceptionStackFrame frame)
   | Iconst_0 | Iconst_1 | Iconst_2 | Iconst_3 | Iconst_4 | Iconst_5 ->
       defer Iconst_m1
+  | Lconst_0 ->
+      let next_frame = validTypeTransition env [] Long frame in
+      (Frame next_frame, exceptionStackFrame frame)
+  | Lconst_1 -> defer Lconst_0
   | Iload_0 -> defer (Iload 0)
   | Iload_1 -> defer (Iload 1)
   | Iload_2 -> defer (Iload 2)
@@ -596,11 +622,6 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Istore i ->
       let n = storeIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ireturn ->
-      if env.return = Int then
-        let _ = canPop frame [ Int ] in
-        (AfterGoto, exceptionStackFrame frame)
-      else failwith "ireturn: Function must return int"
   | If_acmpeq t ->
       let next_frame = canPop frame [ Reference; Reference ] in
       assert (targetIsTypeSafe env next_frame t);
@@ -625,6 +646,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let next_stack = canSafelyPush env frame.stack t in
       let n = { frame with stack = next_stack } in
       (Frame n, exceptionStackFrame frame)
+  | Ldc c ->
+      let t = loadable_vtype c in
+      let n = validTypeTransition env [] t frame in
+      (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
@@ -632,30 +657,28 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
 
 let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
     (mframe : mframe) : bool =
-  Debug.push_rec "mergedCodeIsTypeSafe" (Debug.env_diagnostic env);
+  (* Debug.push_rec "mergedCodeIsTypeSafe" (Debug.env_diagnostic env); *)
   (match mframe with
   | Frame frame -> Debug.frame frame
   | AfterGoto -> Debug.after_goto ());
 
-  let result =
-    match (code, mframe) with
-    | StackMap (_, map_frame) :: more_code, Frame frame ->
-        assert (frameIsAssignable frame map_frame);
-        mergedCodeIsTypeSafe env more_code (Frame map_frame)
-    | Instruction (offset, body) :: more_code, Frame frame ->
-        let next_frame, exc_frame =
-          instructionIsTypeSafe body env offset frame
-        in
-        assert (instructionSatisfiesHandlers env offset exc_frame);
-        mergedCodeIsTypeSafe env more_code next_frame
-    | StackMap (_, map_frame) :: more_code, AfterGoto ->
-        mergedCodeIsTypeSafe env more_code (Frame map_frame)
-    | Instruction (_, _) :: _, AfterGoto ->
-        failwith "No stack frame after unconditional branch"
-    | [], AfterGoto -> true
-    | [], Frame _ -> failwith "Ran out of code?"
-  in
-  Debug.pop result
+  (* let result = *)
+  match (code, mframe) with
+  | StackMap (_, map_frame) :: more_code, Frame frame ->
+      assert (frameIsAssignable frame map_frame);
+      mergedCodeIsTypeSafe env more_code (Frame map_frame)
+  | Instruction (offset, body) :: more_code, Frame frame ->
+      let next_frame, exc_frame = instructionIsTypeSafe body env offset frame in
+      assert (instructionSatisfiesHandlers env offset exc_frame);
+      mergedCodeIsTypeSafe env more_code next_frame
+  | StackMap (_, map_frame) :: more_code, AfterGoto ->
+      mergedCodeIsTypeSafe env more_code (Frame map_frame)
+  | Instruction (_, _) :: _, AfterGoto ->
+      failwith "No stack frame after unconditional branch"
+  | [], AfterGoto -> true
+  | [], Frame _ -> failwith "Ran out of code?"
+(* in *)
+(* Debug.pop result *)
 
 let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
     : jstack_map * jstack_map =
