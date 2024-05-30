@@ -522,11 +522,6 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Iconst_3 -> defer Iconst_m1
   | Iconst_4 -> defer Iconst_m1
   | Iconst_5 -> defer Iconst_m1
-  | Istore_0 -> failwith "TODO: istore_0"
-  | Istore_1 -> failwith "TODO: istore_1"
-  | Istore_2 -> failwith "TODO: istore_2"
-  | Istore_3 -> failwith "TODO: istore_3"
-  | Istore _ -> failwith "TODO: istore"
   | Iload_0 -> defer (Iload 0)
   | Iload_1 -> defer (Iload 1)
   | Iload_2 -> defer (Iload 2)
@@ -534,7 +529,6 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Iload i ->
       let n = loadIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Iadd -> failwith "TODO: iadd"
   | Ireturn ->
       if env.return = Int then
         let _ = canPop frame [ Int ] in
@@ -548,6 +542,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Goto t ->
       assert (targetIsTypeSafe env frame t);
       (AfterGoto, exceptionStackFrame frame)
+  | unimplemented ->
+      failwith
+        (Printf.sprintf "TODO: unimplemented instruction %s"
+           (Instr.string_of_instr unimplemented))
 
 let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
     (mframe : mframe) : bool =

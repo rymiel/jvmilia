@@ -30,6 +30,7 @@ type instrbody =
   | If_acmpeq of int
   | If_acmpne of int
   | Goto of int
+  | New of class_desc
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -63,6 +64,7 @@ let string_of_instr (i : instrbody) : string =
     | If_acmpeq i -> ("if_acmpeq", string_of_int i)
     | If_acmpne i -> ("if_acmpne", string_of_int i)
     | Goto i -> ("goto", string_of_int i)
+    | New i -> ("new", i.name)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

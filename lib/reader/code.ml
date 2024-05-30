@@ -23,6 +23,8 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x3d -> Istore_2
   | 0x3e -> Istore_3
   | 0x60 -> Iadd
+  | 0xa6 -> If_acmpne (Io.read_u2 r)
+  | 0xa7 -> Goto (Io.read_u2 r)
   | 0xac -> Ireturn
   | 0xb1 -> Return
   | 0xb7 ->
