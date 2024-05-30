@@ -11,7 +11,7 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x07 -> Iconst_4
   | 0x08 -> Iconst_5
   | 0x12 ->
-      let const = Io.read_u2 r |> const_pool_loadable_constant pool in
+      let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
