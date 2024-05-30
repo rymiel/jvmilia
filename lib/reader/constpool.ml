@@ -49,23 +49,8 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | Utf8Info x -> Utf8 x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | MethodRefInfo x ->
-      let cls =
-        match resolve_cp_info pool pool.(x.class_idx - 1) with
-        | Class x -> x
-        | y ->
-            failwith
-              (Printf.sprintf "MethodRef.cls: Expected CONSTANT_Class, got %s"
-                 (cp_entry_name y))
-      in
-      let nat =
-        match resolve_cp_info pool pool.(x.nat_idx - 1) with
-        | NameAndType x -> x
-        | y ->
-            failwith
-              (Printf.sprintf
-                 "MethodRef.nat: Expected CONSTANT_NameAndType, got %s"
-                 (cp_entry_name y))
-      in
+      let cls = resolve_class pool x.class_idx in
+      let nat = resolve_nat pool x.nat_idx in
       MethodRef { cls = cls.name; name = nat.name; desc = nat.desc }
   | NameAndTypeInfo x ->
       NameAndType
@@ -80,6 +65,21 @@ and resolve_utf8 (pool : cp_info array) idx : string =
   | y ->
       failwith
         (Printf.sprintf "Expected CONSTANT_Utf8, got %s" (cp_entry_name y))
+
+and resolve_nat (pool : cp_info array) idx : Shared.name_and_type_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | NameAndType x -> x
+  | y ->
+      failwith
+        (Printf.sprintf "Expected CONSTANT_NameAndType, got %s"
+           (cp_entry_name y))
+
+and resolve_class (pool : cp_info array) idx : Shared.class_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | Class x -> x
+  | y ->
+      failwith
+        (Printf.sprintf "Expected CONSTANT_Class, got %s" (cp_entry_name y))
 
 let resolve_const_pool (cp : cp_info list) : cp_entry list =
   let pool = Array.of_list cp in
