@@ -236,7 +236,7 @@ let doesNotOverrideFinalMethod (cls : jclass) (mth : jmethod) : bool =
   Debug.pop result
 
 let rec mergeStackMapAndCode (stack_map : jstack_map list)
-    (code : jinstruction list) : merged_code list =
+    (code : Instr.instruction list) : merged_code list =
   (* Printf.printf "mergeStackMapAndCode: m[%s] p[%s]\n"
      (String.concat ", " (List.map (fun (i, _) -> string_of_int i) stack_map))
      (String.concat ", " (List.map (fun (i, _) -> string_of_int i) code)); *)
@@ -450,10 +450,10 @@ let targetIsTypeSafe (env : jenvironment) (frame : frame) (target : int) : bool
 
 let exceptionStackFrame (frame : frame) : frame = { frame with stack = [] }
 
-let rec instructionIsTypeSafe (i : instrbody) (env : jenvironment)
+let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
-  let defer (j : instrbody) = instructionIsTypeSafe j env offset frame in
+  let defer (j : Instr.instrbody) = instructionIsTypeSafe j env offset frame in
   match i with
   | Aload_0 -> defer (Aload 0)
   | Aload_1 -> defer (Aload 1)

@@ -60,9 +60,9 @@ let pop (result : bool) : bool =
     print_newline ();
     result)
 
-let instr (i : Basic.instrbody) (offset : int) : unit =
+let instr (i : Instr.instrbody) (offset : int) : unit =
   print_string (String.make (!depth * indent) ' ');
-  Printf.printf "** %4d: %s\n" offset (Basic.string_of_instr i)
+  Printf.printf "** %4d: %s\n" offset (Instr.string_of_instr i)
 
 let frame (f : Basic.frame) : unit =
   print_string (String.make (!depth * indent) ' ');
