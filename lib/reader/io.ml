@@ -28,6 +28,7 @@ let read_bytes_opt (r : reader) (size : int) (decoder : bytes -> int -> 'a) :
   let res = r buf size in
   match res with Some () -> Some (decoder buf 0) | None -> None
 
+let read_u8 (r : reader) : int64 = read_bytes r 8 Bytes.get_int64_be
 let read_u4 (r : reader) : int32 = read_bytes r 4 Bytes.get_int32_be
 let hex_u4 (num : int32) = Printf.sprintf "0x%04lX" num
 let read_u2 (r : reader) : int = read_bytes r 2 Bytes.get_uint16_be
