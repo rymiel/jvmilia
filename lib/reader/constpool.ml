@@ -86,12 +86,17 @@ let resolve_const_pool (cp : cp_info list) : cp_entry list =
   List.map (resolve_cp_info pool) cp
 
 let const_pool_class (cp : cp_entry list) (index : int) : Shared.class_desc =
-  match List.nth cp index with
+  match List.nth cp (index - 1) with
   | Class x -> x
   | _ -> failwith "Expected Class in constant pool"
 
+let const_pool_method (cp : cp_entry list) (index : int) : Shared.method_desc =
+  match List.nth cp (index - 1) with
+  | MethodRef x -> x
+  | _ -> failwith "Expected MethodRef in constant pool"
+
 let const_pool_utf8 (cp : cp_entry list) (index : int) : string =
-  match List.nth cp index with
+  match List.nth cp (index - 1) with
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"
 

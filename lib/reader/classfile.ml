@@ -11,7 +11,7 @@ let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
   let catch_type_index = Io.read_u2 r in
   let catch_type =
     if catch_type_index = 0 then None
-    else Some (const_pool_class pool (catch_type_index - 1)).name
+    else Some (const_pool_class pool catch_type_index).name
   in
   {
     starti = start_pc;
@@ -46,7 +46,7 @@ let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
   { max_stack; frame_size; code; handlers; attributes; stack_map_desc = [] }
 
 and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
-  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let name = const_pool_utf8 pool (Io.read_u2 r) in
   let length = Int32.to_int (Io.read_u4 r) in
   let bytes = Bytes.create length in
   let () = Io.really_read r bytes length in
@@ -66,15 +66,15 @@ type field_info = {
 
 let read_field_info (pool : const_pool) (r : Io.reader) : field_info =
   let access_flags = field_access_flags_of_int (Io.read_u2 r) in
-  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
-  let descriptor = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let name = const_pool_utf8 pool (Io.read_u2 r) in
+  let descriptor = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
   { access_flags; name; descriptor; attributes }
 
 let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
   let access_flags = method_access_flags_of_int (Io.read_u2 r) in
-  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
-  let desc = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let name = const_pool_utf8 pool (Io.read_u2 r) in
+  let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
   { access_flags; name; desc; attributes }
 
@@ -112,16 +112,16 @@ let read_class_file (ch : in_channel) : class_file =
   let const_pool_raw = Io.read_list0 r read_const_pool_info in
   let const_pool = resolve_const_pool const_pool_raw in
   let access_flags = class_access_flags_of_int (Io.read_u2 r) in
-  let this_class = (const_pool_class const_pool (Io.read_u2 r - 1)).name in
+  let this_class = (const_pool_class const_pool (Io.read_u2 r)).name in
   let super_class_index = Io.read_u2 r in
   let super_class =
     if super_class_index = 0 then None
-    else Some (const_pool_class const_pool (super_class_index - 1)).name
+    else Some (const_pool_class const_pool (super_class_index)).name
   in
   let interfaces_indices = Io.read_list r Io.read_u2 in
   let interfaces =
     List.map
-      (fun x -> (const_pool_class const_pool (x - 1)).name)
+      (fun x -> (const_pool_class const_pool x).name)
       interfaces_indices
   in
   let fields = Io.read_list r (read_field_info const_pool) in
