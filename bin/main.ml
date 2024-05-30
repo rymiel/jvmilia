@@ -1,19 +1,28 @@
+open Jvmilia.Reader
 open Jvmilia.Verify
-open Jvmilia.Testclasses
-open Jvmilia.Basic
+open Jvmilia.Verify.Basic
 
-let test_loader (name : string) : jclass =
-  Printf.printf "\027[33m! bootstrap class loader is loading %S\027[0m\n" name;
-  match name with
-  | "java/lang/Object" -> java_lang_Object
-  | "java/lang/String" -> java_lang_String
-  | "test/One" -> test_One
-  | "test/Two" -> test_Two
-  | _ -> failwith (Printf.sprintf "test_loader can't load %S" name)
+let parse (path : string) =
+  let ch = In_channel.open_bin path in
+  Classfile.read_class_file ch
 
-let () =
-  initialize_bootstrap_loader test_loader;
-  let cls = load_class Sys.argv.(1) bootstrap_loader in
-  let safe = classIsTypeSafe cls in
+let verify (name : string) =
+  initialize_bootstrap_loader Testclasses.test_loader;
+  let cls = Main.load_class name bootstrap_loader in
+  let safe = Main.classIsTypeSafe cls in
   Printf.printf "Class %S is safe: %B\n" cls.name safe;
   if safe then print_endline "\027[32;1mSUCCESS!!\027[0m"
+
+let () =
+  if Array.length Sys.argv <= 2 then print_endline "usage: <action> <param>"
+  else
+    let action = Sys.argv.(1) in
+    let param = Sys.argv.(2) in
+    match action with
+    | "verify" ->
+        let _ = verify param in
+        ()
+    | "parse" ->
+        let _ = parse param in
+        ()
+    | _ -> print_endline "error: Action must be verify or parse"

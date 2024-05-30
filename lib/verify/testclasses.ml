@@ -1,16 +1,17 @@
 open Basic
+open Shared
 
 let java_lang_Object : jclass =
   {
     name = "java/lang/Object";
-    access_flags = class_access_flags_of_int 0x0021l;
+    access_flags = class_access_flags_of_int 0x0021;
     superclass = None;
     superinterfaces = [];
     methods =
       [
         {
           name = "<init>";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -26,19 +27,19 @@ let java_lang_Object : jclass =
         };
         {
           name = "getClass";
-          access_flags = method_access_flags_of_int 0x0111l;
+          access_flags = method_access_flags_of_int 0x0111;
           desc = "()Ljava/lang/Class;";
           attributes = [];
         };
         {
           name = "hashCode";
-          access_flags = method_access_flags_of_int 0x0101l;
+          access_flags = method_access_flags_of_int 0x0101;
           desc = "()I";
           attributes = [];
         };
         {
           name = "equals";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "(Ljava/lang/Object;)Z";
           attributes =
             [
@@ -63,7 +64,7 @@ let java_lang_Object : jclass =
         };
         {
           name = "clone";
-          access_flags = method_access_flags_of_int 0x0104l;
+          access_flags = method_access_flags_of_int 0x0104;
           desc = "()Ljava/lang/Object;";
           attributes = [];
         };
@@ -74,14 +75,14 @@ let java_lang_Object : jclass =
 let java_lang_String : jclass =
   {
     name = "java/lang/String";
-    access_flags = class_access_flags_of_int 0x0031l;
+    access_flags = class_access_flags_of_int 0x0031;
     superclass = Some "java/lang/Object";
     superinterfaces = [ "java/io/Serializable" ];
     methods =
       [
         {
           name = "<init>";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -108,7 +109,7 @@ let java_lang_String : jclass =
         };
         {
           name = "intern";
-          access_flags = method_access_flags_of_int 0x0101l;
+          access_flags = method_access_flags_of_int 0x0101;
           desc = "()Ljava/lang/String;";
           attributes = [];
         };
@@ -119,14 +120,14 @@ let java_lang_String : jclass =
 let test_One : jclass =
   {
     name = "test/One";
-    access_flags = class_access_flags_of_int 0x0020l;
+    access_flags = class_access_flags_of_int 0x0020;
     superclass = Some "java/lang/Object";
     superinterfaces = [];
     methods =
       [
         {
           name = "<init>";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -153,7 +154,7 @@ let test_One : jclass =
         };
         {
           name = "foo";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -169,7 +170,7 @@ let test_One : jclass =
         };
         {
           name = "add";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -198,14 +199,14 @@ let test_One : jclass =
 let test_Two : jclass =
   {
     name = "test/Two";
-    access_flags = class_access_flags_of_int 0x0020l;
+    access_flags = class_access_flags_of_int 0x0020;
     superclass = Some "test/One";
     superinterfaces = [];
     methods =
       [
         {
           name = "<init>";
-          access_flags = method_access_flags_of_int 0x0000l;
+          access_flags = method_access_flags_of_int 0x0000;
           desc = "()V";
           attributes =
             [
@@ -228,7 +229,7 @@ let test_Two : jclass =
         };
         {
           name = "foo";
-          access_flags = method_access_flags_of_int 0x0001l;
+          access_flags = method_access_flags_of_int 0x0001;
           desc = "()V";
           attributes =
             [
@@ -252,3 +253,12 @@ let test_Two : jclass =
       ];
     loader = None;
   }
+
+let test_loader (name : string) : jclass =
+  Printf.printf "\027[33m! bootstrap class loader is loading %S\027[0m\n" name;
+  match name with
+  | "java/lang/Object" -> java_lang_Object
+  | "java/lang/String" -> java_lang_String
+  | "test/One" -> test_One
+  | "test/Two" -> test_Two
+  | _ -> failwith (Printf.sprintf "test_loader can't load %S" name)

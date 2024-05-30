@@ -1,3 +1,5 @@
+open Shared
+
 module StringMap = Map.Make (String)
 
 type exception_handler = {
@@ -78,62 +80,6 @@ let string_of_instr (i : instrbody) : string =
 
 type jinstruction = int * instrbody
 
-type class_access_flags = {
-  is_public : bool;
-  is_final : bool;
-  is_super : bool;
-  is_interface : bool;
-  is_abstract : bool;
-  is_synthetic : bool;
-  is_annotation : bool;
-  is_enum : bool;
-  is_module : bool;
-}
-
-let class_access_flags_of_int (num : int32) : class_access_flags =
-  {
-    is_public = Int32.logand num 0x0001l <> 0l;
-    is_final = Int32.logand num 0x0010l <> 0l;
-    is_super = Int32.logand num 0x0020l <> 0l;
-    is_interface = Int32.logand num 0x0200l <> 0l;
-    is_abstract = Int32.logand num 0x0400l <> 0l;
-    is_synthetic = Int32.logand num 0x1000l <> 0l;
-    is_annotation = Int32.logand num 0x2000l <> 0l;
-    is_enum = Int32.logand num 0x4000l <> 0l;
-    is_module = Int32.logand num 0x8000l <> 0l;
-  }
-
-type method_access_flags = {
-  is_public : bool;
-  is_private : bool;
-  is_protected : bool;
-  is_static : bool;
-  is_final : bool;
-  is_synchronized : bool;
-  is_bridge : bool;
-  is_varargs : bool;
-  is_native : bool;
-  is_abstract : bool;
-  is_strict : bool;
-  is_synthetic : bool;
-}
-
-let method_access_flags_of_int (num : int32) : method_access_flags =
-  {
-    is_public = Int32.logand num 0x0001l <> 0l;
-    is_private = Int32.logand num 0x0002l <> 0l;
-    is_protected = Int32.logand num 0x0004l <> 0l;
-    is_static = Int32.logand num 0x0008l <> 0l;
-    is_final = Int32.logand num 0x0010l <> 0l;
-    is_synchronized = Int32.logand num 0x0020l <> 0l;
-    is_bridge = Int32.logand num 0x0040l <> 0l;
-    is_varargs = Int32.logand num 0x0080l <> 0l;
-    is_native = Int32.logand num 0x0100l <> 0l;
-    is_abstract = Int32.logand num 0x0400l <> 0l;
-    is_strict = Int32.logand num 0x0800l <> 0l;
-    is_synthetic = Int32.logand num 0x1000l <> 0l;
-  }
-
 type jloader = Bootstrap | UserDefined of string
 type flags = { is_this_uninit : bool }
 
@@ -188,9 +134,6 @@ and jclass = {
 
 and frame_desc = Same | SameLocals1StackItem of vtype
 and delta_frame = int * frame_desc
-
-let empty_frame =
-  { locals = []; stack = []; flags = { is_this_uninit = false } }
 
 type bootstrap_loader = {
   known : jclass StringMap.t ref;

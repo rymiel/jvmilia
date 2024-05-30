@@ -53,10 +53,10 @@ let pop (result : bool) : bool =
   else (
     decr depth;
     print_string (String.make (!depth * indent) ' ');
-    print_string (if result then "\027[32m<<\027[0m " else "\027[32m<<\027[0m ");
+    print_string (if result then "\027[32m<<\027[0m " else "\027[31m<<\027[0m ");
     print_string top_p;
     print_string ": ";
-    print_string (if result then "\027[32mtrue\027[0m" else "\027[32mfalse\027[0m");
+    print_string (if result then "\027[32mtrue\027[0m" else "\027[31mfalse\027[0m");
     print_newline ();
     result)
 

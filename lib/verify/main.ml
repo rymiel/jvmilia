@@ -1,4 +1,5 @@
 open Basic
+open Shared
 
 (* classClassName(Class, ClassName) *)
 let classClassName (cls : jclass) : string = cls.name
@@ -214,7 +215,7 @@ and doesNotOverrideFinalMethodOfSuperclass (cls : jclass) (mth : jmethod) : bool
     (Debug.method_diagnostic mth cls);
   (* The spec doesn't specify this check for Object, but I don't see how it's
      possible for this to work without this check *)
-  if cls.name = "java/lang/Object" then true
+  if cls.name = "java/lang/Object" then Debug.pop true
   else
     let superclass_name = classSuperClassName cls in
     let loader = classDefiningLoader cls in
@@ -595,13 +596,13 @@ let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
       let _, stack_map =
         List.fold_left_map convertStackMap (0, stack_frame) code.stack_map_desc
       in
-      let () =
-        print_endline
-          (String.concat ","
-             (List.map
-                (fun (i, x) -> Printf.sprintf "(%d, %s)" i (string_of_frame x))
-                stack_map))
-      in
+      (* let () =
+           print_endline
+             (String.concat ","
+                (List.map
+                   (fun (i, x) -> Printf.sprintf "(%d, %s)" i (string_of_frame x))
+                   stack_map))
+         in *)
       let merged = mergeStackMapAndCode stack_map code.code in
       let env : jenvironment =
         {
@@ -627,10 +628,10 @@ let methodIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
   Debug.push "methodIsTypeSafe" (Debug.method_diagnostic mth cls);
   let result =
     doesNotOverrideFinalMethod cls mth
-    && (mth.access_flags.is_abstract || mth.access_flags.is_native)
-    || (not mth.access_flags.is_abstract)
-       && (not mth.access_flags.is_native)
-       && methodWithCodeIsTypeSafe cls mth
+    && ((mth.access_flags.is_abstract || mth.access_flags.is_native)
+       || (not mth.access_flags.is_abstract)
+          && (not mth.access_flags.is_native)
+          && methodWithCodeIsTypeSafe cls mth)
   in
   Debug.pop result
 
