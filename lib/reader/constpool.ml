@@ -94,3 +94,5 @@ let const_pool_utf8 (cp : cp_entry list) (index : int) : string =
   match List.nth cp index with
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"
+
+type const_pool = cp_entry list

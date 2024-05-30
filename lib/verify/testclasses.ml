@@ -120,87 +120,94 @@ let java_lang_String : jclass =
     loader = None;
   }
 
-let test_One : jclass =
-  {
-    name = "test/One";
-    access_flags = class_access_flags_of_int 0x0020;
-    superclass = Some "java/lang/Object";
-    superinterfaces = [];
-    methods =
-      [
-        {
-          name = "<init>";
-          access_flags = method_access_flags_of_int 0x0001;
-          desc = "()V";
-          attributes =
-            [
-              Code
-                {
-                  frame_size = 1;
-                  max_stack = 1;
-                  handlers = [];
-                  stack_map_desc = [];
-                  code =
-                    [
-                      (0, Aload_0);
-                      ( 1,
-                        Invokespecial
-                          {
-                            cls = "java/lang/Object";
-                            name = "<init>";
-                            desc = "()V";
-                          } );
-                      (4, Return);
-                    ];
-                  attributes = [];
-                };
-            ];
-        };
-        {
-          name = "foo";
-          access_flags = method_access_flags_of_int 0x0001;
-          desc = "()V";
-          attributes =
-            [
-              Code
-                {
-                  frame_size = 1;
-                  max_stack = 0;
-                  handlers = [];
-                  stack_map_desc = [];
-                  code = [ (0, Return) ];
-                  attributes = [];
-                };
-            ];
-        };
-        {
-          name = "add";
-          access_flags = method_access_flags_of_int 0x0001;
-          desc = "()V";
-          attributes =
-            [
-              Code
-                {
-                  frame_size = 3;
-                  max_stack = 2;
-                  handlers = [];
-                  stack_map_desc = [];
-                  code =
-                    [
-                      (0, Iconst_2);
-                      (1, Istore_2);
-                      (2, Iload_1);
-                      (3, Iload_2);
-                      (4, Iadd);
-                      (5, Ireturn);
-                    ];
-                  attributes = [];
-                };
-            ];
-        };
-      ];
-    loader = None;
-  }
+let parse (path : string) : jclass =
+  let ch = In_channel.open_bin path in
+  let classfile = Reader.Classfile.read_class_file ch in
+  Reader.Classfile.convert_class_file classfile
+
+let test_One : jclass = parse "test/One.class"
+
+(* let test_One : jclass =
+   {
+     name = "test/One";
+     access_flags = class_access_flags_of_int 0x0020;
+     superclass = Some "java/lang/Object";
+     superinterfaces = [];
+     methods =
+       [
+         {
+           name = "<init>";
+           access_flags = method_access_flags_of_int 0x0001;
+           desc = "()V";
+           attributes =
+             [
+               Code
+                 {
+                   frame_size = 1;
+                   max_stack = 1;
+                   handlers = [];
+                   stack_map_desc = [];
+                   code =
+                     [
+                       (0, Aload_0);
+                       ( 1,
+                         Invokespecial
+                           {
+                             cls = "java/lang/Object";
+                             name = "<init>";
+                             desc = "()V";
+                           } );
+                       (4, Return);
+                     ];
+                   attributes = [];
+                 };
+             ];
+         };
+         {
+           name = "foo";
+           access_flags = method_access_flags_of_int 0x0001;
+           desc = "()V";
+           attributes =
+             [
+               Code
+                 {
+                   frame_size = 1;
+                   max_stack = 0;
+                   handlers = [];
+                   stack_map_desc = [];
+                   code = [ (0, Return) ];
+                   attributes = [];
+                 };
+             ];
+         };
+         {
+           name = "add";
+           access_flags = method_access_flags_of_int 0x0001;
+           desc = "()V";
+           attributes =
+             [
+               Code
+                 {
+                   frame_size = 3;
+                   max_stack = 2;
+                   handlers = [];
+                   stack_map_desc = [];
+                   code =
+                     [
+                       (0, Iconst_2);
+                       (1, Istore_2);
+                       (2, Iload_1);
+                       (3, Iload_2);
+                       (4, Iadd);
+                       (5, Ireturn);
+                     ];
+                   attributes = [];
+                 };
+             ];
+         };
+       ];
+     loader = None;
+   } *)
 
 let test_Two : jclass =
   {

@@ -1,6 +1,7 @@
 open Shared
 open Attr
 open Constpool
+open Java
 
 let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
     exception_handler =
@@ -64,33 +65,35 @@ let read_field_info (const_pool : cp_entry list) (r : Io.reader) : field_info =
   let attributes = Io.read_list r (read_attribute const_pool) in
   { access_flags; name; descriptor; attributes }
 
-type method_info = {
-  access_flags : method_access_flags;
-  name : string;
-  descriptor : string;
-  attributes : attribute list;
-}
-
-let read_method_info (const_pool : cp_entry list) (r : Io.reader) : method_info
-    =
+let read_method_info (const_pool : cp_entry list) (r : Io.reader) : jmethod =
   let access_flags = method_access_flags_of_int (Io.read_u2 r) in
   let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
-  let descriptor = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+  let desc = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
   let attributes = Io.read_list r (read_attribute const_pool) in
-  { access_flags; name; descriptor; attributes }
+  { access_flags; name; desc; attributes }
 
 type class_file = {
   major_version : int;
   minor_version : int;
   const_pool : cp_entry list;
   access_flags : class_access_flags;
-  this_class : class_desc;
-  super_class : class_desc option;
-  interfaces : class_desc list;
+  this_class : string;
+  super_class : string option;
+  interfaces : string list;
   fields : field_info list;
-  methods : method_info list;
+  methods : jmethod list;
   attributes : attribute list;
 }
+
+let convert_class_file (file : class_file) : jclass =
+  {
+    name = file.this_class;
+    access_flags = file.access_flags;
+    superclass = file.super_class;
+    superinterfaces = file.interfaces;
+    methods = file.methods;
+    loader = None;
+  }
 
 let read_class_file (ch : in_channel) : class_file =
   let r = Io.ch_reader ch in
@@ -103,15 +106,17 @@ let read_class_file (ch : in_channel) : class_file =
   let const_pool_raw = Io.read_list0 r read_const_pool_info in
   let const_pool = resolve_const_pool const_pool_raw in
   let access_flags = class_access_flags_of_int (Io.read_u2 r) in
-  let this_class = const_pool_class const_pool (Io.read_u2 r - 1) in
+  let this_class = (const_pool_class const_pool (Io.read_u2 r - 1)).name in
   let super_class_index = Io.read_u2 r in
   let super_class =
     if super_class_index = 0 then None
-    else Some (const_pool_class const_pool (super_class_index - 1))
+    else Some (const_pool_class const_pool (super_class_index - 1)).name
   in
   let interfaces_indices = Io.read_list r Io.read_u2 in
   let interfaces =
-    List.map (fun x -> const_pool_class const_pool (x - 1)) interfaces_indices
+    List.map
+      (fun x -> (const_pool_class const_pool (x - 1)).name)
+      interfaces_indices
   in
   let fields = Io.read_list r (read_field_info const_pool) in
   let methods = Io.read_list r (read_method_info const_pool) in
