@@ -303,7 +303,7 @@ let methodInitialStackFrame (cls : jclass) (mth : jmethod) (frame_size : int) :
         (match this with Some UninitializedThis -> true | _ -> false);
     }
   in
-  let this_args = match this with Some t -> args @ [ t ] | None -> args in
+  let this_args = match this with Some t -> t :: args | None -> args in
   let locals = expandToLength this_args frame_size Top in
   ({ locals; stack = []; flags }, ret)
 
@@ -418,6 +418,28 @@ let loadIsTypeSafe (env : jenvironment) (index : int) (t : vtype)
          (string_of_vtype t) index (string_of_frame frame)
          (string_of_vtype actual_type))
 
+let modifyPreIndexVariable (t : vtype) : vtype =
+  match sizeOf t with 1 -> t | 2 -> Top | _ -> failwith "Invalid size"
+
+let modifyLocalVariable (index : int) (t : vtype) (locals : vtype list) :
+    vtype list =
+  let size = sizeOf t in
+  let modify (i : int) (n : vtype) : vtype =
+    if i = index - 1 then modifyPreIndexVariable n
+    else if i = index then (
+      if size = 2 then assert (i + 2 <= List.length locals);
+      t)
+    else if i = index + 1 then if size = 2 then Top else n
+    else n
+  in
+  List.mapi modify locals
+
+let storeIsTypeSafe (_env : jenvironment) (index : int) (t : vtype)
+    (frame : frame) : frame =
+  let next_stack, actual_type = popMatchingType frame.stack t in
+  let next_locals = modifyLocalVariable index actual_type frame.locals in
+  { frame with stack = next_stack; locals = next_locals }
+
 let canPop (f : frame) (types : vtype list) : frame =
   let new_stack = popMatchingList f.stack types in
   (* let () =
@@ -516,18 +538,21 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Iconst_m1 ->
       let next_frame = validTypeTransition env [] Int frame in
       (Frame next_frame, exceptionStackFrame frame)
-  | Iconst_0 -> defer Iconst_m1
-  | Iconst_1 -> defer Iconst_m1
-  | Iconst_2 -> defer Iconst_m1
-  | Iconst_3 -> defer Iconst_m1
-  | Iconst_4 -> defer Iconst_m1
-  | Iconst_5 -> defer Iconst_m1
+  | Iconst_0 | Iconst_1 | Iconst_2 | Iconst_3 | Iconst_4 | Iconst_5 ->
+      defer Iconst_m1
   | Iload_0 -> defer (Iload 0)
   | Iload_1 -> defer (Iload 1)
   | Iload_2 -> defer (Iload 2)
   | Iload_3 -> defer (Iload 3)
   | Iload i ->
       let n = loadIsTypeSafe env i Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Istore_0 -> defer (Istore 0)
+  | Istore_1 -> defer (Istore 1)
+  | Istore_2 -> defer (Istore 2)
+  | Istore_3 -> defer (Istore 3)
+  | Istore i ->
+      let n = storeIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
   | Ireturn ->
       if env.return = Int then
@@ -542,6 +567,9 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Goto t ->
       assert (targetIsTypeSafe env frame t);
       (AfterGoto, exceptionStackFrame frame)
+  | Iadd ->
+      let n = validTypeTransition env [ Int; Int ] Int frame in
+      (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
