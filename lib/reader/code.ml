@@ -15,14 +15,20 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
+  | 0x19 -> Aload (Io.read_u1 r)
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
   | 0x1c -> Iload_2
   | 0x1d -> Iload_3
+  | 0x1f -> Lload_0
+  | 0x20 -> Lload_1
+  | 0x21 -> Lload_2
+  | 0x22 -> Lload_3
   | 0x2a -> Aload_0
   | 0x2b -> Aload_1
   | 0x2c -> Aload_2
   | 0x2d -> Aload_3
+  | 0x3a -> Astore (Io.read_u1 r)
   | 0x3b -> Istore_0
   | 0x3c -> Istore_1
   | 0x3d -> Istore_2
