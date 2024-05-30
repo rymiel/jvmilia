@@ -8,7 +8,7 @@ type jstack_map = int * frame
 
 let string_of_stack (stack : vtype list) : string =
   let stack_s = List.map string_of_vtype stack in
-  Printf.sprintf "[%s]>" (String.concat ", " stack_s)
+  Printf.sprintf "<[%s]" (String.concat ", " stack_s)
 
 let string_of_frame (f : frame) : string =
   let locals_s =

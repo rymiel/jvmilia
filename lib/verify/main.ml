@@ -383,6 +383,12 @@ let rec popMatchingList (stack : vtype list) (expected : vtype list) :
       let a, _ = popMatchingType stack p in
       popMatchingList a rest
 
+let popCategory1 (stack : vtype list) : vtype * vtype list =
+  let head = List.hd stack in
+  assert (head <> Top);
+  assert (sizeOf head = 1);
+  (head, List.tl stack)
+
 let pushOperandStack (stack : vtype list) (t : vtype) : vtype list =
   match t with
   | Void -> stack
@@ -449,6 +455,12 @@ let canPop (f : frame) (types : vtype list) : frame =
      in *)
   { f with stack = new_stack }
 
+let canSafelyPush (env : jenvironment) (stack : vtype list) (t : vtype) :
+    vtype list =
+  let n = pushOperandStack stack t in
+  let () = operandStackHasLegalLength env n in
+  n
+
 let rewrittenUninitializedTypeThis (env : jenvironment) (cls : vclass) : vclass
     =
   let this = thisClass env in
@@ -460,6 +472,14 @@ let rewrittenUninitializedTypeThis (env : jenvironment) (cls : vclass) : vclass
       List.hd chain
   in
   if cls = expected then cls else failwith "Failure rewriting uninitializedThis"
+
+let rewrittenUninitializedTypeOffset (env : jenvironment) (offset : int)
+    (cls : vclass) : vclass =
+  let instr = env.instructions in
+  let name, _ = cls in
+  let expected_instruction = Instruction (offset, New { name }) in
+  if List.mem expected_instruction instr then cls
+  else failwith "Failure rewriting uninitializedOffset"
 
 let substitute (prev : 'a) (next : 'a) (src : 'a list) : 'a list =
   List.map (fun x -> if x = prev then next else x) src
@@ -491,33 +511,44 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Invokespecial m -> (
       let op_args, r = parseMethodDescriptor m.desc in
       match m.name with
-      | "<init>" -> (
+      | "<init>" ->
           assert (r = Void);
           let stack_args = List.rev op_args in
           let f = canPop frame stack_args in
           let loader = currentClassLoader env in
-          match f.stack with
-          | UninitializedThis :: stack ->
-              let this_v = rewrittenUninitializedTypeThis env (m.cls, loader) in
-              let this_name, this_loader = this_v in
-              let this = Class (this_name, this_loader) in
-              let next_flags = { is_this_uninit = false } in
-              let next_stack = substitute UninitializedThis this stack in
-              let next_locals = substitute UninitializedThis this f.locals in
-              let exc_locals = substitute Top this f.locals in
-              let next_frame =
-                { locals = next_locals; stack = next_stack; flags = next_flags }
-              in
-              let exc_frame =
-                { locals = exc_locals; stack = []; flags = f.flags }
-              in
-              (Frame next_frame, exc_frame)
-          | UninitializedOffset _ :: _ ->
-              failwith "TODO: invokespecial uninitialized(n)"
-          | _ ->
-              failwith
-                "invokespecial: Top of stack must have uninitialized value"
-          (* failwith (Printf.sprintf "xxx %s" (string_of_frame f)) *))
+          let head = List.hd f.stack in
+          let stack = List.tl f.stack in
+          let this_v, next_flags =
+            match f.stack with
+            | UninitializedThis :: _ ->
+                let this_v =
+                  rewrittenUninitializedTypeThis env (m.cls, loader)
+                in
+                let next_flags = { is_this_uninit = false } in
+                (this_v, next_flags)
+            | UninitializedOffset offset :: _ ->
+                let this_v =
+                  rewrittenUninitializedTypeOffset env offset (m.cls, loader)
+                in
+                let next_flags = frame.flags in
+                (this_v, next_flags)
+            | _ ->
+                failwith
+                  "invokespecial: Top of stack must have uninitialized value"
+          in
+          let this_name, this_loader = this_v in
+          let this = Class (this_name, this_loader) in
+          let next_stack = substitute head this stack in
+          let next_locals = substitute head this f.locals in
+          let exc_locals = substitute Top this f.locals in
+          let next_frame =
+            { locals = next_locals; stack = next_stack; flags = next_flags }
+          in
+          let exc_frame =
+            { locals = exc_locals; stack = []; flags = f.flags }
+          in
+          (* TODO: passesProtectedCheck *)
+          (Frame next_frame, exc_frame)
       | "<clinit>" -> failwith "invokespecial: <clinit> is not allowed"
       | _ ->
           let this_name, this_loader = thisClass env in
@@ -529,6 +560,17 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
           let stack_args2 = List.rev (method_class :: op_args) in
           let _ = validTypeTransition env stack_args2 r frame in
           (Frame next_frame, exceptionStackFrame frame))
+  | Invokevirtual m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let loader = currentClassLoader env in
+      let op_args, r = parseMethodDescriptor m.desc in
+      let stack_arg_list = List.rev (Class (m.name, loader) :: op_args) in
+      let n = validTypeTransition env stack_arg_list r frame in
+      (* let arg_list = List.rev op_args in *)
+      (* let popped = canPop frame arg_list in *)
+      (* TODO: passesProtectedCheck *)
+      (Frame n, exceptionStackFrame frame)
   | Return ->
       if env.return = Void then
         if frame.flags.is_this_uninit then
@@ -569,6 +611,19 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (AfterGoto, exceptionStackFrame frame)
   | Iadd ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | New _ ->
+      let new_item = UninitializedOffset offset in
+      assert (not @@ List.mem new_item frame.stack);
+      let new_locals = substitute new_item Top frame.locals in
+      let n =
+        validTypeTransition env [] new_item { frame with locals = new_locals }
+      in
+      (Frame n, exceptionStackFrame frame)
+  | Dup ->
+      let t, _ = popCategory1 frame.stack in
+      let next_stack = canSafelyPush env frame.stack t in
+      let n = { frame with stack = next_stack } in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
