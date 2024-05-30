@@ -1,4 +1,5 @@
 (include_subdirs qualified)
 
 (library
- (name jvmilia))
+ (name jvmilia)
+ (libraries unix))

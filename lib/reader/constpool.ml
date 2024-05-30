@@ -1,7 +1,7 @@
 type cp_info =
   | Utf8Info of string
   | ClassInfo of { name_idx : int }
-  | MethodRefInfo of { class_idx : int; nat_idx : int }
+  | MethodRefInfo of { cls_idx : int; nat_idx : int }
   | NameAndTypeInfo of { name_idx : int; desc_idx : int }
 
 let read_cp_utf8 (r : Io.reader) =
@@ -15,12 +15,14 @@ let read_cp_utf8 (r : Io.reader) =
 let read_cp_class (r : Io.reader) = ClassInfo { name_idx = Io.read_u2 r }
 
 let read_cp_method_ref (r : Io.reader) =
-  let cls = Io.read_u2 r in
-  let nat = Io.read_u2 r in
-  MethodRefInfo { class_idx = cls; nat_idx = nat }
+  let cls_idx = Io.read_u2 r in
+  let nat_idx = Io.read_u2 r in
+  MethodRefInfo { cls_idx; nat_idx }
 
 let read_cp_name_and_type (r : Io.reader) =
-  NameAndTypeInfo { name_idx = Io.read_u2 r; desc_idx = Io.read_u2 r }
+  let name_idx = Io.read_u2 r in
+  let desc_idx = Io.read_u2 r in
+  NameAndTypeInfo { name_idx; desc_idx }
 
 let read_const_pool_info (r : Io.reader) : cp_info =
   let tag = Io.read_u1 r in
@@ -51,7 +53,7 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | Utf8Info x -> Utf8 x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | MethodRefInfo x ->
-      let cls = resolve_class pool x.class_idx in
+      let cls = resolve_class pool x.cls_idx in
       let nat = resolve_nat pool x.nat_idx in
       MethodRef { cls = cls.name; name = nat.name; desc = nat.desc }
   | NameAndTypeInfo x ->
