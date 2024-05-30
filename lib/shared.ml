@@ -78,3 +78,14 @@ let field_access_flags_of_int (num : int) : field_access_flags =
     is_synthetic = Int.logand num 0x1000 <> 0;
     is_enum = Int.logand num 0x4000 <> 0;
   }
+
+type class_desc = { name : string }
+type name_and_type_desc = { name : string; desc : string }
+type method_desc = { cls : string; name : string; desc : string }
+
+type exception_handler = {
+  starti : int;
+  endi : int;
+  target : int;
+  class_name : string option;
+}

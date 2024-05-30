@@ -34,14 +34,11 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | 12 -> read_cp_name_and_type r
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
-type cp_class = { name : string }
-type cp_name_and_type = { name : string; desc : string }
-
 type cp_entry =
   | Utf8 of string
-  | Class of cp_class
-  | MethodRef of { cls : cp_class; nat : cp_name_and_type }
-  | NameAndType of cp_name_and_type
+  | Class of class_desc
+  | MethodRef of method_desc
+  | NameAndType of name_and_type_desc
 
 let cp_entry_name (info : cp_entry) : string =
   match info with
@@ -55,25 +52,24 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | Utf8Info x -> Utf8 x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | MethodRefInfo x ->
-      MethodRef
-        {
-          cls =
-            (match resolve_cp_info pool pool.(x.class_idx - 1) with
-            | Class x -> x
-            | y ->
-                failwith
-                  (Printf.sprintf
-                     "MethodRef.cls: Expected CONSTANT_Class, got %s"
-                     (cp_entry_name y)));
-          nat =
-            (match resolve_cp_info pool pool.(x.nat_idx - 1) with
-            | NameAndType x -> x
-            | y ->
-                failwith
-                  (Printf.sprintf
-                     "MethodRef.nat: Expected CONSTANT_NameAndType, got %s"
-                     (cp_entry_name y)));
-        }
+      let cls =
+        match resolve_cp_info pool pool.(x.class_idx - 1) with
+        | Class x -> x
+        | y ->
+            failwith
+              (Printf.sprintf "MethodRef.cls: Expected CONSTANT_Class, got %s"
+                 (cp_entry_name y))
+      in
+      let nat =
+        match resolve_cp_info pool pool.(x.nat_idx - 1) with
+        | NameAndType x -> x
+        | y ->
+            failwith
+              (Printf.sprintf
+                 "MethodRef.nat: Expected CONSTANT_NameAndType, got %s"
+                 (cp_entry_name y))
+      in
+      MethodRef { cls = cls.name; name = nat.name; desc = nat.desc }
   | NameAndTypeInfo x ->
       NameAndType
         {
@@ -92,7 +88,7 @@ let resolve_const_pool (cp : cp_info list) : cp_entry list =
   let pool = Array.of_list cp in
   List.map (resolve_cp_info pool) cp
 
-let const_pool_class (cp : cp_entry list) (index : int) : cp_class =
+let const_pool_class (cp : cp_entry list) (index : int) : class_desc =
   match List.nth cp index with
   | Class x -> x
   | _ -> failwith "Expected Class in constant pool"
@@ -102,30 +98,28 @@ let const_pool_utf8 (cp : cp_entry list) (index : int) : string =
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"
 
-type exception_table_entry = {
-  start_pc : int;
-  end_pc : int;
-  handler_pc : int;
-  catch_type : cp_class option;
-}
-
 let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
-    exception_table_entry =
+    exception_handler =
   let start_pc = Io.read_u2 r in
   let end_pc = Io.read_u2 r in
   let handler_pc = Io.read_u2 r in
   let catch_type_index = Io.read_u2 r in
   let catch_type =
     if catch_type_index = 0 then None
-    else Some (const_pool_class const_pool (catch_type_index - 1))
+    else Some (const_pool_class const_pool (catch_type_index - 1)).name
   in
-  { start_pc; end_pc; handler_pc; catch_type }
+  {
+    starti = start_pc;
+    endi = end_pc;
+    target = handler_pc;
+    class_name = catch_type;
+  }
 
 type code_attribute = {
   max_stack : int;
   max_locals : int;
   code : bytes;
-  exception_table : exception_table_entry list;
+  exception_table : exception_handler list;
   attributes : attribute list;
 }
 
@@ -191,9 +185,9 @@ type class_file = {
   minor_version : int;
   const_pool : cp_entry list;
   access_flags : class_access_flags;
-  this_class : cp_class;
-  super_class : cp_class option;
-  interfaces : cp_class list;
+  this_class : class_desc;
+  super_class : class_desc option;
+  interfaces : class_desc list;
   fields : field_info list;
   methods : method_info list;
   attributes : attribute list;

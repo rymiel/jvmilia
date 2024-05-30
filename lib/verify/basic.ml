@@ -2,15 +2,6 @@ open Shared
 
 module StringMap = Map.Make (String)
 
-type exception_handler = {
-  starti : int;
-  endi : int;
-  target : int;
-  class_name : string option;
-}
-
-type method_desc = { cls : string; name : string; desc : string }
-
 type instrbody =
   | Aload_0
   | Aload_1
