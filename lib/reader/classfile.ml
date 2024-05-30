@@ -20,17 +20,6 @@ let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
     class_name = catch_type;
   }
 
-let read_code (_pool : const_pool) (r : Io.reader) : Instr.instruction list =
-  let read_instr (i : Instr.instruction list) : Instr.instruction list =
-    match Io.read_u1_opt r with
-    | None -> i
-    | Some x ->
-        failwith
-          (Printf.sprintf "Failed to read instruction with opcode %d (%s)" x
-             (Io.hex_u1 x))
-  in
-  read_instr []
-
 let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
     =
   let max_stack = Io.read_u2 r in
@@ -39,7 +28,7 @@ let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
   let code_bytes = Bytes.create length in
   let () = Io.really_read r code_bytes length in
   let code_reader = Io.bytes_reader code_bytes in
-  let code = read_code pool code_reader in
+  let code = Code.read_code pool code_reader in
   let handlers = Io.read_list r (read_exception_table_entry pool) in
   let attributes = Io.read_list r (read_attribute pool) in
   let () = Io.assert_end_of_file r in
