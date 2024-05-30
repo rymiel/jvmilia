@@ -1,5 +1,4 @@
 open Shared
-
 module StringMap = Map.Make (String)
 
 type instrbody =
@@ -70,9 +69,7 @@ let string_of_instr (i : instrbody) : string =
   Printf.sprintf "%-13s %s" mnemonic args
 
 type jinstruction = int * instrbody
-
 type jloader = Bootstrap | UserDefined of string
-type flags = { is_this_uninit : bool }
 
 (** verification type *)
 type vtype =
@@ -93,10 +90,14 @@ type vtype =
   | Void (* unspecified in the spec *)
 
 and arraytype = T of vtype | Byte | Char | Short | Boolean
-and frame = { locals : vtype list; stack : vtype list; flags : flags }
-and jstack_map = int * frame
 
-and code_attribute = {
+type flags = { is_this_uninit : bool }
+type frame = { locals : vtype list; stack : vtype list; flags : flags }
+type jstack_map = int * frame
+type frame_desc = Same | SameLocals1StackItem of vtype
+type delta_frame = int * frame_desc
+
+type code_attribute = {
   frame_size : int;
   max_stack : int;
   handlers : exception_handler list;
@@ -104,17 +105,16 @@ and code_attribute = {
   stack_map_desc : delta_frame list;
 }
 
-(* TODO: i dont think this is circular anymore, investigate *)
-and jattribute = Code of code_attribute | Placeholder
+type jattribute = Code of code_attribute | Placeholder
 
-and jmethod = {
+type jmethod = {
   name : string;
   access_flags : method_access_flags;
   desc : string;
   attributes : jattribute list;
 }
 
-and jclass = {
+type jclass = {
   name : string;
   access_flags : class_access_flags;
   superclass : string option;
@@ -122,9 +122,6 @@ and jclass = {
   methods : jmethod list;
   mutable loader : jloader option;
 }
-
-and frame_desc = Same | SameLocals1StackItem of vtype
-and delta_frame = int * frame_desc
 
 type bootstrap_loader = {
   known : jclass StringMap.t ref;
