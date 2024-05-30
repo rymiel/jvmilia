@@ -10,6 +10,9 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x06 -> Iconst_3
   | 0x07 -> Iconst_4
   | 0x08 -> Iconst_5
+  | 0x12 ->
+      let const = Io.read_u2 r |> const_pool_loadable_constant pool in
+      Ldc const
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
   | 0x1c -> Iload_2
@@ -22,6 +25,7 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x3c -> Istore_1
   | 0x3d -> Istore_2
   | 0x3e -> Istore_3
+  | 0x59 -> Dup
   | 0x60 -> Iadd
   | 0xa5 -> If_acmpeq (Io.read_u2 r)
   | 0xa6 -> If_acmpne (Io.read_u2 r)
@@ -31,6 +35,9 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0xbb ->
       let cls = Io.read_u2 r |> const_pool_class pool in
       New cls
+  | 0xb6 ->
+      let mth = Io.read_u2 r |> const_pool_method pool in
+      Invokevirtual mth
   | 0xb7 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokespecial mth

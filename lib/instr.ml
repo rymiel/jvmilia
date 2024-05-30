@@ -6,6 +6,7 @@ type instrbody =
   | Aload_2
   | Aload_3
   | Aload of int
+  | Invokevirtual of method_desc
   | Invokespecial of method_desc
   | Return
   | Iconst_m1
@@ -31,6 +32,8 @@ type instrbody =
   | If_acmpne of int
   | Goto of int
   | New of class_desc
+  | Dup
+  | Ldc of loadable_constant
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -39,6 +42,8 @@ let string_of_instr (i : instrbody) : string =
     | Aload_1 -> ("aload_1", "")
     | Aload_2 -> ("aload_2", "")
     | Aload_3 -> ("aload_3", "")
+    | Invokevirtual i ->
+        ("invokevirtual", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Invokespecial i ->
         ("invokespecial", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Return -> ("return", "")
@@ -65,6 +70,8 @@ let string_of_instr (i : instrbody) : string =
     | If_acmpne i -> ("if_acmpne", string_of_int i)
     | Goto i -> ("goto", string_of_int i)
     | New i -> ("new", i.name)
+    | Dup -> ("dup", "")
+    | Ldc i -> ("dup", string_of_loadable_constant i)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

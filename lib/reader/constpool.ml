@@ -146,3 +146,13 @@ let const_pool_utf8 (cp : const_pool) (index : int) : string =
   match Array.get cp (index - 1) with
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"
+
+let const_pool_loadable_constant (cp : const_pool) (index : int) :
+    Shared.loadable_constant =
+  let entry = Array.get cp (index - 1) in
+  match entry with
+  | Integer x -> Integer x
+  | String s -> String s
+  | _ ->
+      failwith
+        (Printf.sprintf "%s is not a loadable constant" (cp_entry_name entry))

@@ -91,3 +91,9 @@ type exception_handler = {
 }
 
 type jloader = Bootstrap | UserDefined of string
+type loadable_constant = Integer of int32 | String of string
+
+let string_of_loadable_constant (c : loadable_constant) : string = 
+  match c with
+  | Integer i -> Printf.sprintf "int %ld" i
+  | String s -> Printf.sprintf "string %S" s
