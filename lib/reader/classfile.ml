@@ -20,6 +20,32 @@ let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
     class_name = catch_type;
   }
 
+let read_stack_map_vtype (_pool : const_pool) (r : Io.reader) : Vtype.vtype =
+  let tag = Io.read_u1 r in
+  match tag with
+  | 0 -> Top
+  | 1 -> Int
+  | 2 -> Float
+  | 3 -> Double
+  | 4 -> Long
+  | 5 -> Null
+  | 6 -> UninitializedThis
+  | _ -> failwith (Printf.sprintf "Unimplemented stack_map vtype tag %d" tag)
+
+let read_stack_map_frame (pool : const_pool) (r : Io.reader) : delta_frame =
+  let tag = Io.read_u1 r in
+  match tag with
+  | i when i >= 0 && i <= 63 -> (i, Same)
+  | i when i >= 64 && i <= 127 ->
+      let t = read_stack_map_vtype pool r in
+      (i - 64, SameLocals1StackItem t)
+  | i when i = 255 -> (i, Same) (* TODO *)
+  | _ -> failwith (Printf.sprintf "Unimplemented stack_map_frame tag %d" tag)
+
+let read_stack_map_table_attribute (pool : const_pool) (r : Io.reader) :
+    delta_frame list =
+  Io.read_list r (read_stack_map_frame pool)
+
 let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
     =
   let max_stack = Io.read_u2 r in
@@ -44,6 +70,9 @@ and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
   | "Code" ->
       let code = read_code_attribute pool bytes_reader in
       Code code
+  | "StackMapTable" ->
+      let table = read_stack_map_table_attribute pool bytes_reader in
+      StackMapTable table
   | _ -> Unknown (name, bytes)
 
 type field_info = {

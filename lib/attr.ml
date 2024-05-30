@@ -13,4 +13,4 @@ type code_attribute = {
   attributes : attribute list;
 }
 
-and attribute = Code of code_attribute | Unknown of string * bytes
+and attribute = Code of code_attribute | Unknown of string * bytes | StackMapTable of delta_frame list
