@@ -1,7 +1,9 @@
 open Constpool
 open Instr
 
-let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
+let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
+    instrbody =
+  let branchoffset () = pos + Io.read_i2 r in
   match opcode with
   | 0x02 -> Iconst_m1
   | 0x03 -> Iconst_0
@@ -37,11 +39,18 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x40 -> Lstore_1
   | 0x41 -> Lstore_2
   | 0x42 -> Lstore_3
+  | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x60 -> Iadd
-  | 0xa5 -> If_acmpeq (Io.read_u2 r)
-  | 0xa6 -> If_acmpne (Io.read_u2 r)
-  | 0xa7 -> Goto (Io.read_u2 r)
+  | 0x99 -> Ifeq (branchoffset ())
+  | 0x9a -> Ifne (branchoffset ())
+  | 0x9b -> Iflt (branchoffset ())
+  | 0x9c -> Ifge (branchoffset ())
+  | 0x9d -> Ifgt (branchoffset ())
+  | 0x9e -> Ifle (branchoffset ())
+  | 0xa5 -> If_acmpeq (branchoffset ())
+  | 0xa6 -> If_acmpne (branchoffset ())
+  | 0xa7 -> Goto (branchoffset ())
   | 0xac -> Ireturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
@@ -71,7 +80,7 @@ let read_code (pool : const_pool) (r : Io.reader) : instruction list =
        in *)
     match opcode with
     | Some v ->
-        let body = read_instr v pool r in
+        let body = read_instr pos v pool r in
         read (i @ [ (pos, body) ])
     | None -> i
   in

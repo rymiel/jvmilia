@@ -47,6 +47,13 @@ type instrbody =
   | Lload_2
   | Lload_3
   | Astore of int
+  | Ifeq of int
+  | Ifne of int
+  | Iflt of int
+  | Ifge of int
+  | Ifgt of int
+  | Ifle of int
+  | Pop
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -98,7 +105,14 @@ let string_of_instr (i : instrbody) : string =
     | Lload_1 -> ("lload_1", "")
     | Lload_2 -> ("lload_2", "")
     | Lload_3 -> ("lload_3", "")
-    | Astore i -> "astore", string_of_int i
+    | Astore i -> ("astore", string_of_int i)
+    | Ifeq i -> ("ifeq", string_of_int i)
+    | Ifne i -> ("ifne", string_of_int i)
+    | Iflt i -> ("iflt", string_of_int i)
+    | Ifge i -> ("ifge", string_of_int i)
+    | Ifgt i -> ("ifgt", string_of_int i)
+    | Ifle i -> ("ifle", string_of_int i)
+    | Pop -> ("pop", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
