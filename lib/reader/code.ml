@@ -84,7 +84,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
 
 let read_code (pool : const_pool) (r : Io.reader) : instruction list =
   let rec read (i : instruction list) : instruction list =
-    let pos = 0 (* TODO*) in
+    let pos = r.tell () in
     let opcode = Io.read_u1_opt r in
     (* let () =
          Printf.printf "opcode: %s\n"

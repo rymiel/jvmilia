@@ -1,20 +1,26 @@
-type reader = bytes -> int -> unit option
+type reader = { read : bytes -> int -> unit option; tell : unit -> int }
 
 let ch_reader (ch : in_channel) : reader =
- fun buf size -> In_channel.really_input ch buf 0 size
+  {
+    read = (fun buf size -> In_channel.really_input ch buf 0 size);
+    tell = (fun () -> Stdlib.pos_in ch);
+  }
 
 let bytes_reader (inbuf : bytes) : reader =
   let offset = ref 0 in
   let max = Bytes.length inbuf in
-  fun outbuf size ->
+  let read outbuf size =
     if !offset + size > max then None
     else
       let () = Bytes.blit inbuf !offset outbuf 0 size in
       offset := !offset + size;
       Some ()
+  in
+  let tell () = !offset in
+  { read; tell }
 
 let really_read (r : reader) (buf : bytes) (size : int) : unit =
-  let res = r buf size in
+  let res = r.read buf size in
   match res with Some () -> () | None -> raise End_of_file
 
 let read_bytes (r : reader) (size : int) (decoder : bytes -> int -> 'a) : 'a =
@@ -25,7 +31,7 @@ let read_bytes (r : reader) (size : int) (decoder : bytes -> int -> 'a) : 'a =
 let read_bytes_opt (r : reader) (size : int) (decoder : bytes -> int -> 'a) :
     'a option =
   let buf = Bytes.create size in
-  let res = r buf size in
+  let res = r.read buf size in
   match res with Some () -> Some (decoder buf 0) | None -> None
 
 let read_u8 (r : reader) : int64 = read_bytes r 8 Bytes.get_int64_be
@@ -47,5 +53,5 @@ let read_list (r : reader) (decoder : reader -> 'a) : 'a list =
 
 let assert_end_of_file (r : reader) : unit =
   let buf = Bytes.create 1 in
-  let res = r buf 1 in
+  let res = r.read buf 1 in
   match res with Some () -> failwith "Expected end of file" | None -> ()
