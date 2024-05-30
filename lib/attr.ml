@@ -9,7 +9,6 @@ type code_attribute = {
   max_stack : int;
   handlers : exception_handler list;
   code : Instr.instruction list;
-  stack_map_desc : delta_frame list;
   attributes : attribute list;
 }
 

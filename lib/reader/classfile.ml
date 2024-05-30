@@ -58,7 +58,7 @@ let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
   let handlers = Io.read_list r (read_exception_table_entry pool) in
   let attributes = Io.read_list r (read_attribute pool) in
   let () = Io.assert_end_of_file r in
-  { max_stack; frame_size; code; handlers; attributes; stack_map_desc = [] }
+  { max_stack; frame_size; code; handlers; attributes }
 
 and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
   let name = const_pool_utf8 pool (Io.read_u2 r) in

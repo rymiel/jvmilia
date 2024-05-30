@@ -613,6 +613,14 @@ let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
   in
   ((next_offset, v), (this_offset, v))
 
+let get_stack_map (code : code_attribute) : delta_frame list =
+  let v =
+    List.find_map
+      (function StackMapTable x -> Some x | _ -> None)
+      code.attributes
+  in
+  match v with Some x -> x | None -> []
+
 let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
   Debug.push "methodWithCodeIsTypeSafe" (Debug.method_diagnostic mth cls);
   let find_code (attr : attribute) : code_attribute option =
@@ -624,7 +632,7 @@ let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
         methodInitialStackFrame cls mth code.frame_size
       in
       let _, stack_map =
-        List.fold_left_map convertStackMap (0, stack_frame) code.stack_map_desc
+        List.fold_left_map convertStackMap (0, stack_frame) (get_stack_map code)
       in
       (* let () =
            print_endline
