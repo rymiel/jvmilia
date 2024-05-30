@@ -20,7 +20,7 @@ let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
     class_name = catch_type;
   }
 
-let read_stack_map_vtype (_pool : const_pool) (r : Io.reader) : Vtype.vtype =
+let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Vtype.vtype =
   let tag = Io.read_u1 r in
   match tag with
   | 0 -> Top
@@ -30,6 +30,12 @@ let read_stack_map_vtype (_pool : const_pool) (r : Io.reader) : Vtype.vtype =
   | 4 -> Long
   | 5 -> Null
   | 6 -> UninitializedThis
+  | 7 ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      (* is this a good idea *) Class (cls.name, Loader.bootstrap_loader)
+  | 8 ->
+      let offset = Io.read_u2 r in
+      UninitializedOffset offset
   | _ -> failwith (Printf.sprintf "Unimplemented stack_map vtype tag %d" tag)
 
 let read_stack_map_frame (pool : const_pool) (r : Io.reader) : delta_frame =
@@ -39,12 +45,23 @@ let read_stack_map_frame (pool : const_pool) (r : Io.reader) : delta_frame =
   | i when i >= 64 && i <= 127 ->
       let t = read_stack_map_vtype pool r in
       (i - 64, SameLocals1StackItem t)
-  | i when i = 255 -> (i, Same) (* TODO *)
+  | i when i >= 252 && i <= 254 ->
+      let count = i - 251 in
+      let delta = Io.read_u2 r in
+      let locals = Io.read_list_sized r count (read_stack_map_vtype pool) in
+      (delta, Append locals)
+  | i when i = 255 ->
+      let delta = Io.read_u2 r in
+      let locals = Io.read_list r (read_stack_map_vtype pool) in
+      let stack = Io.read_list r (read_stack_map_vtype pool) in
+      (delta, FullFrame { locals; stack })
   | _ -> failwith (Printf.sprintf "Unimplemented stack_map_frame tag %d" tag)
 
 let read_stack_map_table_attribute (pool : const_pool) (r : Io.reader) :
     delta_frame list =
-  Io.read_list r (read_stack_map_frame pool)
+  let out = Io.read_list r (read_stack_map_frame pool) in
+  let () = Io.assert_end_of_file r in
+  out
 
 let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
     =

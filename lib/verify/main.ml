@@ -688,6 +688,8 @@ let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
     match desc with
     | Same -> frame
     | SameLocals1StackItem i -> { frame with stack = [ i ] }
+    | Append i -> { frame with stack = []; locals = frame.locals @ i }
+    | FullFrame i -> { frame with stack = i.stack; locals = i.locals }
   in
   ((next_offset, v), (this_offset, v))
 
