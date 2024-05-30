@@ -63,6 +63,7 @@ type instrbody =
   | If_icmpge of int
   | If_icmpgt of int
   | If_icmple of int
+  | Ladd
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -131,6 +132,7 @@ let string_of_instr (i : instrbody) : string =
     | If_icmpge i -> ("ifge", string_of_int i)
     | If_icmpgt i -> ("ifgt", string_of_int i)
     | If_icmple i -> ("ifle", string_of_int i)
+    | Ladd -> ("ladd", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

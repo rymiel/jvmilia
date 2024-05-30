@@ -13,7 +13,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x07 -> Iconst_4
   | 0x08 -> Iconst_5
   | 0x09 -> Lconst_0
-  | 0x10 -> Lconst_1
+  | 0x0a -> Lconst_1
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
@@ -45,6 +45,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x60 -> Iadd
+  | 0x61 -> Ladd
   | 0x94 -> Lcmp
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
