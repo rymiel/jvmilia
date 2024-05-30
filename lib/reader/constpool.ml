@@ -1,4 +1,5 @@
 type cp_info =
+  | InvalidInfo  (** takes up the "gap" after Long or Double *)
   | Utf8Info of string
   | IntegerInfo of int32
   | LongInfo of int64
@@ -53,7 +54,11 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | 12 -> read_cp_name_and_type r
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
+let cp_info_size (x : cp_info) : int =
+  match x with LongInfo _ -> 2 | _ -> 1 (* TODO: double *)
+
 type cp_entry =
+  | Invalid  (** takes up the "gap" after Long or Double *)
   | Utf8 of string
   | Integer of int32
   | Long of int64
@@ -64,6 +69,7 @@ type cp_entry =
 
 let cp_entry_name (info : cp_entry) : string =
   match info with
+  | Invalid -> "--"
   | Utf8 _ -> "CONSTANT_Utf8"
   | Integer _ -> "CONSTANT_Integer"
   | Long _ -> "CONSTANT_Long"
@@ -72,10 +78,11 @@ let cp_entry_name (info : cp_entry) : string =
   | MethodRef _ -> "CONSTANT_MethodRef"
   | NameAndType _ -> "CONSTANT_NameAndType"
 
-type const_pool = cp_entry list
+type const_pool = cp_entry array
 
 let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   match info with
+  | InvalidInfo -> Invalid
   | Utf8Info x -> Utf8 x
   | IntegerInfo x -> Integer x
   | LongInfo x -> Long x
@@ -114,21 +121,28 @@ and resolve_class (pool : cp_info array) idx : Shared.class_desc =
       failwith
         (Printf.sprintf "Expected CONSTANT_Class, got %s" (cp_entry_name y))
 
-let resolve_const_pool (cp : cp_info list) : const_pool =
-  let pool = Array.of_list cp in
-  List.map (resolve_cp_info pool) cp
+let read_const_pool (r : Io.reader) : const_pool =
+  let len = Io.read_u2 r - 1 in
+  let arr = Array.make len InvalidInfo in
+  let i = ref 0 in
+  while !i < len do
+    let info = read_const_pool_info r in
+    Array.set arr !i info;
+    i := !i + cp_info_size info
+  done;
+  Array.map (resolve_cp_info arr) arr
 
 let const_pool_class (cp : const_pool) (index : int) : Shared.class_desc =
-  match List.nth cp (index - 1) with
+  match Array.get cp (index - 1) with
   | Class x -> x
   | _ -> failwith "Expected Class in constant pool"
 
 let const_pool_method (cp : const_pool) (index : int) : Shared.method_desc =
-  match List.nth cp (index - 1) with
+  match Array.get cp (index - 1) with
   | MethodRef x -> x
   | _ -> failwith "Expected MethodRef in constant pool"
 
 let const_pool_utf8 (cp : const_pool) (index : int) : string =
-  match List.nth cp (index - 1) with
+  match Array.get cp (index - 1) with
   | Utf8 x -> x
   | _ -> failwith "Expected Utf8 in constant pool"

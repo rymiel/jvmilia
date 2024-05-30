@@ -70,7 +70,7 @@ let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
 type class_file = {
   major_version : int;
   minor_version : int;
-  const_pool : cp_entry list;
+  const_pool : const_pool;
   access_flags : class_access_flags;
   this_class : string;
   super_class : string option;
@@ -98,8 +98,7 @@ let read_class_file (ch : in_channel) : class_file =
       (Printf.sprintf "Invalid magic: %s, expected 0xCAFEBABE" (Io.hex_u4 magic));
   let minor_version = Io.read_u2 r in
   let major_version = Io.read_u2 r in
-  let const_pool_raw = Io.read_list0 r read_const_pool_info in
-  let const_pool = resolve_const_pool const_pool_raw in
+  let const_pool = read_const_pool r in
   let access_flags = Io.read_u2 r |> class_access_flags_of_int in
   let this_class = (Io.read_u2 r |> const_pool_class const_pool).name in
   let super_class_index = Io.read_u2 r in

@@ -44,13 +44,6 @@ let read_list (r : reader) (decoder : reader -> 'a) : 'a list =
   in
   reads [] len
 
-let read_list0 (r : reader) (decoder : reader -> 'a) : 'a list =
-  let len = read_u2 r - 1 in
-  let rec reads (list : 'a list) (n : int) : 'a list =
-    if n = 0 then list else reads (list @ [ decoder r ]) (n - 1)
-  in
-  reads [] len
-
 let assert_end_of_file (r : reader) : unit =
   let buf = Bytes.create 1 in
   let res = r buf 1 in
