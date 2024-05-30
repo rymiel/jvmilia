@@ -1,5 +1,5 @@
-open Basic
 open Shared
+open Java
 
 let java_lang_Object : jclass =
   {
@@ -22,6 +22,7 @@ let java_lang_Object : jclass =
                   handlers = [];
                   stack_map_desc = [];
                   code = [ (0, Return) ];
+                  attributes = [];
                 };
             ];
         };
@@ -59,6 +60,7 @@ let java_lang_Object : jclass =
                       (9, Iconst_0);
                       (10, Ireturn);
                     ];
+                  attributes = [];
                 };
             ];
         };
@@ -104,6 +106,7 @@ let java_lang_String : jclass =
                           } );
                       (4, Aload_0);
                     ];
+                  attributes = [];
                 };
             ];
         };
@@ -149,6 +152,7 @@ let test_One : jclass =
                           } );
                       (4, Return);
                     ];
+                  attributes = [];
                 };
             ];
         };
@@ -165,6 +169,7 @@ let test_One : jclass =
                   handlers = [];
                   stack_map_desc = [];
                   code = [ (0, Return) ];
+                  attributes = [];
                 };
             ];
         };
@@ -189,6 +194,7 @@ let test_One : jclass =
                       (4, Iadd);
                       (5, Ireturn);
                     ];
+                  attributes = [];
                 };
             ];
         };
@@ -224,6 +230,7 @@ let test_Two : jclass =
                           { cls = "test/One"; name = "<init>"; desc = "()V" } );
                       (4, Return);
                     ];
+                  attributes = [];
                 };
             ];
         };
@@ -247,6 +254,7 @@ let test_Two : jclass =
                           { cls = "test/One"; name = "foo"; desc = "()V" } );
                       (4, Return);
                     ];
+                  attributes = [];
                 };
             ];
         };

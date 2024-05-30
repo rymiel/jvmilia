@@ -15,9 +15,9 @@ let stack_pop () : entry =
       x
 
 let stack_top () : entry = List.hd !stack
-let class_diagnostic (cls : Basic.jclass) : string = cls.name
+let class_diagnostic (cls : Java.jclass) : string = cls.name
 
-let method_diagnostic (mth : Basic.jmethod) (cls : Basic.jclass) : string =
+let method_diagnostic (mth : Java.jmethod) (cls : Java.jclass) : string =
   Printf.sprintf "%s.%s %s" cls.name mth.name mth.desc
 
 let env_diagnostic (env : Basic.jenvironment) : string =

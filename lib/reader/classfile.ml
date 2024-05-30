@@ -1,5 +1,6 @@
 open Io
 open Shared
+open Attr
 
 type cp_info =
   | Utf8Info of string
@@ -115,29 +116,34 @@ let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
     class_name = catch_type;
   }
 
-type code_attribute = {
-  max_stack : int;
-  max_locals : int;
-  code : bytes;
-  exception_table : exception_handler list;
-  attributes : attribute list;
-}
+(* type code_attribute = {
+     max_stack : int;
+     max_locals : int;
+     code : bytes;
+     exception_table : exception_handler list;
+     attributes : attribute list;
+   }
 
-and attribute = Unknown of string * bytes | Code of code_attribute
+   and attribute = Unknown of string * bytes | Code of code_attribute *)
 
 let rec read_code_attribute (const_pool : cp_entry list) (r : Io.reader) :
     code_attribute =
   let max_stack = Io.read_u2 r in
-  let max_locals = Io.read_u2 r in
+  let frame_size = Io.read_u2 r in
   let length = Int32.to_int (Io.read_u4 r) in
   let bytes = Bytes.create length in
   let () = Io.really_read r bytes length in
-  let exception_table =
-    Io.read_list r (read_exception_table_entry const_pool)
-  in
+  let handlers = Io.read_list r (read_exception_table_entry const_pool) in
   let attributes = Io.read_list r (read_attribute const_pool) in
   let () = Io.assert_end_of_file r in
-  { max_stack; max_locals; code = bytes; exception_table; attributes }
+  {
+    max_stack;
+    frame_size;
+    code = [];
+    handlers;
+    attributes;
+    stack_map_desc = [];
+  }
 
 and read_attribute (const_pool : cp_entry list) (r : Io.reader) : attribute =
   let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in

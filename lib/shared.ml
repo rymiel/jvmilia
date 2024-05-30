@@ -89,3 +89,5 @@ type exception_handler = {
   target : int;
   class_name : string option;
 }
+
+type jloader = Bootstrap | UserDefined of string

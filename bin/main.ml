@@ -1,14 +1,14 @@
 open Jvmilia.Reader
 open Jvmilia.Verify
-open Jvmilia.Verify.Basic
+open Jvmilia
 
 let parse (path : string) =
   let ch = In_channel.open_bin path in
   Classfile.read_class_file ch
 
 let verify (name : string) =
-  initialize_bootstrap_loader Testclasses.test_loader;
-  let cls = Main.load_class name bootstrap_loader in
+  Loader.initialize_bootstrap_loader Testclasses.test_loader;
+  let cls = Main.load_class name Loader.bootstrap_loader in
   let safe = Main.classIsTypeSafe cls in
   Printf.printf "Class %S is safe: %B\n" cls.name safe;
   if safe then print_endline "\027[32;1mSUCCESS!!\027[0m"

@@ -1,5 +1,8 @@
 open Basic
 open Shared
+open Java
+open Vtype
+open Attr
 
 (* classClassName(Class, ClassName) *)
 let classClassName (cls : jclass) : string = cls.name
@@ -54,7 +57,7 @@ let methodAccessFlags (mth : jmethod) : method_access_flags = mth.access_flags
 let methodDescriptor (mth : jmethod) : string = mth.desc
 
 (* methodAttributes(Method, Attributes) *)
-let methodAttributes (mth : jmethod) : jattribute list = mth.attributes
+let methodAttributes (mth : jmethod) : attribute list = mth.attributes
 
 (* isInit(Method) *)
 let isInit (mth : jmethod) : bool = mth.name = "<init>"
@@ -72,13 +75,13 @@ let member_method (desc : method_desc) (cls : jclass) : jmethod =
 let load_class (name : string) (loader : jloader) : jclass =
   match loader with
   | Bootstrap -> (
-      let impl = bootstrap_loader_impl () in
-      match StringMap.find_opt name !(impl.known) with
+      let impl = Loader.bootstrap_loader_impl () in
+      match Loader.StringMap.find_opt name !(impl.known) with
       | Some existing -> existing
       | None ->
           let cls = impl.load name in
           cls.loader <- Some loader;
-          impl.known := StringMap.add name cls !(impl.known);
+          impl.known := Loader.StringMap.add name cls !(impl.known);
           cls)
   | UserDefined n ->
       failwith (Printf.sprintf "Cannot use user-defined loader %s" n)
@@ -123,7 +126,7 @@ and parse_arraytype (s : string) (offset : int ref) : arraytype =
       done;
       let classname = String.sub s !offset !count in
       offset := !offset + !count + 1;
-      T (Class (classname, bootstrap_loader))
+      T (Class (classname, Loader.bootstrap_loader))
   | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
 
 let thisClass (env : jenvironment) : vclass =
@@ -189,7 +192,8 @@ let rec isAssignable (a : vtype) (b : vtype) : bool =
     | Uninitialized, x -> isAssignable Reference x
     | UninitializedThis, x -> isAssignable Uninitialized x
     | UninitializedOffset _, x -> isAssignable Uninitialized x
-    | Null, x -> isAssignable (Class ("java/lang/Object", bootstrap_loader)) x
+    | Null, x ->
+        isAssignable (Class ("java/lang/Object", Loader.bootstrap_loader)) x
 
 let rec finalMethodNotOverridden (mth : jmethod) (superclass : jclass) : bool =
   let method_name = methodName mth in
@@ -277,7 +281,7 @@ let methodInitialThisType (cls : jclass) (mth : jmethod) : vtype option =
     None)
   else if mth.name = "<init>" then
     if cls.name = "java/lang/Object" then
-      Some (Class ("java/lang/Object", bootstrap_loader))
+      Some (Class ("java/lang/Object", Loader.bootstrap_loader))
     else Some UninitializedThis
   else Some (Class (cls.name, classDefiningLoader cls))
 
@@ -325,7 +329,7 @@ let handlerIsLegal (env : jenvironment) (handler : exception_handler) : bool =
   assert (List.exists (exists_offset handler.endi) env.instructions);
   let _ = offsetStackFrame env handler.target in
   let loader = currentClassLoader env in
-  let throwable = Class ("java/lang/Throwable", bootstrap_loader) in
+  let throwable = Class ("java/lang/Throwable", Loader.bootstrap_loader) in
   let exception_class =
     match handler.class_name with
     | Some name -> Class (name, loader)
@@ -585,7 +589,7 @@ let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
 
 let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
   Debug.push "methodWithCodeIsTypeSafe" (Debug.method_diagnostic mth cls);
-  let find_code (attr : jattribute) : code_attribute option =
+  let find_code (attr : attribute) : code_attribute option =
     match attr with Code x -> Some x | _ -> None
   in
   match List.find_map find_code mth.attributes with
