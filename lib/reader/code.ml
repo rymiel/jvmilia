@@ -17,6 +17,9 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
+  | 0x14 ->
+      let const = Io.read_u2 r |> const_pool_loadable_constant2 pool in
+      Ldc2_w const
   | 0x19 -> Aload (Io.read_u1 r)
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
@@ -42,21 +45,25 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x60 -> Iadd
+  | 0x94 -> Lcmp
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
   | 0x9b -> Iflt (branchoffset ())
   | 0x9c -> Ifge (branchoffset ())
   | 0x9d -> Ifgt (branchoffset ())
   | 0x9e -> Ifle (branchoffset ())
+  | 0x9f -> If_icmpeq (branchoffset ())
+  | 0xa0 -> If_icmpne (branchoffset ())
+  | 0xa1 -> If_icmplt (branchoffset ())
+  | 0xa2 -> If_icmpge (branchoffset ())
+  | 0xa3 -> If_icmpgt (branchoffset ())
+  | 0xa4 -> If_icmple (branchoffset ())
   | 0xa5 -> If_acmpeq (branchoffset ())
   | 0xa6 -> If_acmpne (branchoffset ())
   | 0xa7 -> Goto (branchoffset ())
   | 0xac -> Ireturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
-  | 0xbb ->
-      let cls = Io.read_u2 r |> const_pool_class pool in
-      New cls
   | 0xb6 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokevirtual mth
@@ -66,6 +73,10 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xb8 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokestatic mth
+  | 0xbb ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      New cls
+  | 0xbf -> Athrow
   | x ->
       failwith
         (Printf.sprintf "Failed to read instruction with opcode 0x%02X" x)

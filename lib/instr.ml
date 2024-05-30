@@ -35,6 +35,7 @@ type instrbody =
   | New of class_desc
   | Dup
   | Ldc of loadable_constant
+  | Ldc2_w of loadable_constant2
   | Areturn
   | Lconst_0
   | Lconst_1
@@ -54,6 +55,14 @@ type instrbody =
   | Ifgt of int
   | Ifle of int
   | Pop
+  | Athrow
+  | Lcmp
+  | If_icmpeq of int
+  | If_icmpne of int
+  | If_icmplt of int
+  | If_icmpge of int
+  | If_icmpgt of int
+  | If_icmple of int
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -94,6 +103,7 @@ let string_of_instr (i : instrbody) : string =
     | New i -> ("new", i.name)
     | Dup -> ("dup", "")
     | Ldc i -> ("ldc", string_of_loadable_constant i)
+    | Ldc2_w i -> ("ldc2_w", string_of_loadable_constant2 i)
     | Areturn -> ("areturn", "")
     | Lconst_0 -> ("lconst_0", "")
     | Lconst_1 -> ("lconst_1", "")
@@ -113,6 +123,14 @@ let string_of_instr (i : instrbody) : string =
     | Ifgt i -> ("ifgt", string_of_int i)
     | Ifle i -> ("ifle", string_of_int i)
     | Pop -> ("pop", "")
+    | Athrow -> ("athrow", "")
+    | Lcmp -> ("lcmp", "")
+    | If_icmpeq i -> ("ifeq", string_of_int i)
+    | If_icmpne i -> ("ifne", string_of_int i)
+    | If_icmplt i -> ("iflt", string_of_int i)
+    | If_icmpge i -> ("ifge", string_of_int i)
+    | If_icmpgt i -> ("ifgt", string_of_int i)
+    | If_icmple i -> ("ifle", string_of_int i)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

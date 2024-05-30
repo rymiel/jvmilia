@@ -156,3 +156,12 @@ let const_pool_loadable_constant (cp : const_pool) (index : int) :
   | _ ->
       failwith
         (Printf.sprintf "%s is not a loadable constant" (cp_entry_name entry))
+
+let const_pool_loadable_constant2 (cp : const_pool) (index : int) :
+    Shared.loadable_constant2 =
+  let entry = Array.get cp (index - 1) in
+  match entry with
+  | Long l -> Long l
+  | _ ->
+      failwith
+        (Printf.sprintf "%s is not a loadable constant 2" (cp_entry_name entry))
