@@ -3,6 +3,16 @@ type reader = bytes -> int -> unit option
 let ch_reader (ch : in_channel) : reader =
  fun buf size -> In_channel.really_input ch buf 0 size
 
+let bytes_reader (inbuf : bytes) : reader =
+  let offset = ref 0 in
+  let max = Bytes.length inbuf in
+  fun outbuf size ->
+    if !offset + size > max then None
+    else
+      let () = Bytes.blit inbuf !offset outbuf 0 size in
+      offset := !offset + size;
+      Some ()
+
 let really_read (r : reader) (buf : bytes) (size : int) : unit =
   let res = r buf size in
   match res with Some () -> () | None -> raise End_of_file

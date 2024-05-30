@@ -142,6 +142,7 @@ let rec read_code_attribute (const_pool : cp_entry list) (r : Io.reader) :
     Io.read_list r (read_exception_table_entry const_pool)
   in
   let attributes = Io.read_list r (read_attribute const_pool) in
+  let () = Io.assert_end_of_file r in
   { max_stack; max_locals; code = bytes; exception_table; attributes }
 
 and read_attribute (const_pool : cp_entry list) (r : Io.reader) : attribute =
@@ -149,7 +150,12 @@ and read_attribute (const_pool : cp_entry list) (r : Io.reader) : attribute =
   let length = Int32.to_int (Io.read_u4 r) in
   let bytes = Bytes.create length in
   let () = Io.really_read r bytes length in
-  Unknown (name, bytes)
+  let bytes_reader = Io.bytes_reader bytes in
+  match name with
+  | "Code" ->
+      let code = read_code_attribute const_pool bytes_reader in
+      Code code
+  | _ -> Unknown (name, bytes)
 
 type field_info = {
   access_flags : field_access_flags;
