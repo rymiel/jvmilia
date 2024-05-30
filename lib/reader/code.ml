@@ -23,13 +23,16 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x3d -> Istore_2
   | 0x3e -> Istore_3
   | 0x60 -> Iadd
+  | 0xa5 -> If_acmpeq (Io.read_u2 r)
   | 0xa6 -> If_acmpne (Io.read_u2 r)
   | 0xa7 -> Goto (Io.read_u2 r)
   | 0xac -> Ireturn
   | 0xb1 -> Return
+  | 0xbb ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      New cls
   | 0xb7 ->
-      let index = Io.read_u2 r in
-      let mth = const_pool_method pool index in
+      let mth = Io.read_u2 r |> const_pool_method pool in
       Invokespecial mth
   | x ->
       failwith
@@ -40,9 +43,9 @@ let read_code (pool : const_pool) (r : Io.reader) : instruction list =
     let pos = 0 (* TODO*) in
     let opcode = Io.read_u1_opt r in
     (* let () =
-      Printf.printf "opcode: %s\n"
-        (match opcode with Some x -> Io.hex_u1 x | None -> "eof")
-    in *)
+         Printf.printf "opcode: %s\n"
+           (match opcode with Some x -> Io.hex_u1 x | None -> "eof")
+       in *)
     match opcode with
     | Some v ->
         let body = read_instr v pool r in
