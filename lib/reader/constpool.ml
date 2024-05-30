@@ -1,5 +1,6 @@
 type cp_info =
   | Utf8Info of string
+  | IntegerInfo of int32
   | ClassInfo of { name_idx : int }
   | StringInfo of { str_idx : int }
   | MethodRefInfo of { cls_idx : int; nat_idx : int }
@@ -13,9 +14,17 @@ let read_cp_utf8 (r : Io.reader) =
   in
   Utf8Info s
 
+let read_cp_integer (r : Io.reader) =
+  let value = Io.read_u4 r in
+  IntegerInfo value
+
 let read_cp_class (r : Io.reader) =
   let name_idx = Io.read_u2 r in
   ClassInfo { name_idx }
+
+let read_cp_string (r : Io.reader) =
+  let str_idx = Io.read_u2 r in
+  StringInfo { str_idx }
 
 let read_cp_method_ref (r : Io.reader) =
   let cls_idx = Io.read_u2 r in
@@ -27,14 +36,11 @@ let read_cp_name_and_type (r : Io.reader) =
   let desc_idx = Io.read_u2 r in
   NameAndTypeInfo { name_idx; desc_idx }
 
-let read_cp_string (r : Io.reader) =
-  let str_idx = Io.read_u2 r in
-  StringInfo { str_idx }
-
 let read_const_pool_info (r : Io.reader) : cp_info =
   let tag = Io.read_u1 r in
   match tag with
   | 1 -> read_cp_utf8 r
+  | 3 -> read_cp_integer r
   | 7 -> read_cp_class r
   | 8 -> read_cp_string r
   | 10 -> read_cp_method_ref r
@@ -43,6 +49,7 @@ let read_const_pool_info (r : Io.reader) : cp_info =
 
 type cp_entry =
   | Utf8 of string
+  | Integer of int32
   | Class of Shared.class_desc
   | String of string
   | MethodRef of Shared.method_desc
@@ -51,6 +58,7 @@ type cp_entry =
 let cp_entry_name (info : cp_entry) : string =
   match info with
   | Utf8 _ -> "CONSTANT_Utf8"
+  | Integer _ -> "CONSTANT_Integer"
   | Class _ -> "CONSTANT_Class"
   | String _ -> "CONSTANT_String"
   | MethodRef _ -> "CONSTANT_MethodRef"
@@ -61,6 +69,7 @@ type const_pool = cp_entry list
 let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   match info with
   | Utf8Info x -> Utf8 x
+  | IntegerInfo x -> Integer x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | StringInfo x -> String (resolve_utf8 pool x.str_idx)
   | MethodRefInfo x ->
