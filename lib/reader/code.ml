@@ -10,6 +10,8 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x06 -> Iconst_3
   | 0x07 -> Iconst_4
   | 0x08 -> Iconst_5
+  | 0x09 -> Lconst_0
+  | 0x10 -> Lconst_1
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
@@ -25,12 +27,17 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0x3c -> Istore_1
   | 0x3d -> Istore_2
   | 0x3e -> Istore_3
+  | 0x3f -> Lstore_0
+  | 0x40 -> Lstore_1
+  | 0x41 -> Lstore_2
+  | 0x42 -> Lstore_3
   | 0x59 -> Dup
   | 0x60 -> Iadd
   | 0xa5 -> If_acmpeq (Io.read_u2 r)
   | 0xa6 -> If_acmpne (Io.read_u2 r)
   | 0xa7 -> Goto (Io.read_u2 r)
   | 0xac -> Ireturn
+  | 0xb0 -> Areturn
   | 0xb1 -> Return
   | 0xbb ->
       let cls = Io.read_u2 r |> const_pool_class pool in
@@ -41,6 +48,9 @@ let read_instr (opcode : int) (pool : const_pool) (r : Io.reader) : instrbody =
   | 0xb7 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokespecial mth
+  | 0xb8 ->
+      let mth = Io.read_u2 r |> const_pool_method pool in
+      Invokestatic mth
   | x ->
       failwith
         (Printf.sprintf "Failed to read instruction with opcode 0x%02X" x)

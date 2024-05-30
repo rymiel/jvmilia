@@ -8,6 +8,7 @@ type instrbody =
   | Aload of int
   | Invokevirtual of method_desc
   | Invokespecial of method_desc
+  | Invokestatic of method_desc
   | Return
   | Iconst_m1
   | Iconst_0
@@ -34,6 +35,13 @@ type instrbody =
   | New of class_desc
   | Dup
   | Ldc of loadable_constant
+  | Areturn
+  | Lconst_0
+  | Lconst_1
+  | Lstore_0
+  | Lstore_1
+  | Lstore_2
+  | Lstore_3
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -46,6 +54,8 @@ let string_of_instr (i : instrbody) : string =
         ("invokevirtual", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Invokespecial i ->
         ("invokespecial", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Invokestatic i ->
+        ("invokestatic", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Return -> ("return", "")
     | Iconst_m1 -> ("iconst_m1", "")
     | Iconst_0 -> ("iconst_0", "")
@@ -71,7 +81,14 @@ let string_of_instr (i : instrbody) : string =
     | Goto i -> ("goto", string_of_int i)
     | New i -> ("new", i.name)
     | Dup -> ("dup", "")
-    | Ldc i -> ("dup", string_of_loadable_constant i)
+    | Ldc i -> ("ldc", string_of_loadable_constant i)
+    | Areturn -> ("areturn", "")
+    | Lconst_0 -> ("lconst_0", "")
+    | Lconst_1 -> ("lconst_1", "")
+    | Lstore_0 -> ("lstore_0", "")
+    | Lstore_1 -> ("lstore_1", "")
+    | Lstore_2 -> ("lstore_2", "")
+    | Lstore_3 -> ("lstore_3", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
