@@ -3,7 +3,7 @@ open Attr
 open Constpool
 open Java
 
-let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
+let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
     exception_handler =
   let start_pc = Io.read_u2 r in
   let end_pc = Io.read_u2 r in
@@ -11,7 +11,7 @@ let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
   let catch_type_index = Io.read_u2 r in
   let catch_type =
     if catch_type_index = 0 then None
-    else Some (const_pool_class const_pool (catch_type_index - 1)).name
+    else Some (const_pool_class pool (catch_type_index - 1)).name
   in
   {
     starti = start_pc;
@@ -20,34 +20,40 @@ let read_exception_table_entry (const_pool : cp_entry list) (r : Io.reader) :
     class_name = catch_type;
   }
 
-let rec read_code_attribute (const_pool : cp_entry list) (r : Io.reader) :
-    code_attribute =
+let read_code (_pool : const_pool) (r : Io.reader) : Instr.instruction list =
+  let read_instr (i : Instr.instruction list) : Instr.instruction list =
+    match Io.read_u1_opt r with
+    | None -> i
+    | Some x ->
+        failwith
+          (Printf.sprintf "Failed to read instruction with opcode %d (%s)" x
+             (Io.hex_u1 x))
+  in
+  read_instr []
+
+let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
+    =
   let max_stack = Io.read_u2 r in
   let frame_size = Io.read_u2 r in
   let length = Int32.to_int (Io.read_u4 r) in
-  let bytes = Bytes.create length in
-  let () = Io.really_read r bytes length in
-  let handlers = Io.read_list r (read_exception_table_entry const_pool) in
-  let attributes = Io.read_list r (read_attribute const_pool) in
+  let code_bytes = Bytes.create length in
+  let () = Io.really_read r code_bytes length in
+  let code_reader = Io.bytes_reader code_bytes in
+  let code = read_code pool code_reader in
+  let handlers = Io.read_list r (read_exception_table_entry pool) in
+  let attributes = Io.read_list r (read_attribute pool) in
   let () = Io.assert_end_of_file r in
-  {
-    max_stack;
-    frame_size;
-    code = [];
-    handlers;
-    attributes;
-    stack_map_desc = [];
-  }
+  { max_stack; frame_size; code; handlers; attributes; stack_map_desc = [] }
 
-and read_attribute (const_pool : cp_entry list) (r : Io.reader) : attribute =
-  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
+and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
+  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
   let length = Int32.to_int (Io.read_u4 r) in
   let bytes = Bytes.create length in
   let () = Io.really_read r bytes length in
   let bytes_reader = Io.bytes_reader bytes in
   match name with
   | "Code" ->
-      let code = read_code_attribute const_pool bytes_reader in
+      let code = read_code_attribute pool bytes_reader in
       Code code
   | _ -> Unknown (name, bytes)
 
@@ -58,18 +64,18 @@ type field_info = {
   attributes : attribute list;
 }
 
-let read_field_info (const_pool : cp_entry list) (r : Io.reader) : field_info =
+let read_field_info (pool : const_pool) (r : Io.reader) : field_info =
   let access_flags = field_access_flags_of_int (Io.read_u2 r) in
-  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
-  let descriptor = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
-  let attributes = Io.read_list r (read_attribute const_pool) in
+  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let descriptor = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let attributes = Io.read_list r (read_attribute pool) in
   { access_flags; name; descriptor; attributes }
 
-let read_method_info (const_pool : cp_entry list) (r : Io.reader) : jmethod =
+let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
   let access_flags = method_access_flags_of_int (Io.read_u2 r) in
-  let name = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
-  let desc = const_pool_utf8 const_pool (Io.read_u2 r - 1) in
-  let attributes = Io.read_list r (read_attribute const_pool) in
+  let name = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let desc = const_pool_utf8 pool (Io.read_u2 r - 1) in
+  let attributes = Io.read_list r (read_attribute pool) in
   { access_flags; name; desc; attributes }
 
 type class_file = {

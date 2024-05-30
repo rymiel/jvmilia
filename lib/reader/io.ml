@@ -22,12 +22,19 @@ let read_bytes (r : reader) (size : int) (decoder : bytes -> int -> 'a) : 'a =
   let () = really_read r buf size in
   decoder buf 0
 
+let read_bytes_opt (r : reader) (size : int) (decoder : bytes -> int -> 'a) :
+    'a option =
+  let buf = Bytes.create size in
+  let res = r buf size in
+  match res with Some () -> Some (decoder buf 0) | None -> None
+
 let read_u4 (r : reader) : int32 = read_bytes r 4 Bytes.get_int32_be
 let hex_u4 (num : int32) = Printf.sprintf "0x%04lX" num
 let read_u2 (r : reader) : int = read_bytes r 2 Bytes.get_int16_be
 let hex_u2 (num : int) = Printf.sprintf "0x%04X" num
 let read_u1 (r : reader) : int = read_bytes r 1 Bytes.get_int8
-let hex_u1 (num : int) = Printf.sprintf "0x%04X" num
+let read_u1_opt (r : reader) : int option = read_bytes_opt r 1 Bytes.get_int8
+let hex_u1 (num : int) = Printf.sprintf "0x%02X" num
 
 let read_list (r : reader) (decoder : reader -> 'a) : 'a list =
   let len = read_u2 r in
