@@ -34,12 +34,7 @@ let classMethods (cls : jclass) : jmethod list = cls.methods
    failwith "x" *)
 
 (* classDefiningLoader(Class, Loader) *)
-let classDefiningLoader (cls : jclass) : jloader =
-  match cls.loader with
-  | Some loader -> loader
-  | None ->
-      failwith
-        (Printf.sprintf "Loader wasn't initialized for class %S" cls.name)
+let classDefiningLoader (cls : jclass) : jloader = cls.loader
 
 (* isBootstrapLoader(Loader) *)
 let isBootstrapLoader (loader : jloader) : bool =
@@ -78,7 +73,6 @@ let load_class (name : string) (loader : jloader) : jclass =
       | Some existing -> existing
       | None ->
           let cls = impl.load name in
-          cls.loader <- Some loader;
           impl.known := Loader.StringMap.add name cls !(impl.known);
           cls)
   | UserDefined n ->

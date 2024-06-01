@@ -131,14 +131,14 @@ type class_file = {
   attributes : attribute list;
 }
 
-let convert_class_file (file : class_file) : jclass =
+let convert_class_file (file : class_file) (loader : jloader) : jclass =
   {
     name = file.this_class;
     access_flags = file.access_flags;
     superclass = file.super_class;
     superinterfaces = file.interfaces;
     methods = file.methods;
-    loader = None;
+    loader;
   }
 
 let read_class_file (ch : in_channel) : class_file =

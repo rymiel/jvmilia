@@ -14,5 +14,5 @@ type jclass = {
   superclass : string option;
   superinterfaces : string list;
   methods : jmethod list;
-  mutable loader : jloader option;
+  loader : jloader;
 }
