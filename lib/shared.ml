@@ -83,6 +83,8 @@ type class_desc = { name : string }
 type name_and_type_desc = { name : string; desc : string }
 type method_desc = { cls : string; name : string; desc : string }
 type field_desc = method_desc
+type method_type_desc = { desc : string }
+type dynamic_desc = { bootstrap_idx : int; name : string; desc : string }
 
 type exception_handler = {
   starti : int;

@@ -9,6 +9,9 @@ type cp_info =
   | MethodRefInfo of { cls_idx : int; nat_idx : int }
   | InterfaceMethodRefInfo of { cls_idx : int; nat_idx : int }
   | NameAndTypeInfo of { name_idx : int; desc_idx : int }
+  | MethodHandleInfo of { ref_kind : int; ref_idx : int }
+  | MethodTypeInfo of { desc_idx : int }
+  | InvokeDynamicInfo of { bootstrap_idx : int; nat_idx : int }
 
 let read_cp_utf8 (r : Io.reader) =
   let bytes = Io.read_list r Io.read_u1 in
@@ -54,6 +57,20 @@ let read_cp_name_and_type (r : Io.reader) =
   let desc_idx = Io.read_u2 r in
   NameAndTypeInfo { name_idx; desc_idx }
 
+let read_cp_method_handle (r : Io.reader) =
+  let ref_kind = Io.read_u1 r in
+  let ref_idx = Io.read_u2 r in
+  MethodHandleInfo { ref_kind; ref_idx }
+
+let read_cp_method_type (r : Io.reader) =
+  let desc_idx = Io.read_u2 r in
+  MethodTypeInfo { desc_idx }
+
+let read_cp_invoke_dynamic (r : Io.reader) =
+  let bootstrap_idx = Io.read_u2 r in
+  let nat_idx = Io.read_u2 r in
+  InvokeDynamicInfo { bootstrap_idx; nat_idx }
+
 let read_const_pool_info (r : Io.reader) : cp_info =
   let tag = Io.read_u1 r in
   match tag with
@@ -66,6 +83,9 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | 10 -> read_cp_method_ref r
   | 11 -> read_cp_interface_method_ref r
   | 12 -> read_cp_name_and_type r
+  | 15 -> read_cp_method_handle r
+  | 16 -> read_cp_method_type r
+  | 18 -> read_cp_invoke_dynamic r
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
 let cp_info_size (x : cp_info) : int =
@@ -82,6 +102,9 @@ type cp_entry =
   | MethodRef of Shared.method_desc
   | InterfaceMethodRef of Shared.method_desc
   | NameAndType of Shared.name_and_type_desc
+  | MethodHandle of int * Shared.method_desc
+  | MethodType of Shared.method_type_desc
+  | InvokeDynamic of Shared.dynamic_desc
 
 let cp_entry_name (info : cp_entry) : string =
   match info with
@@ -95,6 +118,9 @@ let cp_entry_name (info : cp_entry) : string =
   | MethodRef _ -> "CONSTANT_MethodRef"
   | InterfaceMethodRef _ -> "CONSTANT_InterfaceMethodRef"
   | NameAndType _ -> "CONSTANT_NameAndType"
+  | MethodHandle _ -> "CONSTANT_MethodHandle"
+  | MethodType _ -> "CONSTANT_MethodType"
+  | InvokeDynamic _ -> "CONSTANT_Invokedynamic"
 
 type const_pool = cp_entry array
 
@@ -124,6 +150,21 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
           name = resolve_utf8 pool x.name_idx;
           desc = resolve_utf8 pool x.desc_idx;
         }
+  | MethodHandleInfo x ->
+      MethodHandle
+        ( x.ref_kind,
+          (match x.ref_kind with
+          | 1 | 2 | 3 | 4 -> resolve_field
+          | 5 | 8 -> resolve_method
+          | 6 | 7 -> resolve_method_or_interface_method
+          | 9 -> resolve_inteface_method
+          | _ -> failwith "Invalid method handle ref kind")
+            pool x.ref_idx )
+  | MethodTypeInfo x -> MethodType { desc = resolve_utf8 pool x.desc_idx }
+  | InvokeDynamicInfo x ->
+      let nat = resolve_nat pool x.nat_idx in
+      InvokeDynamic
+        { bootstrap_idx = x.bootstrap_idx; name = nat.name; desc = nat.desc }
 
 and resolve_utf8 (pool : cp_info array) idx : string =
   match resolve_cp_info pool pool.(idx - 1) with
@@ -146,6 +187,39 @@ and resolve_class (pool : cp_info array) idx : Shared.class_desc =
   | y ->
       failwith
         (Printf.sprintf "Expected CONSTANT_Class, got %s" (cp_entry_name y))
+
+and resolve_field (pool : cp_info array) idx : Shared.field_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | FieldRef x -> x
+  | y ->
+      failwith
+        (Printf.sprintf "Expected CONSTANT_Fieldref, got %s" (cp_entry_name y))
+
+and resolve_method (pool : cp_info array) idx : Shared.method_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | MethodRef x -> x
+  | y ->
+      failwith
+        (Printf.sprintf "Expected CONSTANT_Methodref, got %s" (cp_entry_name y))
+
+and resolve_inteface_method (pool : cp_info array) idx : Shared.method_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | InterfaceMethodRef x -> x
+  | y ->
+      failwith
+        (Printf.sprintf "Expected CONSTANT_InterfaceMethodref, got %s"
+           (cp_entry_name y))
+
+and resolve_method_or_interface_method (pool : cp_info array) idx :
+    Shared.method_desc =
+  match resolve_cp_info pool pool.(idx - 1) with
+  | MethodRef x -> x
+  | InterfaceMethodRef x -> x
+  | y ->
+      failwith
+        (Printf.sprintf
+           "Expected CONSTANT_Methodref or CONSTANT_InterfaceMethodref, got %s"
+           (cp_entry_name y))
 
 let read_const_pool (r : Io.reader) : const_pool =
   let len = Io.read_u2 r - 1 in
