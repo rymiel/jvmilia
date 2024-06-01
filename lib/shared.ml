@@ -102,4 +102,4 @@ let string_of_loadable_constant (c : loadable_constant) : string =
   | Class s -> Printf.sprintf "class %S" s
 
 let string_of_loadable_constant2 (c : loadable_constant2) : string =
-  match c with Long l -> Printf.sprintf "int %Ld" l
+  match c with Long l -> Printf.sprintf "long %Ld" l
