@@ -48,6 +48,10 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x1f -> Lload_1
   | 0x20 -> Lload_2
   | 0x21 -> Lload_3
+  | 0x22 -> Fload_0
+  | 0x23 -> Fload_1
+  | 0x24 -> Fload_2
+  | 0x25 -> Fload_3
   | 0x2a -> Aload_0
   | 0x2b -> Aload_1
   | 0x2c -> Aload_2
@@ -74,14 +78,19 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x60 -> Iadd
   | 0x61 -> Ladd
   | 0x64 -> Isub
+  | 0x6b -> Dmul
   | 0x78 -> Ishl
+  | 0x7a -> Ishr
   | 0x7e -> Iand
   | 0x80 -> Ior
+  | 0x82 -> Ixor
   | 0x84 ->
       let index = Io.read_u1 r in
       let const = Io.read_u1 r in
       Iinc (index, const)
   | 0x87 -> I2d
+  | 0x8d -> F2d
+  | 0x8e -> D2i
   | 0x91 -> I2b
   | 0x92 -> I2c
   | 0x94 -> Lcmp

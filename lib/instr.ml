@@ -99,6 +99,16 @@ type instrbody =
   | Ior
   | Bastore
   | Newarray of Vtype.arraytype
+  | Fload_0
+  | Fload_1
+  | Fload_2
+  | Fload_3
+  | Fload of int
+  | F2d
+  | Dmul
+  | D2i
+  | Ishr
+  | Ixor
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -204,6 +214,16 @@ let string_of_instr (i : instrbody) : string =
     | Ior -> ("ior", "")
     | Bastore -> ("bastore", "")
     | Newarray t -> ("newarray", Vtype.string_of_arraytype t)
+    | Fload i -> ("fload", string_of_int i)
+    | Fload_0 -> ("fload_0", "")
+    | Fload_1 -> ("fload_1", "")
+    | Fload_2 -> ("fload_2", "")
+    | Fload_3 -> ("fload_3", "")
+    | F2d -> ("f2d", "")
+    | Dmul -> ("dmul", "")
+    | D2i -> ("d2i", "")
+    | Ishr -> ("ishr", "")
+    | Ixor -> ("ixor", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
