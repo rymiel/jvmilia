@@ -694,22 +694,41 @@ let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
 (* in *)
 (* Debug.pop result *)
 
-let chop (list : 'a list) (remove : int) : 'a list =
-  let size = List.length list in
+let chop (stack : vtype list) (remove : int) : vtype list =
+  let size = List.length stack in
   let new_size = size - remove in
-  List.filteri (fun i _ -> i < new_size) list
+  List.mapi (fun i x -> if i < new_size then x else Top) stack
 
-let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
-    : jstack_map * jstack_map =
+let rec expand (stack : vtype list) (append : vtype list) : vtype list =
+  match (stack, append) with
+  | _, [] -> stack
+  | [], _ -> failwith "Ran out of space to append to"
+  | Top :: s_rest, a :: a_rest -> expand (a :: s_rest) a_rest
+  | long :: Top :: s_rest, _ when sizeOf long = 2 ->
+      long :: Top :: expand s_rest append
+  | s :: s_rest, _ -> s :: expand s_rest append
+
+let expand_locals (frame_size : int) (locals : vtype list) : vtype list =
+  let x = expandTypeList locals in
+  let pad = List.init (frame_size - List.length x) (fun _ -> Top) in
+  x @ pad
+
+let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
+    ((delta, desc) : delta_frame) : jstack_map * jstack_map =
   let this_offset = offset + delta in
   let next_offset = this_offset + 1 in
   let v =
     match desc with
-    | Same -> frame
+    | Same -> { frame with stack = [] }
     | SameLocals1StackItem i -> { frame with stack = [ i ] }
     | Chop i -> { frame with stack = []; locals = chop frame.locals i }
-    | Append i -> { frame with stack = []; locals = frame.locals @ i }
-    | FullFrame i -> { frame with stack = i.stack; locals = i.locals }
+    | Append i -> { frame with stack = []; locals = expand frame.locals i }
+    | FullFrame i ->
+        {
+          frame with
+          stack = i.stack;
+          locals = expand_locals frame_size i.locals;
+        }
   in
   ((next_offset, v), (this_offset, v))
 
@@ -732,7 +751,9 @@ let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
         methodInitialStackFrame cls mth code.frame_size
       in
       let _, stack_map =
-        List.fold_left_map convertStackMap (0, stack_frame) (get_stack_map code)
+        List.fold_left_map
+          (convert_stack_map code.frame_size)
+          (0, stack_frame) (get_stack_map code)
       in
       (* let () =
            print_endline
