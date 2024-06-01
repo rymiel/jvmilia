@@ -242,6 +242,13 @@ let const_pool_method (cp : const_pool) (index : int) : Shared.method_desc =
   | MethodRef x -> x
   | _ -> failwith "Expected MethodRef in constant pool"
 
+let const_pool_method_or_interface_method (cp : const_pool) (index : int) :
+    Shared.method_desc =
+  match Array.get cp (index - 1) with
+  | MethodRef x -> x
+  | InterfaceMethodRef x -> x
+  | _ -> failwith "Expected MethodRef or InterfaceMethodRef in constant pool"
+
 let const_pool_interface_method (cp : const_pool) (index : int) :
     Shared.method_desc =
   match Array.get cp (index - 1) with

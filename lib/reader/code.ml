@@ -78,6 +78,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x60 -> Iadd
   | 0x61 -> Ladd
   | 0x64 -> Isub
+  | 0x65 -> Lsub
+  | 0x68 -> Imul
   | 0x6b -> Dmul
   | 0x78 -> Ishl
   | 0x7a -> Ishr
@@ -88,6 +90,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       let index = Io.read_u1 r in
       let const = Io.read_u1 r in
       Iinc (index, const)
+  | 0x85 -> I2l
   | 0x87 -> I2d
   | 0x8d -> F2d
   | 0x8e -> D2i
@@ -128,10 +131,10 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokevirtual mth
   | 0xb7 ->
-      let mth = Io.read_u2 r |> const_pool_method pool in
+      let mth = Io.read_u2 r |> const_pool_method_or_interface_method pool in
       Invokespecial mth
   | 0xb8 ->
-      let mth = Io.read_u2 r |> const_pool_method pool in
+      let mth = Io.read_u2 r |> const_pool_method_or_interface_method pool in
       Invokestatic mth
   | 0xb9 ->
       let mth = Io.read_u2 r |> const_pool_interface_method pool in
