@@ -119,6 +119,7 @@ type instrbody =
   | L2i
   | Invokedynamic of Shared.dynamic_desc
   | Caload
+  | Lookupswitch of int * (int * int) list
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -246,6 +247,14 @@ let string_of_instr (i : instrbody) : string =
         ( "invokedynamic",
           Printf.sprintf "#%d %s %s" x.bootstrap_idx x.name x.desc )
     | Caload -> ("caload", "")
+    | Lookupswitch (default, pairs) ->
+        ( "lookupswitch",
+          Printf.sprintf "{%sdefault: %d}"
+            (pairs
+            |> List.map (fun (k, v) ->
+                   string_of_int k ^ ": " ^ string_of_int v ^ ", ")
+            |> String.concat "")
+            default )
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

@@ -16,6 +16,7 @@ let read_newarray_type (atype : int) : Vtype.arraytype =
 let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
     instrbody =
   let branchoffset () = pos + Io.read_i2 r in
+  let pad = (pos - 1) mod 4 in
   match opcode with
   | 0x01 -> Aconst_null
   | 0x02 -> Iconst_m1
@@ -120,6 +121,19 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xa5 -> If_acmpeq (branchoffset ())
   | 0xa6 -> If_acmpne (branchoffset ())
   | 0xa7 -> Goto (branchoffset ())
+  | 0xab ->
+      (* let () =
+           Printf.printf "lookupswitch at %d, pad %d, next at %d\n" pos pad
+             (pos + 1 + pad)
+         in *)
+      let () = Io.skip r pad in
+      let default = Io.read_u4_int r in
+      let npairs = Io.read_u4_int r in
+      let pairs =
+        Io.read_list_sized r npairs (fun r ->
+            (Io.read_u4_int r, Io.read_u4_int r))
+      in
+      Lookupswitch (default, pairs)
   | 0xac -> Ireturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
