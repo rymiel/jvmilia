@@ -35,19 +35,26 @@ type instrbody =
   | New of class_desc
   | Dup
   | Ldc of loadable_constant
+  | Ldc_w of loadable_constant
   | Ldc2_w of loadable_constant2
   | Areturn
   | Lconst_0
   | Lconst_1
+  | Lstore of int
   | Lstore_0
   | Lstore_1
   | Lstore_2
   | Lstore_3
+  | Lload of int
   | Lload_0
   | Lload_1
   | Lload_2
   | Lload_3
   | Astore of int
+  | Astore_0
+  | Astore_1
+  | Astore_2
+  | Astore_3
   | Ifeq of int
   | Ifne of int
   | Iflt of int
@@ -64,6 +71,24 @@ type instrbody =
   | If_icmpgt of int
   | If_icmple of int
   | Ladd
+  | Getfield of field_desc
+  | Putfield of field_desc
+  | Getstatic of field_desc
+  | Putstatic of field_desc
+  | Aconst_null
+  | Ifnull of int
+  | Ifnonnull of int
+  | Checkcast of class_desc
+  | Instanceof of class_desc
+  | Monitorenter
+  | Monitorexit
+  | Invokeinterface of method_desc * int
+  | Arraylength
+  | Aaload
+  | Iinc of int * int
+  | Isub
+  | Bipush of int
+  | Anewarray of class_desc
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -78,6 +103,8 @@ let string_of_instr (i : instrbody) : string =
         ("invokespecial", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Invokestatic i ->
         ("invokestatic", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Invokeinterface (i, _) ->
+        ("invokeinterface", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
     | Return -> ("return", "")
     | Iconst_m1 -> ("iconst_m1", "")
     | Iconst_0 -> ("iconst_0", "")
@@ -86,16 +113,16 @@ let string_of_instr (i : instrbody) : string =
     | Iconst_3 -> ("iconst_3", "")
     | Iconst_4 -> ("iconst_4", "")
     | Iconst_5 -> ("iconst_5", "")
+    | Istore i -> ("istore", string_of_int i)
     | Istore_0 -> ("istore_0", "")
     | Istore_1 -> ("istore_1", "")
     | Istore_2 -> ("istore_2", "")
     | Istore_3 -> ("istore_3", "")
-    | Istore i -> ("istore", string_of_int i)
+    | Iload i -> ("iload", string_of_int i)
     | Iload_0 -> ("iload_0", "")
     | Iload_1 -> ("iload_1", "")
     | Iload_2 -> ("iload_2", "")
     | Iload_3 -> ("iload_3", "")
-    | Iload i -> ("iload", string_of_int i)
     | Iadd -> ("iadd", "")
     | Ireturn -> ("ireturn", "")
     | If_acmpeq i -> ("if_acmpeq", string_of_int i)
@@ -104,19 +131,26 @@ let string_of_instr (i : instrbody) : string =
     | New i -> ("new", i.name)
     | Dup -> ("dup", "")
     | Ldc i -> ("ldc", string_of_loadable_constant i)
+    | Ldc_w i -> ("ldc_w", string_of_loadable_constant i)
     | Ldc2_w i -> ("ldc2_w", string_of_loadable_constant2 i)
     | Areturn -> ("areturn", "")
     | Lconst_0 -> ("lconst_0", "")
     | Lconst_1 -> ("lconst_1", "")
+    | Lstore i -> ("lstore", string_of_int i)
     | Lstore_0 -> ("lstore_0", "")
     | Lstore_1 -> ("lstore_1", "")
     | Lstore_2 -> ("lstore_2", "")
     | Lstore_3 -> ("lstore_3", "")
+    | Lload i -> ("lload", string_of_int i)
     | Lload_0 -> ("lload_0", "")
     | Lload_1 -> ("lload_1", "")
     | Lload_2 -> ("lload_2", "")
     | Lload_3 -> ("lload_3", "")
     | Astore i -> ("astore", string_of_int i)
+    | Astore_0 -> ("astore_0", "")
+    | Astore_1 -> ("astore_1", "")
+    | Astore_2 -> ("astore_2", "")
+    | Astore_3 -> ("astore_3", "")
     | Ifeq i -> ("ifeq", string_of_int i)
     | Ifne i -> ("ifne", string_of_int i)
     | Iflt i -> ("iflt", string_of_int i)
@@ -133,6 +167,23 @@ let string_of_instr (i : instrbody) : string =
     | If_icmpgt i -> ("ifgt", string_of_int i)
     | If_icmple i -> ("ifle", string_of_int i)
     | Ladd -> ("ladd", "")
+    | Getfield i -> ("getfield", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Putfield i -> ("putfield", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Getstatic i -> ("getstatic", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Putstatic i -> ("putstatic", Printf.sprintf "%s.%s %s" i.cls i.name i.desc)
+    | Aconst_null -> ("aconst_null", "")
+    | Ifnull i -> ("ifnull", string_of_int i)
+    | Ifnonnull i -> ("ifnonnull", string_of_int i)
+    | Checkcast i -> ("checkcast", i.name)
+    | Instanceof i -> ("instanceof", i.name)
+    | Monitorenter -> ("monitorenter", "")
+    | Monitorexit -> ("monitorexit", "")
+    | Arraylength -> ("arraylength", "")
+    | Aaload -> ("aaload", "")
+    | Iinc (i, j) -> ("iinc", Printf.sprintf "%d %d" i j)
+    | Isub -> ("isub", "")
+    | Bipush i -> ("bipush", string_of_int i)
+    | Anewarray i -> ("instanceof", i.name)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

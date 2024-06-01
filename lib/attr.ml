@@ -4,6 +4,7 @@ open Vtype
 type frame_desc =
   | Same
   | SameLocals1StackItem of vtype
+  | Chop of int
   | Append of vtype list
   | FullFrame of { locals : vtype list; stack : vtype list }
 
@@ -19,5 +20,5 @@ type code_attribute = {
 
 and attribute =
   | Code of code_attribute
-  | Unknown of string * bytes
   | StackMapTable of delta_frame list
+  | Unknown of string * bytes

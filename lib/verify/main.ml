@@ -45,8 +45,6 @@ let classDefiningLoader (cls : jclass) : jloader =
 let isBootstrapLoader (loader : jloader) : bool =
   match loader with Bootstrap -> true | _ -> false
 
-(* loadedClass(Name, InitiatingLoader, ClassDefinition) *)
-
 (* methodName(Method, Name) *)
 let methodName (mth : jmethod) : string = mth.name
 
@@ -341,12 +339,19 @@ let handlersAreLegal (env : jenvironment) : bool =
   let handlers = env.exception_handlers in
   List.for_all (handlerIsLegal env) handlers
 
-let frameIsAssignable (a : frame) (b : frame) =
-  List.length a.stack = List.length b.stack
-  && List.length a.locals = List.length b.locals
-  && List.for_all2 isAssignable a.locals b.locals
-  && List.for_all2 isAssignable a.stack b.stack
-  && a.flags.is_this_uninit = b.flags.is_this_uninit
+let frameIsAssignable (a : frame) (b : frame) : unit =
+  let v =
+    List.length a.stack = List.length b.stack
+    && List.length a.locals = List.length b.locals
+    && List.for_all2 isAssignable a.locals b.locals
+    && List.for_all2 isAssignable a.stack b.stack
+    && a.flags.is_this_uninit = b.flags.is_this_uninit
+  in
+  if v then ()
+  else
+    failwith
+      (Printf.sprintf "Cannot assign frame %s to frame %s" (string_of_frame a)
+         (string_of_frame b))
 
 type mframe = Frame of frame | AfterGoto
 
@@ -358,13 +363,13 @@ let popMatchingType (stack : vtype list) (t : vtype) : vtype list * vtype =
   try
     match stack with
     | Top :: actual :: rest ->
-        if sizeOf actual = 2 then (rest, actual)
+        if sizeOf actual = 2 && isAssignable actual t then (rest, actual)
         else
           failwith
             (Printf.sprintf "Top of stack is size 1 despite top guard: %s"
                (string_of_vtype actual))
     | actual :: rest ->
-        if sizeOf actual = 1 then (rest, actual)
+        if sizeOf actual = 1 && isAssignable actual t then (rest, actual)
         else
           failwith
             (Printf.sprintf "Top of stack is size 2 without top guard: %s"
@@ -484,7 +489,7 @@ let rewrittenUninitializedTypeOffset (env : jenvironment) (offset : int)
 let substitute (prev : 'a) (next : 'a) (src : 'a list) : 'a list =
   List.map (fun x -> if x = prev then next else x) src
 
-let targetIsTypeSafe (env : jenvironment) (frame : frame) (target : int) : bool
+let targetIsTypeSafe (env : jenvironment) (frame : frame) (target : int) : unit
     =
   let new_frame = offsetStackFrame env target in
   (* let () =
@@ -500,6 +505,7 @@ let loadable_vtype (c : loadable_constant) : vtype =
   match c with
   | Integer _ -> Int
   | String _ -> Class ("java/lang/String", Loader.bootstrap_loader)
+  | Class _ -> Class ("java/lang/Class", Loader.bootstrap_loader)
 
 let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
@@ -570,7 +576,7 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       assert (m.name <> "<clinit>");
       let loader = currentClassLoader env in
       let op_args, r = parseMethodDescriptor m.desc in
-      let stack_arg_list = List.rev (Class (m.name, loader) :: op_args) in
+      let stack_arg_list = List.rev (Class (m.cls, loader) :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
       (* let arg_list = List.rev op_args in *)
       (* let popped = canPop frame arg_list in *)
@@ -615,6 +621,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Iload i ->
       let n = loadIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
+  | Lload_0 -> defer (Lload 0)
+  | Lload_1 -> defer (Lload 1)
+  | Lload_2 -> defer (Lload 2)
+  | Lload_3 -> defer (Lload 3)
+  | Lload i ->
+      let n = loadIsTypeSafe env i Long frame in
+      (Frame n, exceptionStackFrame frame)
   | Istore_0 -> defer (Istore 0)
   | Istore_1 -> defer (Istore 1)
   | Istore_2 -> defer (Istore 2)
@@ -622,13 +635,20 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Istore i ->
       let n = storeIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
+  | Lstore_0 -> defer (Lstore 0)
+  | Lstore_1 -> defer (Lstore 1)
+  | Lstore_2 -> defer (Lstore 2)
+  | Lstore_3 -> defer (Lstore 3)
+  | Lstore i ->
+      let n = storeIsTypeSafe env i Long frame in
+      (Frame n, exceptionStackFrame frame)
   | If_acmpeq t ->
       let next_frame = canPop frame [ Reference; Reference ] in
-      assert (targetIsTypeSafe env next_frame t);
+      let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
   | If_acmpne t -> defer (If_acmpeq t)
   | Goto t ->
-      assert (targetIsTypeSafe env frame t);
+      let () = targetIsTypeSafe env frame t in
       (AfterGoto, exceptionStackFrame frame)
   | Iadd ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
@@ -665,7 +685,7 @@ let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
   (* let result = *)
   match (code, mframe) with
   | StackMap (_, map_frame) :: more_code, Frame frame ->
-      assert (frameIsAssignable frame map_frame);
+      let () = frameIsAssignable frame map_frame in
       mergedCodeIsTypeSafe env more_code (Frame map_frame)
   | Instruction (offset, body) :: more_code, Frame frame ->
       let next_frame, exc_frame = instructionIsTypeSafe body env offset frame in
@@ -680,6 +700,11 @@ let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
 (* in *)
 (* Debug.pop result *)
 
+let chop (list : 'a list) (remove : int) : 'a list =
+  let size = List.length list in
+  let new_size = size - remove in
+  List.filteri (fun i _ -> i < new_size) list
+
 let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
     : jstack_map * jstack_map =
   let this_offset = offset + delta in
@@ -688,6 +713,7 @@ let convertStackMap ((offset, frame) : jstack_map) ((delta, desc) : delta_frame)
     match desc with
     | Same -> frame
     | SameLocals1StackItem i -> { frame with stack = [ i ] }
+    | Chop i -> { frame with stack = []; locals = chop frame.locals i }
     | Append i -> { frame with stack = []; locals = frame.locals @ i }
     | FullFrame i -> { frame with stack = i.stack; locals = i.locals }
   in
@@ -753,16 +779,7 @@ let methodIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
   in
   Debug.pop result
 
-(* classIsTypeSafe(Class) :-
-    classClassName(Class, Name),
-    classDefiningLoader(Class, L),
-    superclassChain(Name, L, Chain),
-    Chain \= [],
-    classSuperClassName(Class, SuperclassName),
-    loadedClass(SuperclassName, L, Superclass),
-    classIsNotFinal(Superclass),
-    classMethods(Class, Methods),
-    checklist(methodIsTypeSafe(Class), Methods). *)
+(* classIsTypeSafe(Class) *)
 let classIsTypeSafe (cls : jclass) : bool =
   Debug.push "classIsTypeSafe" (Debug.class_diagnostic cls);
   let name = classClassName cls in

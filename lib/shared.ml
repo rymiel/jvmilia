@@ -82,6 +82,7 @@ let field_access_flags_of_int (num : int) : field_access_flags =
 type class_desc = { name : string }
 type name_and_type_desc = { name : string; desc : string }
 type method_desc = { cls : string; name : string; desc : string }
+type field_desc = method_desc
 
 type exception_handler = {
   starti : int;
@@ -91,13 +92,14 @@ type exception_handler = {
 }
 
 type jloader = Bootstrap | UserDefined of string
-type loadable_constant = Integer of int32 | String of string
+type loadable_constant = Integer of int32 | String of string | Class of string
 type loadable_constant2 = Long of int64
 
 let string_of_loadable_constant (c : loadable_constant) : string =
   match c with
   | Integer i -> Printf.sprintf "int %ld" i
   | String s -> Printf.sprintf "string %S" s
+  | Class s -> Printf.sprintf "class %S" s
 
 let string_of_loadable_constant2 (c : loadable_constant2) : string =
   match c with Long l -> Printf.sprintf "int %Ld" l

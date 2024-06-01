@@ -46,6 +46,10 @@ let read_stack_map_frame (pool : const_pool) (r : Io.reader) : delta_frame =
   | i when i >= 64 && i <= 127 ->
       let t = read_stack_map_vtype pool r in
       (i - 64, SameLocals1StackItem t)
+  | i when i >= 248 && i <= 250 ->
+      let count = 251 - i in
+      let delta = Io.read_u2 r in
+      (delta, Chop count)
   | i when i >= 252 && i <= 254 ->
       let count = i - 251 in
       let delta = Io.read_u2 r in

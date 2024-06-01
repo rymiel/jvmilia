@@ -5,6 +5,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
     instrbody =
   let branchoffset () = pos + Io.read_i2 r in
   match opcode with
+  | 0x01 -> Aconst_null
   | 0x02 -> Iconst_m1
   | 0x03 -> Iconst_0
   | 0x04 -> Iconst_1
@@ -14,25 +15,32 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x08 -> Iconst_5
   | 0x09 -> Lconst_0
   | 0x0a -> Lconst_1
+  | 0x10 -> Bipush (Io.read_u1 r)
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
+  | 0x13 ->
+      let const = Io.read_u2 r |> const_pool_loadable_constant pool in
+      Ldc_w const
   | 0x14 ->
       let const = Io.read_u2 r |> const_pool_loadable_constant2 pool in
       Ldc2_w const
+  | 0x15 -> Iload (Io.read_u1 r)
   | 0x19 -> Aload (Io.read_u1 r)
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
   | 0x1c -> Iload_2
   | 0x1d -> Iload_3
-  | 0x1f -> Lload_0
-  | 0x20 -> Lload_1
-  | 0x21 -> Lload_2
-  | 0x22 -> Lload_3
+  | 0x1e -> Lload_0
+  | 0x1f -> Lload_1
+  | 0x20 -> Lload_2
+  | 0x21 -> Lload_3
   | 0x2a -> Aload_0
   | 0x2b -> Aload_1
   | 0x2c -> Aload_2
   | 0x2d -> Aload_3
+  | 0x32 -> Aaload
+  | 0x36 -> Istore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
   | 0x3b -> Istore_0
   | 0x3c -> Istore_1
@@ -42,10 +50,19 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x40 -> Lstore_1
   | 0x41 -> Lstore_2
   | 0x42 -> Lstore_3
+  | 0x4b -> Astore_0
+  | 0x4c -> Astore_1
+  | 0x4d -> Astore_2
+  | 0x4e -> Astore_3
   | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x60 -> Iadd
   | 0x61 -> Ladd
+  | 0x64 -> Isub
+  | 0x84 ->
+      let index = Io.read_u1 r in
+      let const = Io.read_u1 r in
+      Iinc (index, const)
   | 0x94 -> Lcmp
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
@@ -65,6 +82,18 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xac -> Ireturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
+  | 0xb2 ->
+      let field = Io.read_u2 r |> const_pool_field pool in
+      Getstatic field
+  | 0xb3 ->
+      let field = Io.read_u2 r |> const_pool_field pool in
+      Putstatic field
+  | 0xb4 ->
+      let field = Io.read_u2 r |> const_pool_field pool in
+      Getfield field
+  | 0xb5 ->
+      let field = Io.read_u2 r |> const_pool_field pool in
+      Putfield field
   | 0xb6 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokevirtual mth
@@ -74,10 +103,30 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xb8 ->
       let mth = Io.read_u2 r |> const_pool_method pool in
       Invokestatic mth
+  | 0xb9 ->
+      let mth = Io.read_u2 r |> const_pool_interface_method pool in
+      let count = Io.read_u1 r in
+      let zero = Io.read_u1 r in
+      assert (zero = 0);
+      Invokeinterface (mth, count)
   | 0xbb ->
       let cls = Io.read_u2 r |> const_pool_class pool in
       New cls
+  | 0xbd ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      Anewarray cls
+  | 0xbe -> Arraylength
   | 0xbf -> Athrow
+  | 0xc0 ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      Checkcast cls
+  | 0xc1 ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      Instanceof cls
+  | 0xc2 -> Monitorenter
+  | 0xc3 -> Monitorexit
+  | 0xc6 -> Ifnull (branchoffset ())
+  | 0xc7 -> Ifnonnull (branchoffset ())
   | x ->
       failwith
         (Printf.sprintf "Failed to read instruction with opcode 0x%02X" x)

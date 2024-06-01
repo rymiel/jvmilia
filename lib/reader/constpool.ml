@@ -5,7 +5,9 @@ type cp_info =
   | LongInfo of int64
   | ClassInfo of { name_idx : int }
   | StringInfo of { str_idx : int }
+  | FieldRefInfo of { cls_idx : int; nat_idx : int }
   | MethodRefInfo of { cls_idx : int; nat_idx : int }
+  | InterfaceMethodRefInfo of { cls_idx : int; nat_idx : int }
   | NameAndTypeInfo of { name_idx : int; desc_idx : int }
 
 let read_cp_utf8 (r : Io.reader) =
@@ -32,10 +34,20 @@ let read_cp_string (r : Io.reader) =
   let str_idx = Io.read_u2 r in
   StringInfo { str_idx }
 
+let read_cp_field_ref (r : Io.reader) =
+  let cls_idx = Io.read_u2 r in
+  let nat_idx = Io.read_u2 r in
+  FieldRefInfo { cls_idx; nat_idx }
+
 let read_cp_method_ref (r : Io.reader) =
   let cls_idx = Io.read_u2 r in
   let nat_idx = Io.read_u2 r in
   MethodRefInfo { cls_idx; nat_idx }
+
+let read_cp_interface_method_ref (r : Io.reader) =
+  let cls_idx = Io.read_u2 r in
+  let nat_idx = Io.read_u2 r in
+  InterfaceMethodRefInfo { cls_idx; nat_idx }
 
 let read_cp_name_and_type (r : Io.reader) =
   let name_idx = Io.read_u2 r in
@@ -50,7 +62,9 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | 5 -> read_cp_long r
   | 7 -> read_cp_class r
   | 8 -> read_cp_string r
+  | 9 -> read_cp_field_ref r
   | 10 -> read_cp_method_ref r
+  | 11 -> read_cp_interface_method_ref r
   | 12 -> read_cp_name_and_type r
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
@@ -64,7 +78,9 @@ type cp_entry =
   | Long of int64
   | Class of Shared.class_desc
   | String of string
+  | FieldRef of Shared.field_desc
   | MethodRef of Shared.method_desc
+  | InterfaceMethodRef of Shared.method_desc
   | NameAndType of Shared.name_and_type_desc
 
 let cp_entry_name (info : cp_entry) : string =
@@ -75,7 +91,9 @@ let cp_entry_name (info : cp_entry) : string =
   | Long _ -> "CONSTANT_Long"
   | Class _ -> "CONSTANT_Class"
   | String _ -> "CONSTANT_String"
+  | FieldRef _ -> "CONSTANT_FieldRef"
   | MethodRef _ -> "CONSTANT_MethodRef"
+  | InterfaceMethodRef _ -> "CONSTANT_InterfaceMethodRef"
   | NameAndType _ -> "CONSTANT_NameAndType"
 
 type const_pool = cp_entry array
@@ -88,10 +106,18 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | LongInfo x -> Long x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | StringInfo x -> String (resolve_utf8 pool x.str_idx)
+  | FieldRefInfo x ->
+      let cls = resolve_class pool x.cls_idx in
+      let nat = resolve_nat pool x.nat_idx in
+      FieldRef { cls = cls.name; name = nat.name; desc = nat.desc }
   | MethodRefInfo x ->
       let cls = resolve_class pool x.cls_idx in
       let nat = resolve_nat pool x.nat_idx in
       MethodRef { cls = cls.name; name = nat.name; desc = nat.desc }
+  | InterfaceMethodRefInfo x ->
+      let cls = resolve_class pool x.cls_idx in
+      let nat = resolve_nat pool x.nat_idx in
+      InterfaceMethodRef { cls = cls.name; name = nat.name; desc = nat.desc }
   | NameAndTypeInfo x ->
       NameAndType
         {
@@ -142,6 +168,17 @@ let const_pool_method (cp : const_pool) (index : int) : Shared.method_desc =
   | MethodRef x -> x
   | _ -> failwith "Expected MethodRef in constant pool"
 
+let const_pool_interface_method (cp : const_pool) (index : int) :
+    Shared.method_desc =
+  match Array.get cp (index - 1) with
+  | InterfaceMethodRef x -> x
+  | _ -> failwith "Expected InterfaceMethodRef in constant pool"
+
+let const_pool_field (cp : const_pool) (index : int) : Shared.field_desc =
+  match Array.get cp (index - 1) with
+  | FieldRef x -> x
+  | _ -> failwith "Expected FieldRef in constant pool"
+
 let const_pool_utf8 (cp : const_pool) (index : int) : string =
   match Array.get cp (index - 1) with
   | Utf8 x -> x
@@ -153,6 +190,7 @@ let const_pool_loadable_constant (cp : const_pool) (index : int) :
   match entry with
   | Integer x -> Integer x
   | String s -> String s
+  | Class s -> Class s.name
   | _ ->
       failwith
         (Printf.sprintf "%s is not a loadable constant" (cp_entry_name entry))
