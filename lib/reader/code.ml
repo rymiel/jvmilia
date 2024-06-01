@@ -59,6 +59,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x2d -> Aload_3
   | 0x32 -> Aaload
   | 0x33 -> Baload
+  | 0x34 -> Caload
   | 0x36 -> Istore (Io.read_u1 r)
   | 0x37 -> Lstore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
@@ -98,6 +99,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       Iinc (index, const)
   | 0x85 -> I2l
   | 0x87 -> I2d
+  | 0x88 -> L2i
   | 0x8d -> F2d
   | 0x8e -> D2i
   | 0x91 -> I2b
@@ -148,6 +150,13 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       let zero = Io.read_u1 r in
       assert (zero = 0);
       Invokeinterface (mth, count)
+  | 0xba ->
+      let dyn = Io.read_u2 r |> const_pool_invokedynamic pool in
+      let zero1 = Io.read_u1 r in
+      assert (zero1 = 0);
+      let zero2 = Io.read_u1 r in
+      assert (zero2 = 0);
+      Invokedynamic dyn
   | 0xbb ->
       let cls = Io.read_u2 r |> const_pool_class pool in
       New cls

@@ -116,6 +116,9 @@ type instrbody =
   | Lmul
   | Lshl
   | Dup2
+  | L2i
+  | Invokedynamic of Shared.dynamic_desc
+  | Caload
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -238,6 +241,11 @@ let string_of_instr (i : instrbody) : string =
     | Lmul -> ("lmul", "")
     | Lshl -> ("lmul", "")
     | Dup2 -> ("dup2", "")
+    | L2i -> ("l2i", "")
+    | Invokedynamic x ->
+        ( "invokedynamic",
+          Printf.sprintf "#%d %s %s" x.bootstrap_idx x.name x.desc )
+    | Caload -> ("caload", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

@@ -284,3 +284,9 @@ let const_pool_loadable_constant2 (cp : const_pool) (index : int) :
   | _ ->
       failwith
         (Printf.sprintf "%s is not a loadable constant 2" (cp_entry_name entry))
+
+let const_pool_invokedynamic (cp : const_pool) (index : int) :
+    Shared.dynamic_desc =
+  match Array.get cp (index - 1) with
+  | InvokeDynamic x -> x
+  | _ -> failwith "Expected InvokeDynamic in constant pool"
