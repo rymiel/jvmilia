@@ -39,6 +39,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       let const = Io.read_u2 r |> const_pool_loadable_constant2 pool in
       Ldc2_w const
   | 0x15 -> Iload (Io.read_u1 r)
+  | 0x16 -> Lload (Io.read_u1 r)
   | 0x19 -> Aload (Io.read_u1 r)
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
@@ -59,6 +60,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x32 -> Aaload
   | 0x33 -> Baload
   | 0x36 -> Istore (Io.read_u1 r)
+  | 0x37 -> Lstore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
   | 0x3b -> Istore_0
   | 0x3c -> Istore_1
@@ -72,16 +74,20 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x4c -> Astore_1
   | 0x4d -> Astore_2
   | 0x4e -> Astore_3
+  | 0x53 -> Aastore
   | 0x54 -> Bastore
   | 0x57 -> Pop
   | 0x59 -> Dup
+  | 0x5c -> Dup2
   | 0x60 -> Iadd
   | 0x61 -> Ladd
   | 0x64 -> Isub
   | 0x65 -> Lsub
   | 0x68 -> Imul
+  | 0x69 -> Lmul
   | 0x6b -> Dmul
   | 0x78 -> Ishl
+  | 0x79 -> Lshl
   | 0x7a -> Ishr
   | 0x7e -> Iand
   | 0x80 -> Ior
