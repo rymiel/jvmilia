@@ -104,6 +104,11 @@ type instrbody =
   | Fload_2
   | Fload_3
   | Fload of int
+  | Dload_0
+  | Dload_1
+  | Dload_2
+  | Dload_3
+  | Dload of int
   | F2d
   | Dmul
   | D2i
@@ -120,6 +125,10 @@ type instrbody =
   | Invokedynamic of Shared.dynamic_desc
   | Caload
   | Lookupswitch of int * (int * int) list
+  | Castore
+  | Idiv
+  | Land
+  | Ineg
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -230,6 +239,11 @@ let string_of_instr (i : instrbody) : string =
     | Fload_1 -> ("fload_1", "")
     | Fload_2 -> ("fload_2", "")
     | Fload_3 -> ("fload_3", "")
+    | Dload i -> ("dload", string_of_int i)
+    | Dload_0 -> ("dload_0", "")
+    | Dload_1 -> ("dload_1", "")
+    | Dload_2 -> ("dload_2", "")
+    | Dload_3 -> ("dload_3", "")
     | F2d -> ("f2d", "")
     | Dmul -> ("dmul", "")
     | D2i -> ("d2i", "")
@@ -255,6 +269,10 @@ let string_of_instr (i : instrbody) : string =
                    string_of_int k ^ ": " ^ string_of_int v ^ ", ")
             |> String.concat "")
             default )
+    | Castore -> ("castore", "")
+    | Idiv -> ("idiv", "")
+    | Land -> ("land", "")
+    | Ineg -> ("ineg", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
