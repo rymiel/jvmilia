@@ -501,6 +501,9 @@ let loadable_vtype (c : loadable_constant) : vtype =
   | String _ -> Class ("java/lang/String", Loader.bootstrap_loader)
   | Class _ -> Class ("java/lang/Class", Loader.bootstrap_loader)
 
+let loadable_vtype2 (c : loadable_constant2) : vtype =
+  match c with Long _ -> Long
+
 let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
@@ -672,6 +675,9 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Iadd ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
       (Frame n, exceptionStackFrame frame)
+  | Ladd ->
+      let n = validTypeTransition env [ Long; Long ] Long frame in
+      (Frame n, exceptionStackFrame frame)
   | New _ ->
       let new_item = UninitializedOffset offset in
       assert (not @@ List.mem new_item frame.stack);
@@ -687,6 +693,11 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (Frame n, exceptionStackFrame frame)
   | Ldc c ->
       let t = loadable_vtype c in
+      let n = validTypeTransition env [] t frame in
+      (Frame n, exceptionStackFrame frame)
+  | Ldc_w c -> defer (Ldc c)
+  | Ldc2_w c ->
+      let t = loadable_vtype2 c in
       let n = validTypeTransition env [] t frame in
       (Frame n, exceptionStackFrame frame)
   | Pop ->
