@@ -1,6 +1,18 @@
 open Constpool
 open Instr
 
+let read_newarray_type (atype : int) : Vtype.arraytype =
+  match atype with
+  | 4 -> Boolean
+  | 5 -> Char
+  | 6 -> T Float
+  | 7 -> T Double
+  | 8 -> Byte
+  | 9 -> Short
+  | 10 -> T Int
+  | 11 -> T Long
+  | _ -> failwith "Invalid array type"
+
 let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
     instrbody =
   let branchoffset () = pos + Io.read_i2 r in
@@ -16,6 +28,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x09 -> Lconst_0
   | 0x0a -> Lconst_1
   | 0x10 -> Bipush (Io.read_u1 r)
+  | 0x11 -> Sipush (Io.read_u2 r)
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const
@@ -40,6 +53,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x2c -> Aload_2
   | 0x2d -> Aload_3
   | 0x32 -> Aaload
+  | 0x33 -> Baload
   | 0x36 -> Istore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
   | 0x3b -> Istore_0
@@ -54,15 +68,22 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x4c -> Astore_1
   | 0x4d -> Astore_2
   | 0x4e -> Astore_3
+  | 0x54 -> Bastore
   | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x60 -> Iadd
   | 0x61 -> Ladd
   | 0x64 -> Isub
+  | 0x78 -> Ishl
+  | 0x7e -> Iand
+  | 0x80 -> Ior
   | 0x84 ->
       let index = Io.read_u1 r in
       let const = Io.read_u1 r in
       Iinc (index, const)
+  | 0x87 -> I2d
+  | 0x91 -> I2b
+  | 0x92 -> I2c
   | 0x94 -> Lcmp
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
@@ -112,6 +133,9 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xbb ->
       let cls = Io.read_u2 r |> const_pool_class pool in
       New cls
+  | 0xbc ->
+      let t = Io.read_u1 r |> read_newarray_type in
+      Newarray t
   | 0xbd ->
       let cls = Io.read_u2 r |> const_pool_class pool in
       Anewarray cls

@@ -88,7 +88,17 @@ type instrbody =
   | Iinc of int * int
   | Isub
   | Bipush of int
+  | Sipush of int
   | Anewarray of class_desc
+  | I2b
+  | I2c
+  | I2d
+  | Ishl
+  | Baload
+  | Iand
+  | Ior
+  | Bastore
+  | Newarray of Vtype.arraytype
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -183,7 +193,17 @@ let string_of_instr (i : instrbody) : string =
     | Iinc (i, j) -> ("iinc", Printf.sprintf "%d %d" i j)
     | Isub -> ("isub", "")
     | Bipush i -> ("bipush", string_of_int i)
+    | Sipush i -> ("sipush", string_of_int i)
     | Anewarray i -> ("instanceof", i.name)
+    | I2b -> ("i2b", "")
+    | I2c -> ("i2c", "")
+    | I2d -> ("i2d", "")
+    | Ishl -> ("ishl", "")
+    | Baload -> ("baload", "")
+    | Iand -> ("iand", "")
+    | Ior -> ("ior", "")
+    | Bastore -> ("bastore", "")
+    | Newarray t -> ("newarray", Vtype.string_of_arraytype t)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
