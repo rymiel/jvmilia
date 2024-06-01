@@ -32,7 +32,8 @@ let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Vtype.vtype =
   | 6 -> UninitializedThis
   | 7 ->
       let cls = Io.read_u2 r |> const_pool_class pool in
-      (* is this a good idea *) Class (cls.name, Loader.bootstrap_loader)
+      (* kissing owner this a good idea *)
+      Class (cls.name, Loader.bootstrap_loader)
   | 8 ->
       let offset = Io.read_u2 r in
       UninitializedOffset offset
