@@ -636,11 +636,27 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Lstore i ->
       let n = storeIsTypeSafe env i Long frame in
       (Frame n, exceptionStackFrame frame)
+  | Astore_0 -> defer (Astore 0)
+  | Astore_1 -> defer (Astore 1)
+  | Astore_2 -> defer (Astore 2)
+  | Astore_3 -> defer (Astore 3)
+  | Astore i ->
+      let n = storeIsTypeSafe env i Reference frame in
+      (Frame n, exceptionStackFrame frame)
   | If_acmpeq t ->
       let next_frame = canPop frame [ Reference; Reference ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
   | If_acmpne t -> defer (If_acmpeq t)
+  | Ifeq t ->
+      let next_frame = canPop frame [ Int ] in
+      let () = targetIsTypeSafe env next_frame t in
+      (Frame next_frame, exceptionStackFrame frame)
+  | Ifge t -> defer (Ifeq t)
+  | Ifgt t -> defer (Ifeq t)
+  | Ifle t -> defer (Ifeq t)
+  | Iflt t -> defer (Ifeq t)
+  | Ifne t -> defer (Ifeq t)
   | Goto t ->
       let () = targetIsTypeSafe env frame t in
       (AfterGoto, exceptionStackFrame frame)
@@ -663,6 +679,17 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Ldc c ->
       let t = loadable_vtype c in
       let n = validTypeTransition env [] t frame in
+      (Frame n, exceptionStackFrame frame)
+  | Pop ->
+      let _, rest = popCategory1 frame.stack in
+      let n = { frame with stack = rest } in
+      (Frame n, exceptionStackFrame frame)
+  | Athrow ->
+      let throwable = Class ("java/lang/Throwable", Loader.bootstrap_loader) in
+      let _ = canPop frame [ throwable ] in
+      (AfterGoto, exceptionStackFrame frame)
+  | Lcmp ->
+      let n = validTypeTransition env [ Long; Long ] Int frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
