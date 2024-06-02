@@ -151,6 +151,7 @@ let rec isAssignable (a : vtype) (b : vtype) : bool =
     | TwoWord, _ -> false
     | Null, Class (_, _) -> true
     | Null, Array _ -> true
+    | Class (_, _), Class ("java/lang/Object", Bootstrap) -> true
     | Class (f, fl), Class (t, tl) ->
         let tc = load_class t tl in
         if classIsInterface tc then true else isJavaSubclassOf f fl t tl
