@@ -45,3 +45,41 @@ and string_of_arraytype (t : arraytype) : string =
   | Char -> "char"
   | Short -> "short"
   | Boolean -> "boolean"
+
+let rec parse_vtype (s : string) (offset : int ref) : vtype =
+  match parse_arraytype s offset with
+  | T x -> x
+  | Byte | Char | Short | Boolean -> Int
+
+and parse_arraytype (s : string) (offset : int ref) : arraytype =
+  let c = String.get s !offset in
+  incr offset;
+  match c with
+  | 'D' -> T Double
+  | 'F' -> T Float
+  | 'J' -> T Long
+  | 'I' -> T Int
+  | 'B' -> Byte
+  | 'C' -> Char
+  | 'S' -> Short
+  | 'Z' -> Boolean
+  | 'V' -> T Void
+  | '[' -> T (Array (parse_arraytype s offset))
+  | 'L' ->
+      let count = ref 0 in
+      while String.get s (!offset + !count) <> ';' do
+        incr count
+      done;
+      let classname = String.sub s !offset !count in
+      offset := !offset + !count + 1;
+      T (Class (classname, Bootstrap))
+  | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
+
+let read_class_internal_name (s : string) : vtype =
+  if String.starts_with ~prefix:"[" s then (
+    let offset = ref 0 in
+    let t = parse_vtype s offset in
+    assert (!offset = String.length s);
+    match t with Array _ -> t | _ -> failwith "Not an array type?"
+    (* kissing owner this a good idea *))
+  else Class (s, Bootstrap)

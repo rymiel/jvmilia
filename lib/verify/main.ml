@@ -78,35 +78,6 @@ let load_class (name : string) (loader : jloader) : jclass =
   | UserDefined n ->
       failwith (Printf.sprintf "Cannot use user-defined loader %s" n)
 
-let rec parse_vtype (s : string) (offset : int ref) : vtype =
-  match parse_arraytype s offset with
-  | T x -> x
-  | Byte | Char | Short | Boolean -> Int
-
-and parse_arraytype (s : string) (offset : int ref) : arraytype =
-  let c = String.get s !offset in
-  incr offset;
-  match c with
-  | 'D' -> T Double
-  | 'F' -> T Float
-  | 'J' -> T Long
-  | 'I' -> T Int
-  | 'B' -> Byte
-  | 'C' -> Char
-  | 'S' -> Short
-  | 'Z' -> Boolean
-  | 'V' -> T Void
-  | '[' -> T (Array (parse_arraytype s offset))
-  | 'L' ->
-      let count = ref 0 in
-      while String.get s (!offset + !count) <> ';' do
-        incr count
-      done;
-      let classname = String.sub s !offset !count in
-      offset := !offset + !count + 1;
-      T (Class (classname, Loader.bootstrap_loader))
-  | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
-
 (* parseMethodDescriptor(Descriptor, ArgTypeList, ReturnType) *)
 let parseMethodDescriptor (desc : string) : vtype list * vtype =
   let s = desc in
@@ -763,6 +734,16 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (* TODO: passesProtectedCheck *)
       let loader = currentClassLoader env in
       let n = canPop frame [ t; Class (f.cls, loader) ] in
+      (Frame n, exceptionStackFrame frame)
+  | Arraylength ->
+      let arraytype = List.nth frame.stack 0 in
+      (match arraytype with
+      | Array _ -> ()
+      | _ -> failwith "arraylength: must have array on top of stack");
+      let n = validTypeTransition env [ Top ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Aconst_null ->
+      let n = validTypeTransition env [] Null frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
