@@ -762,7 +762,7 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Sipush _ ->
       let n = validTypeTransition env [] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ishl | Ishr -> defer Iadd
+  | Ishl | Ishr | Iand | Ior -> defer Iadd
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
       (Frame frame, exceptionStackFrame frame)
@@ -770,6 +770,19 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let arraytype = List.nth frame.stack 1 in
       assert (isSmallArray arraytype);
       let n = validTypeTransition env [ Int; Top ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Bastore ->
+      let arraytype = List.nth frame.stack 2 in
+      assert (isSmallArray arraytype);
+      let n = canPop frame [ Int; Int; Top ] in
+      (Frame n, exceptionStackFrame frame)
+  | Checkcast c ->
+      let t = Vtype.read_class_internal_name c.name in
+      let n =
+        validTypeTransition env
+          [ Class ("java/lang/Object", Loader.bootstrap_loader) ]
+          t frame
+      in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
