@@ -15,7 +15,10 @@ let string_of_frame (f : frame) : string =
     List.mapi (fun i s -> Printf.sprintf "%d=%s" i (string_of_vtype s)) f.locals
   in
   let stack = string_of_stack f.stack in
-  Printf.sprintf "{locals=[%s]; stack=%s}" (String.concat ", " locals_s) stack
+  Printf.sprintf "{locals=[%s]; stack=%s%s}"
+    (String.concat ", " locals_s)
+    stack
+    (if f.flags.is_this_uninit then "; !" else "")
 
 type merged_code = Instruction of Instr.instruction | StackMap of jstack_map
 
