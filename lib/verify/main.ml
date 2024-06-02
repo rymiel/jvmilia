@@ -514,6 +514,10 @@ let loadable_vtype (c : loadable_constant) : vtype =
 let loadable_vtype2 (c : loadable_constant2) : vtype =
   match c with Long _ -> Long
 
+(* TODO: assertion candidate *)
+let isSmallArray (t : vtype) : bool =
+  match t with Array Byte | Array Boolean | Null -> true | _ -> false
+
 let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
@@ -735,6 +739,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let loader = currentClassLoader env in
       let n = canPop frame [ t; Class (f.cls, loader) ] in
       (Frame n, exceptionStackFrame frame)
+  | Getstatic f ->
+      let t = parseFieldDescriptor f.desc in
+      let n = validTypeTransition env [] t frame in
+      (Frame n, exceptionStackFrame frame)
   | Arraylength ->
       let arraytype = List.nth frame.stack 0 in
       (match arraytype with
@@ -744,6 +752,23 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (Frame n, exceptionStackFrame frame)
   | Aconst_null ->
       let n = validTypeTransition env [] Null frame in
+      (Frame n, exceptionStackFrame frame)
+  | I2b | I2c -> defer Ineg
+  | Ineg ->
+      let n = validTypeTransition env [ Int ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Bipush i -> defer (Sipush i)
+  | Sipush _ ->
+      let n = validTypeTransition env [] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Ishl | Ishr -> defer Iadd
+  | Iinc (i, _) ->
+      assert (List.nth frame.locals i = Int);
+      (Frame frame, exceptionStackFrame frame)
+  | Baload ->
+      let arraytype = List.nth frame.stack 1 in
+      assert (isSmallArray arraytype);
+      let n = validTypeTransition env [ Int; Top ] Int frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
