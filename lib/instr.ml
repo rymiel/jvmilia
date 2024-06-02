@@ -129,6 +129,7 @@ type instrbody =
   | Idiv
   | Land
   | Ineg
+  | Dadd
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -273,6 +274,7 @@ let string_of_instr (i : instrbody) : string =
     | Idiv -> ("idiv", "")
     | Land -> ("land", "")
     | Ineg -> ("ineg", "")
+    | Dadd -> ("dadd", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

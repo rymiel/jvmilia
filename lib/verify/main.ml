@@ -586,9 +586,11 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Invokevirtual m ->
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let loader = currentClassLoader env in
+      (*oh no*)
+      let _loader = currentClassLoader env in
       let op_args, r = parseMethodDescriptor m.desc in
-      let stack_arg_list = List.rev (Class (m.cls, loader) :: op_args) in
+      let cls = Vtype.read_class_internal_name m.cls in
+      let stack_arg_list = List.rev (cls :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
       (* let arg_list = List.rev op_args in *)
       (* let popped = canPop frame arg_list in *)
@@ -787,7 +789,7 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Sipush _ ->
       let n = validTypeTransition env [] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ishl | Ishr | Iand | Ior -> defer Iadd
+  | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul -> defer Iadd
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
       (Frame frame, exceptionStackFrame frame)
@@ -822,8 +824,15 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | I2d ->
       let n = validTypeTransition env [ Int ] Double frame in
       (Frame n, exceptionStackFrame frame)
+  | D2i ->
+      let n = validTypeTransition env [ Double ] Int frame in
+      (Frame n, exceptionStackFrame frame)
   | F2d ->
       let n = validTypeTransition env [ Float ] Double frame in
+      (Frame n, exceptionStackFrame frame)
+  | Dmul -> defer Dadd
+  | Dadd ->
+      let n = validTypeTransition env [ Double; Double ] Double frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
