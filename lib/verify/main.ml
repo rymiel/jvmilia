@@ -858,7 +858,8 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
     | FullFrame i ->
         {
           frame with
-          stack = i.stack;
+          stack = List.rev i.stack;
+          (* TODO: probably doesn't handle longs yet *)
           locals = expand_locals frame_size i.locals;
         }
   in
