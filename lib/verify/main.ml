@@ -488,7 +488,8 @@ let rewrittenUninitializedTypeThis (env : jenvironment) (cls : vclass) : vclass
       let chain = superclassChain this_name this_loader in
       List.hd chain
   in
-  if cls = expected then cls else failwith "Failure rewriting uninitializedThis"
+  if cls = expected then this (* not what the spec says *)
+  else failwith "Failure rewriting uninitializedThis"
 
 let rewrittenUninitializedTypeOffset (env : jenvironment) (offset : int)
     (cls : vclass) : vclass =
