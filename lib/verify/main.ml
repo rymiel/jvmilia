@@ -807,6 +807,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Newarray t ->
       let n = validTypeTransition env [ Int ] (Array t) frame in
       (Frame n, exceptionStackFrame frame)
+  | Ifnull t ->
+      let n = canPop frame [ Reference ] in
+      let () = targetIsTypeSafe env n t in
+      (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
