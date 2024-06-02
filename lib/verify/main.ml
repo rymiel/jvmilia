@@ -830,7 +830,9 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
           locals = expand_locals frame_size i.locals;
         }
   in
-  ((next_offset, v), (this_offset, v))
+  let has_uninit = List.mem UninitializedThis v.locals in
+  let v_with_uninit = { v with flags = { is_this_uninit = has_uninit } } in
+  ((next_offset, v_with_uninit), (this_offset, v_with_uninit))
 
 let get_stack_map (code : code_attribute) : delta_frame list =
   let v =
