@@ -601,6 +601,24 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let stack_arg_list = List.rev op_args in
       let n = validTypeTransition env stack_arg_list r frame in
       (Frame n, exceptionStackFrame frame)
+  | Invokeinterface (m, count) ->
+      let assert_countIsValid (count : int) (in_frame : frame)
+          (out_frame : frame) : unit =
+        let in_len = List.length in_frame.stack in
+        let out_len = List.length out_frame.stack in
+        assert (in_len - out_len = count)
+      in
+
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let loader = currentClassLoader env in
+      let intf = Class (m.cls, loader) in
+      let stack_arg_list = List.rev (intf :: op_args) in
+      let temp_frame = canPop frame stack_arg_list in
+      let n = validTypeTransition env [] r temp_frame in
+      let () = assert_countIsValid count frame temp_frame in
+      (Frame n, exceptionStackFrame frame)
   | Return ->
       if env.return = Void then
         if frame.flags.is_this_uninit then
@@ -778,11 +796,16 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (Frame n, exceptionStackFrame frame)
   | Checkcast c ->
       let t = Vtype.read_class_internal_name c.name in
-      let n =
-        validTypeTransition env
-          [ Class ("java/lang/Object", Loader.bootstrap_loader) ]
-          t frame
-      in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      let n = validTypeTransition env [ obj ] t frame in
+      (Frame n, exceptionStackFrame frame)
+  | Instanceof c ->
+      let _ = Vtype.read_class_internal_name c.name in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      let n = validTypeTransition env [ obj ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Newarray t ->
+      let n = validTypeTransition env [ Int ] (Array t) frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
