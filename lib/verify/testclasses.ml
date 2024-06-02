@@ -12,8 +12,6 @@ let class_dir =
 
 let test_loader (name : string) : jclass =
   let class_file_name = class_dir ^ name ^ ".class" in
+  Printf.printf "\027[33m! bootstrap class loader is loading %S\027[0m\n" name;
   let real_path = Unix.realpath class_file_name in
-  Printf.printf
-    "\027[33m! bootstrap class loader is loading %S from %S\027[0m\n" name
-    real_path;
   parse real_path
