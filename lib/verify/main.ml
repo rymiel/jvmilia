@@ -796,6 +796,10 @@ let expand_locals (frame_size : int) (locals : vtype list) : vtype list =
 
 let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
     ((delta, desc) : delta_frame) : jstack_map * jstack_map =
+  let () =
+    if offset = 0 then Printf.printf "   0: %s\n" (string_of_frame frame)
+    else ()
+  in
   let this_offset = offset + delta in
   let next_offset = this_offset + 1 in
   let v =
@@ -813,6 +817,22 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
   in
   let has_uninit = List.mem UninitializedThis v.locals in
   let v_with_uninit = { v with flags = { is_this_uninit = has_uninit } } in
+  let () =
+    Printf.printf "%4d: %s\n      %s\n" this_offset
+      (match desc with
+      | Same -> "same"
+      | SameLocals1StackItem i ->
+          Printf.sprintf "same_locals_1_stack_item %s" (string_of_vtype i)
+      | Chop i -> Printf.sprintf "chop %d" i
+      | Append i ->
+          List.map string_of_vtype i |> String.concat ", "
+          |> Printf.sprintf "append [%s]"
+      | FullFrame i ->
+          Printf.sprintf "append locals=[%s] stack=[%s]"
+            (List.map string_of_vtype i.locals |> String.concat ", ")
+            (List.map string_of_vtype i.stack |> String.concat ", "))
+      (string_of_frame v_with_uninit)
+  in
   ((next_offset, v_with_uninit), (this_offset, v_with_uninit))
 
 let get_stack_map (code : code_attribute) : delta_frame list =
