@@ -775,19 +775,27 @@ let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
 (* in *)
 (* Debug.pop result *)
 
-let chop (stack : vtype list) (remove : int) : vtype list =
-  let size = List.length stack in
-  let new_size = size - remove in
-  List.mapi (fun i x -> if i < new_size then x else Top) stack
+let rec chop_rev (stack : vtype list) (remove : int) : vtype list =
+  if remove = 0 then stack
+  else
+    match stack with
+    | [] -> failwith "Ran out of space to chop off"
+    | Top :: long :: rest when sizeOf long = 2 ->
+        Top :: Top :: chop_rev rest (remove - 1)
+    | Top :: rest -> Top :: chop_rev rest remove
+    | _ :: rest -> Top :: chop_rev rest (remove - 1)
 
-let rec expand (stack : vtype list) (append : vtype list) : vtype list =
-  match (stack, append) with
+let chop (stack : vtype list) (remove : int) : vtype list =
+  List.rev (chop_rev (List.rev stack) remove)
+
+let rec append (stack : vtype list) (extra : vtype list) : vtype list =
+  match (stack, extra) with
   | _, [] -> stack
   | [], _ -> failwith "Ran out of space to append to"
-  | Top :: s_rest, a :: a_rest -> expand (a :: s_rest) a_rest
+  | Top :: s_rest, a :: a_rest -> append (a :: s_rest) a_rest
   | long :: Top :: s_rest, _ when sizeOf long = 2 ->
-      long :: Top :: expand s_rest append
-  | s :: s_rest, _ -> s :: expand s_rest append
+      long :: Top :: append s_rest extra
+  | s :: s_rest, _ -> s :: append s_rest extra
 
 let expand_locals (frame_size : int) (locals : vtype list) : vtype list =
   let x = expandTypeList locals in
@@ -807,7 +815,7 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
     | Same -> { frame with stack = [] }
     | SameLocals1StackItem i -> { frame with stack = [ i ] }
     | Chop i -> { frame with stack = []; locals = chop frame.locals i }
-    | Append i -> { frame with stack = []; locals = expand frame.locals i }
+    | Append i -> { frame with stack = []; locals = append frame.locals i }
     | FullFrame i ->
         {
           frame with
