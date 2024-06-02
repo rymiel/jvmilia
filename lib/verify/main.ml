@@ -658,6 +658,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Lload i ->
       let n = loadIsTypeSafe env i Long frame in
       (Frame n, exceptionStackFrame frame)
+  | Fload_0 -> defer (Fload 0)
+  | Fload_1 -> defer (Fload 1)
+  | Fload_2 -> defer (Fload 2)
+  | Fload_3 -> defer (Fload 3)
+  | Fload i ->
+      let n = loadIsTypeSafe env i Float frame in
+      (Frame n, exceptionStackFrame frame)
   | Istore_0 -> defer (Istore 0)
   | Istore_1 -> defer (Istore 1)
   | Istore_2 -> defer (Istore 2)
@@ -810,6 +817,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Ifnull t ->
       let n = canPop frame [ Reference ] in
       let () = targetIsTypeSafe env n t in
+      (Frame n, exceptionStackFrame frame)
+  | Ifnonnull t -> defer (Ifnull t)
+  | I2d ->
+      let n = validTypeTransition env [ Int ] Double frame in
+      (Frame n, exceptionStackFrame frame)
+  | F2d ->
+      let n = validTypeTransition env [ Float ] Double frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
