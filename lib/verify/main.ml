@@ -854,7 +854,7 @@ let rec append (stack : vtype list) (extra : vtype list) : vtype list =
   match (stack, extra) with
   | _, [] -> stack
   | [], _ -> failwith "Ran out of space to append to"
-  | Top :: s_rest, a :: a_rest -> append (a :: s_rest) a_rest
+  | Top :: s_rest, a :: a_rest -> a :: append s_rest a_rest
   | long :: Top :: s_rest, _ when sizeOf long = 2 ->
       long :: Top :: append s_rest extra
   | s :: s_rest, _ -> s :: append s_rest extra
@@ -899,7 +899,7 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
           List.map string_of_vtype i |> String.concat ", "
           |> Printf.sprintf "append [%s]"
       | FullFrame i ->
-          Printf.sprintf "append locals=[%s] stack=[%s]"
+          Printf.sprintf "full_frame locals=[%s] stack=[%s]"
             (List.map string_of_vtype i.locals |> String.concat ", ")
             (List.map string_of_vtype i.stack |> String.concat ", "))
       (string_of_frame v_with_uninit)
