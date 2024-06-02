@@ -164,6 +164,9 @@ let isJavaSubclassOf (sub : string) (sub_l : jloader) (super : string)
         true
     | None -> false
 
+let array_supertypes =
+  [ "java/lang/Object"; "java/lang/Cloneable"; "java/io/Serializable" ]
+
 let rec isAssignable (a : vtype) (b : vtype) : bool =
   if a = b then true
   else
@@ -180,7 +183,10 @@ let rec isAssignable (a : vtype) (b : vtype) : bool =
     | Class (f, fl), Class (t, tl) ->
         let tc = load_class t tl in
         if classIsInterface tc then true else isJavaSubclassOf f fl t tl
-    | Array _, Class (_, _) -> failwith "TODO: array to class assignment"
+    | Array _, Class (name, loader)
+      when loader = Loader.bootstrap_loader && List.mem name array_supertypes ->
+        true
+    | Array _, Class (_, _) -> false
     | Array _, Array _ -> failwith "TODO: array to array assignment"
     | Int, x -> isAssignable OneWord x
     | Float, x -> isAssignable OneWord x
