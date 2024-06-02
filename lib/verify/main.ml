@@ -342,18 +342,32 @@ let handlersAreLegal (env : jenvironment) : bool =
   List.for_all (handlerIsLegal env) handlers
 
 let frameIsAssignable (a : frame) (b : frame) : unit =
-  let v =
-    List.length a.stack = List.length b.stack
-    && List.length a.locals = List.length b.locals
-    && List.for_all2 isAssignable a.locals b.locals
-    && List.for_all2 isAssignable a.stack b.stack
-    && a.flags.is_this_uninit = b.flags.is_this_uninit
-  in
-  if v then ()
-  else
+  try
+    let () =
+      if List.length a.stack = List.length b.stack then ()
+      else failwith "Stack size mismatch"
+    in
+    let () =
+      if List.length a.locals = List.length b.locals then ()
+      else failwith "Locals size mismatch"
+    in
+    let () =
+      if List.for_all2 isAssignable a.locals b.locals then ()
+      else failwith "Locals assignable mismatch"
+    in
+    let () =
+      if List.for_all2 isAssignable a.stack b.stack then ()
+      else failwith "Stack assignable mismatch"
+    in
+    let () =
+      if a.flags.is_this_uninit = b.flags.is_this_uninit then ()
+      else failwith "Flags mismatch"
+    in
+    ()
+  with Failure x ->
     failwith
-      (Printf.sprintf "Cannot assign frame %s to frame %s" (string_of_frame a)
-         (string_of_frame b))
+      (Printf.sprintf "Cannot assign frame %s to frame %s: %s"
+         (string_of_frame a) (string_of_frame b) x)
 
 type mframe = Frame of frame | AfterGoto
 
