@@ -78,21 +78,7 @@ let load_class (name : string) (loader : jloader) : jclass =
   | UserDefined n ->
       failwith (Printf.sprintf "Cannot use user-defined loader %s" n)
 
-(* parseMethodDescriptor(Descriptor, ArgTypeList, ReturnType) *)
-let rec parseMethodDescriptor (desc : string) : vtype list * vtype =
-  let s = desc in
-  assert (String.get s 0 = '(');
-  let offset = ref 1 in
-  let args = ref [] in
-  while String.get s !offset <> ')' do
-    let t = parse_vtype s offset in
-    args := !args @ [ t ]
-  done;
-  incr offset;
-  let ret = parse_vtype s offset in
-  (!args, ret)
-
-and parse_vtype (s : string) (offset : int ref) : vtype =
+let rec parse_vtype (s : string) (offset : int ref) : vtype =
   match parse_arraytype s offset with
   | T x -> x
   | Byte | Char | Short | Boolean -> Int
@@ -120,6 +106,28 @@ and parse_arraytype (s : string) (offset : int ref) : arraytype =
       offset := !offset + !count + 1;
       T (Class (classname, Loader.bootstrap_loader))
   | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
+
+(* parseMethodDescriptor(Descriptor, ArgTypeList, ReturnType) *)
+let parseMethodDescriptor (desc : string) : vtype list * vtype =
+  let s = desc in
+  assert (String.get s 0 = '(');
+  let offset = ref 1 in
+  let args = ref [] in
+  while String.get s !offset <> ')' do
+    let t = parse_vtype s offset in
+    args := !args @ [ t ]
+  done;
+  incr offset;
+  let ret = parse_vtype s offset in
+  assert (!offset = String.length desc);
+  (!args, ret)
+
+(* parseFieldDescriptor(Descriptor, Type) *)
+let parseFieldDescriptor (desc : string) : vtype =
+  let offset = ref 0 in
+  let t = parse_vtype desc offset in
+  assert (!offset = String.length desc);
+  t
 
 let thisClass (env : jenvironment) : vclass =
   let cls = env.cls in
@@ -720,6 +728,20 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (AfterGoto, exceptionStackFrame frame)
   | Lcmp ->
       let n = validTypeTransition env [ Long; Long ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Getfield f ->
+      let t = parseFieldDescriptor f.desc in
+      (* TODO: passesProtectedCheck *)
+      let loader = currentClassLoader env in
+      let n = validTypeTransition env [ Class (f.cls, loader) ] t frame in
+      (Frame n, exceptionStackFrame frame)
+  | Putfield f ->
+      let t = parseFieldDescriptor f.desc in
+      (* TODO: <init> and uninitializedThis *)
+      let _popped = canPop frame [ t ] in
+      (* TODO: passesProtectedCheck *)
+      let loader = currentClassLoader env in
+      let n = canPop frame [ t; Class (f.cls, loader) ] in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
