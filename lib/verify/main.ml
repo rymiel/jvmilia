@@ -357,13 +357,23 @@ let popMatchingType (stack : vtype list) (t : vtype) : vtype list * vtype =
   try
     match stack with
     | Top :: actual :: rest ->
-        if sizeOf actual = 2 && isAssignable actual t then (rest, actual)
+        if sizeOf actual = 2 then
+          if isAssignable actual t then (rest, actual)
+          else
+            failwith
+              (Printf.sprintf "%s not assignable to %s" (string_of_vtype actual)
+                 (string_of_vtype t))
         else
           failwith
             (Printf.sprintf "Top of stack is size 1 despite top guard: %s"
                (string_of_vtype actual))
     | actual :: rest ->
-        if sizeOf actual = 1 && isAssignable actual t then (rest, actual)
+        if sizeOf actual = 1 then
+          if isAssignable actual t then (rest, actual)
+          else
+            failwith
+              (Printf.sprintf "%s not assignable to %s" (string_of_vtype actual)
+                 (string_of_vtype t))
         else
           failwith
             (Printf.sprintf "Top of stack is size 2 without top guard: %s"
