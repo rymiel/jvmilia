@@ -258,7 +258,7 @@ let string_of_instr (i : instrbody) : string =
     | Lsub -> ("lsub", "")
     | Aastore -> ("aastore", "")
     | Lmul -> ("lmul", "")
-    | Lshl -> ("lmul", "")
+    | Lshl -> ("lshl", "")
     | Dup2 -> ("dup2", "")
     | L2i -> ("l2i", "")
     | Invokedynamic x ->
