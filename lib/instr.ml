@@ -199,6 +199,7 @@ type instrbody =
   | Ret of int
   | Freturn
   | Dreturn
+  | Multianewarray of class_desc * int
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -419,6 +420,7 @@ let string_of_instr (i : instrbody) : string =
     | Ret i -> ("ret", string_of_int i)
     | Freturn -> ("freturn", "")
     | Dreturn -> ("dreturn", "")
+    | Multianewarray (c, i) -> ("dreturn", Printf.sprintf "%s %d" c.name i)
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

@@ -281,6 +281,11 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       Instanceof cls
   | 0xc2 -> Monitorenter
   | 0xc3 -> Monitorexit
+  | 0xc4 -> failwith "wide :("
+  | 0xc5 ->
+      let cls = Io.read_u2 r |> const_pool_class pool in
+      let dim = Io.read_u1 r in
+      Multianewarray (cls, dim)
   | 0xc6 -> Ifnull (branchoffset ())
   | 0xc7 -> Ifnonnull (branchoffset ())
   | x ->
