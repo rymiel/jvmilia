@@ -4,9 +4,6 @@ open Java
 open Vtype
 open Attr
 
-(* classClassName(Class, ClassName) *)
-let classClassName (cls : jclass) : string = cls.name
-
 (* classIsInterface(Class) *)
 let classIsInterface (cls : jclass) : bool = cls.access_flags.is_interface
 
@@ -23,25 +20,8 @@ let classSuperClassName (cls : jclass) : string =
            "classSuperClassName: This class (%S) does not have a superclass"
            cls.name)
 
-(* classMethods(Class, Methods) *)
-let classMethods (cls : jclass) : jmethod list = cls.methods
-
-(* classDeclaresMember(Class, MemberName, MemberDescriptor) *)
-(* let classDeclaresMember (cls : jclass) (name : string) (desc : string) =
-   failwith "x" *)
-
-(* classDefiningLoader(Class, Loader) *)
-let classDefiningLoader (cls : jclass) : jloader = cls.loader
-
 (* isBootstrapLoader(Loader) *)
-let isBootstrapLoader (loader : jloader) : bool =
-  match loader with Bootstrap -> true | _ -> false
-
-(* methodName(Method, Name) *)
-let methodName (mth : jmethod) : string = mth.name
-
-(* methodDescriptor(Method, Descriptor) *)
-let methodDescriptor (mth : jmethod) : string = mth.desc
+let isBootstrapLoader (loader : jloader) : bool = loader = Bootstrap
 
 let method_matches_desc (d : method_desc) (m : jmethod) : bool =
   m.name = d.name && m.desc = d.desc
@@ -85,11 +65,7 @@ let parseFieldDescriptor (desc : string) : vtype =
   assert (!offset = String.length desc);
   t
 
-let thisClass (env : jenvironment) : vclass =
-  let cls = env.cls in
-  let loader = classDefiningLoader cls in
-  let name = classClassName cls in
-  (name, loader)
+let thisClass (env : jenvironment) : vclass = (env.cls.name, env.cls.loader)
 
 let currentClassLoader (env : jenvironment) : jloader =
   let _, loader = thisClass env in
@@ -97,14 +73,13 @@ let currentClassLoader (env : jenvironment) : jloader =
 
 let rec superclassChain (name : string) (loader : jloader) : vclass list =
   let cls = load_class name loader in
-  let cloader = classDefiningLoader cls in
   match cls.name with
   | "java/lang/Object" ->
-      assert (isBootstrapLoader cloader);
+      assert (isBootstrapLoader cls.loader);
       []
   | _ ->
       let super_name = classSuperClassName cls in
-      (super_name, cloader) :: superclassChain super_name cloader
+      (super_name, cls.loader) :: superclassChain super_name cls.loader
 
 let isJavaSubclassOf (sub : string) (sub_l : jloader) (super : string)
     (super_l : jloader) : bool =
@@ -161,12 +136,8 @@ let rec isAssignable (a : vtype) (b : vtype) : bool =
         isAssignable (Class ("java/lang/Object", Loader.bootstrap_loader)) x
 
 let rec finalMethodNotOverridden (mth : jmethod) (superclass : jclass) : bool =
-  let method_name = methodName mth in
-  let method_desc = methodDescriptor mth in
   match
-    member_method_opt
-      { cls = ""; name = method_name; desc = method_desc }
-      superclass
+    member_method_opt { cls = ""; name = mth.name; desc = mth.desc } superclass
   with
   | Some mth ->
       let mflags = mth.access_flags in
@@ -187,16 +158,14 @@ and doesNotOverrideFinalMethodOfSuperclass (cls : jclass) (mth : jmethod) : bool
   if cls.name = "java/lang/Object" then Debug.pop true
   else
     let superclass_name = classSuperClassName cls in
-    let loader = classDefiningLoader cls in
-    let superclass = load_class superclass_name loader in
+    let superclass = load_class superclass_name cls.loader in
     let result = finalMethodNotOverridden mth superclass in
     Debug.pop result
 
 let doesNotOverrideFinalMethod (cls : jclass) (mth : jmethod) : bool =
   Debug.push "doesNotOverrideFinalMethod" (Debug.method_diagnostic mth cls);
   let result =
-    cls.name = "java/lang/Object"
-    && isBootstrapLoader (classDefiningLoader cls)
+    (cls.name = "java/lang/Object" && isBootstrapLoader cls.loader)
     || mth.access_flags.is_private || mth.access_flags.is_static
     || (not mth.access_flags.is_private)
        && (not mth.access_flags.is_static)
@@ -248,7 +217,7 @@ let methodInitialThisType (cls : jclass) (mth : jmethod) : vtype option =
     if cls.name = "java/lang/Object" then
       Some (Class ("java/lang/Object", Loader.bootstrap_loader))
     else Some UninitializedThis
-  else Some (Class (cls.name, classDefiningLoader cls))
+  else Some (Class (cls.name, cls.loader))
 
 let rec expandToLength (al : 'a list) (size : int) (filler : 'a) : 'a list =
   let als = List.length al in
@@ -258,8 +227,7 @@ let rec expandToLength (al : 'a list) (size : int) (filler : 'a) : 'a list =
 
 let methodInitialStackFrame (cls : jclass) (mth : jmethod) (frame_size : int) :
     frame * vtype =
-  let desc = methodDescriptor mth in
-  let raw_args, ret = parseMethodDescriptor desc in
+  let raw_args, ret = parseMethodDescriptor mth.desc in
   let args = expandTypeList raw_args in
   let this = methodInitialThisType cls mth in
   let flags =
@@ -980,23 +948,20 @@ let methodIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
 (* classIsTypeSafe(Class) *)
 let classIsTypeSafe (cls : jclass) : bool =
   Debug.push "classIsTypeSafe" (Debug.class_diagnostic cls);
-  let name = classClassName cls in
-  let loader = classDefiningLoader cls in
   let result =
-    match name with
+    match cls.name with
     | "java/lang/Object" ->
         let () =
-          if isBootstrapLoader loader then ()
+          if isBootstrapLoader cls.loader then ()
           else
             failwith "Loader of java.lang.Object must be the bootstrap loader"
         in
-        let methods = classMethods cls in
-        List.for_all (methodIsTypeSafe cls) methods
+        List.for_all (methodIsTypeSafe cls) cls.methods
     | _ ->
-        let super_chain = superclassChain name loader in
+        let super_chain = superclassChain cls.name cls.loader in
         let () = assert (not (List.is_empty super_chain)) in
         let superclass_name = classSuperClassName cls in
-        let superclass = load_class superclass_name loader in
+        let superclass = load_class superclass_name cls.loader in
         let () =
           if classIsNotFinal superclass then ()
           else
@@ -1004,7 +969,6 @@ let classIsTypeSafe (cls : jclass) : bool =
               (Printf.sprintf "%S, superclass of %S is final" superclass.name
                  cls.name)
         in
-        let methods = classMethods cls in
-        List.for_all (methodIsTypeSafe cls) methods
+        List.for_all (methodIsTypeSafe cls) cls.methods
   in
   Debug.pop result
