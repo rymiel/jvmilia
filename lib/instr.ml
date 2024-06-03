@@ -165,6 +165,20 @@ type instrbody =
   | Dup2_x1
   | Dup2_x2
   | Swap
+  | Fadd
+  | Fsub
+  | Dsub
+  | Fmul
+  | Ldiv
+  | Fdiv
+  | Ddiv
+  | Irem
+  | Lrem
+  | Frem
+  | Drem
+  | Lneg
+  | Fneg
+  | Dneg
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -351,6 +365,20 @@ let string_of_instr (i : instrbody) : string =
     | Dup2_x1 -> ("dup2_x1", "")
     | Dup2_x2 -> ("dup2_x2", "")
     | Swap -> ("swap", "")
+    | Fadd -> ("fadd", "")
+    | Fsub -> ("fsub", "")
+    | Dsub -> ("dsub", "")
+    | Fmul -> ("fmul", "")
+    | Ldiv -> ("ldiv", "")
+    | Fdiv -> ("fdiv", "")
+    | Ddiv -> ("ddiv", "")
+    | Irem -> ("irem", "")
+    | Lrem -> ("lrem", "")
+    | Frem -> ("frem", "")
+    | Drem -> ("drem", "")
+    | Lneg -> ("lneg", "")
+    | Fneg -> ("fneg", "")
+    | Dneg -> ("dneg", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
