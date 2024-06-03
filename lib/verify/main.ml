@@ -708,11 +708,21 @@ let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Goto t ->
       let () = targetIsTypeSafe env frame t in
       (AfterGoto, exceptionStackFrame frame)
-  | Iadd | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul | Idiv ->
+  | Iadd | Isub | Imul | Idiv | Irem | Ishl | Ishr | Iushr | Iand | Ior | Ixor
+    ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ladd | Lsub | Lmul ->
+  | Ladd | Lsub | Lmul | Ldiv | Lrem | Land | Lor | Lxor ->
       let n = validTypeTransition env [ Long; Long ] Long frame in
+      (Frame n, exceptionStackFrame frame)
+  | Lshl | Lshr | Lushr ->
+      let n = validTypeTransition env [ Int; Long ] Long frame in
+      (Frame n, exceptionStackFrame frame)
+  | Fadd | Fsub | Fmul | Fdiv | Frem ->
+      let n = validTypeTransition env [ Float; Float ] Float frame in
+      (Frame n, exceptionStackFrame frame)
+  | Dadd | Dsub | Dmul | Ddiv | Drem ->
+      let n = validTypeTransition env [ Double; Double ] Double frame in
       (Frame n, exceptionStackFrame frame)
   | New _ ->
       let new_item = UninitializedOffset offset in
@@ -840,9 +850,6 @@ let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | F2d ->
       let n = validTypeTransition env [ Float ] Double frame in
       (Frame n, exceptionStackFrame frame)
-  | Dadd | Dmul ->
-      let n = validTypeTransition env [ Double; Double ] Double frame in
-      (Frame n, exceptionStackFrame frame)
   | Monitorenter | Monitorexit ->
       let n = canPop frame [ Reference ] in
       (Frame n, exceptionStackFrame frame)
@@ -868,9 +875,6 @@ let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Aastore ->
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       let n = canPop frame [ obj; Int; Array (T obj) ] in
-      (Frame n, exceptionStackFrame frame)
-  | Lshl ->
-      let n = validTypeTransition env [ Int; Long ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | Caload ->
       let n = validTypeTransition env [ Int; Array Char ] Int frame in
