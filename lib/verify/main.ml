@@ -708,20 +708,19 @@ let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Goto t ->
       let () = targetIsTypeSafe env frame t in
       (AfterGoto, exceptionStackFrame frame)
-  | Iadd | Isub | Imul | Idiv | Irem | Ishl | Ishr | Iushr | Iand | Ior | Ixor
-    ->
+  | Iarith _ | Ishl | Ishr | Iushr | Iand | Ior | Ixor ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ladd | Lsub | Lmul | Ldiv | Lrem | Land | Lor | Lxor ->
+  | Larith _ | Land | Lor | Lxor ->
       let n = validTypeTransition env [ Long; Long ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | Lshl | Lshr | Lushr ->
       let n = validTypeTransition env [ Int; Long ] Long frame in
       (Frame n, exceptionStackFrame frame)
-  | Fadd | Fsub | Fmul | Fdiv | Frem ->
+  | Farith _ ->
       let n = validTypeTransition env [ Float; Float ] Float frame in
       (Frame n, exceptionStackFrame frame)
-  | Dadd | Dsub | Dmul | Ddiv | Drem ->
+  | Darith _ ->
       let n = validTypeTransition env [ Double; Double ] Double frame in
       (Frame n, exceptionStackFrame frame)
   | New _ ->

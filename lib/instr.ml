@@ -1,5 +1,15 @@
 open Shared
 
+type arith_op = Add | Sub | Mul | Div | Rem
+
+let string_of_arith_op (op : arith_op) : string =
+  match op with
+  | Add -> "add"
+  | Sub -> "sub"
+  | Mul -> "mul"
+  | Div -> "div"
+  | Rem -> "rem"
+
 type instrbody =
   (* constants *)
   | Nop
@@ -51,26 +61,10 @@ type instrbody =
   | Dup2_x2
   | Swap
   (* math *)
-  | Iadd
-  | Ladd
-  | Fadd
-  | Dadd
-  | Isub
-  | Lsub
-  | Fsub
-  | Dsub
-  | Imul
-  | Lmul
-  | Fmul
-  | Dmul
-  | Idiv
-  | Ldiv
-  | Fdiv
-  | Ddiv
-  | Irem
-  | Lrem
-  | Frem
-  | Drem
+  | Iarith of arith_op
+  | Larith of arith_op
+  | Farith of arith_op
+  | Darith of arith_op
   | Ineg
   | Lneg
   | Fneg
@@ -207,26 +201,10 @@ let string_of_instr (i : instrbody) : string =
     | Dup2_x1 -> ("dup2_x1", "")
     | Dup2_x2 -> ("dup2_x2", "")
     | Swap -> ("swap", "")
-    | Iadd -> ("iadd", "")
-    | Ladd -> ("ladd", "")
-    | Fadd -> ("fadd", "")
-    | Dadd -> ("dadd", "")
-    | Isub -> ("isub", "")
-    | Lsub -> ("lsub", "")
-    | Fsub -> ("fsub", "")
-    | Dsub -> ("dsub", "")
-    | Imul -> ("imul", "")
-    | Lmul -> ("lmul", "")
-    | Fmul -> ("fmul", "")
-    | Dmul -> ("dmul", "")
-    | Idiv -> ("idiv", "")
-    | Ldiv -> ("ldiv", "")
-    | Fdiv -> ("fdiv", "")
-    | Ddiv -> ("ddiv", "")
-    | Irem -> ("irem", "")
-    | Lrem -> ("lrem", "")
-    | Frem -> ("frem", "")
-    | Drem -> ("drem", "")
+    | Iarith op -> (Printf.sprintf "i%s" (string_of_arith_op op), "")
+    | Larith op -> (Printf.sprintf "l%s" (string_of_arith_op op), "")
+    | Farith op -> (Printf.sprintf "f%s" (string_of_arith_op op), "")
+    | Darith op -> (Printf.sprintf "d%s" (string_of_arith_op op), "")
     | Ineg -> ("ineg", "")
     | Lneg -> ("lneg", "")
     | Fneg -> ("fneg", "")

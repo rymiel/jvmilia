@@ -124,26 +124,26 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x5d -> Dup2_x1
   | 0x5e -> Dup2_x2
   | 0x5f -> Swap
-  | 0x60 -> Iadd
-  | 0x61 -> Ladd
-  | 0x62 -> Fadd
-  | 0x63 -> Dadd
-  | 0x64 -> Isub
-  | 0x65 -> Lsub
-  | 0x66 -> Fsub
-  | 0x67 -> Dsub
-  | 0x68 -> Imul
-  | 0x69 -> Lmul
-  | 0x6a -> Fmul
-  | 0x6b -> Dmul
-  | 0x6c -> Idiv
-  | 0x6d -> Ldiv
-  | 0x6e -> Fdiv
-  | 0x6f -> Ddiv
-  | 0x70 -> Irem
-  | 0x71 -> Lrem
-  | 0x72 -> Frem
-  | 0x73 -> Drem
+  | 0x60 -> Iarith Add
+  | 0x61 -> Larith Add
+  | 0x62 -> Farith Add
+  | 0x63 -> Darith Add
+  | 0x64 -> Iarith Sub
+  | 0x65 -> Larith Sub
+  | 0x66 -> Farith Sub
+  | 0x67 -> Darith Sub
+  | 0x68 -> Iarith Mul
+  | 0x69 -> Larith Mul
+  | 0x6a -> Farith Mul
+  | 0x6b -> Darith Mul
+  | 0x6c -> Iarith Div
+  | 0x6d -> Larith Div
+  | 0x6e -> Farith Div
+  | 0x6f -> Darith Div
+  | 0x70 -> Iarith Rem
+  | 0x71 -> Larith Rem
+  | 0x72 -> Farith Rem
+  | 0x73 -> Darith Rem
   | 0x74 -> Ineg
   | 0x75 -> Lneg
   | 0x76 -> Fneg
