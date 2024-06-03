@@ -400,6 +400,13 @@ let popCategory1 (stack : vtype list) : vtype * vtype list =
   assert (sizeOf head = 1);
   (head, List.tl stack)
 
+let popCategory2 (stack : vtype list) : vtype * vtype list =
+  match stack with
+  | Top :: t :: rest ->
+      assert (sizeOf t = 2);
+      (t, rest)
+  | _ -> failwith "Can't pop category 2"
+
 let pushOperandStack (stack : vtype list) (t : vtype) : vtype list =
   match t with
   | Void -> stack
@@ -469,6 +476,19 @@ let canPop (f : frame) (types : vtype list) : frame =
 let canSafelyPush (env : jenvironment) (stack : vtype list) (t : vtype) :
     vtype list =
   let n = pushOperandStack stack t in
+  let () = operandStackHasLegalLength env n in
+  n
+
+let rec canPushList (stack : vtype list) (ts : vtype list) : vtype list =
+  match ts with
+  | [] -> stack
+  | t :: rest ->
+      let n = pushOperandStack stack t in
+      canPushList n rest
+
+let canSafelyPushList (env : jenvironment) (stack : vtype list)
+    (ts : vtype list) : vtype list =
+  let n = canPushList stack ts in
   let () = operandStackHasLegalLength env n in
   n
 
@@ -735,6 +755,19 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let next_stack = canSafelyPush env frame.stack t in
       let n = { frame with stack = next_stack } in
       (Frame n, exceptionStackFrame frame)
+  | Dup2 ->
+      let next_stack =
+        match frame.stack with
+        | Top :: _ ->
+            let t, _ = popCategory2 frame.stack in
+            canSafelyPush env frame.stack t
+        | _ ->
+            let t1, temp = popCategory1 frame.stack in
+            let t2, _ = popCategory1 temp in
+            canSafelyPushList env frame.stack [ t2; t1 ]
+      in
+      let n = { frame with stack = next_stack } in
+      (Frame n, exceptionStackFrame frame)
   | Ldc c ->
       let t = loadable_vtype c in
       let n = validTypeTransition env [] t frame in
@@ -847,10 +880,29 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | I2l ->
       let n = validTypeTransition env [ Int ] Long frame in
       (Frame n, exceptionStackFrame frame)
-  | Lsub -> defer Ladd
+  | L2i ->
+      let n = validTypeTransition env [ Long ] Int frame in
+      (Frame n, exceptionStackFrame frame)
+  | Lsub | Lmul -> defer Ladd
+  | Aaload ->
+      let arraytype = List.nth frame.stack 1 in
+      let component_type =
+        match arraytype with
+        | Array (T x) -> x
+        | Null -> Null
+        | _ -> failwith "Invalid component type for aaload"
+      in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      let n =
+        validTypeTransition env [ Int; Array (T obj) ] component_type frame
+      in
+      (Frame n, exceptionStackFrame frame)
   | Aastore ->
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       let n = canPop frame [ obj; Int; Array (T obj) ] in
+      (Frame n, exceptionStackFrame frame)
+  | Lshl ->
+      let n = validTypeTransition env [ Int; Long ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
