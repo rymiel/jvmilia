@@ -704,6 +704,8 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | F2d -> validTypeTransition env [ Float ] Double frame |> next
   | I2l -> validTypeTransition env [ Int ] Long frame |> next
   | L2i -> validTypeTransition env [ Long ] Int frame |> next
+  | L2f -> validTypeTransition env [ Long ] Float frame |> next
+  | L2d -> validTypeTransition env [ Long ] Double frame |> next
   | Monitorenter | Monitorexit -> canPop frame [ Reference ] |> next
   | Aaload ->
       let arraytype = List.nth frame.stack 1 in
