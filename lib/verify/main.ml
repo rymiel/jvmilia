@@ -159,7 +159,9 @@ let rec isAssignable (a : vtype) (b : vtype) : bool =
       when loader = Loader.bootstrap_loader && List.mem name array_supertypes ->
         true
     | Array _, Class (_, _) -> false
-    | Array _, Array _ -> failwith "TODO: array to array assignment"
+    | Array (T (Class (f, fl))), Array (T (Class (t, tl))) ->
+        isAssignable (Class (f, fl)) (Class (t, tl))
+    | Array f, Array t -> f = t
     | Int, x -> isAssignable OneWord x
     | Float, x -> isAssignable OneWord x
     | Long, x -> isAssignable TwoWord x
