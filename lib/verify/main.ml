@@ -692,16 +692,11 @@ let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let next_frame = canPop frame [ Reference; Reference ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
-  | If_icmpeq t
-  | If_icmpge t
-  | If_icmpgt t
-  | If_icmple t
-  | If_icmplt t
-  | If_icmpne t ->
+  | If_icmp (_, t) ->
       let next_frame = canPop frame [ Int; Int ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
-  | Ifeq t | Ifge t | Ifgt t | Ifle t | Iflt t | Ifne t ->
+  | If (_, t) ->
       let next_frame = canPop frame [ Int ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)

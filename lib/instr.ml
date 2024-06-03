@@ -10,6 +10,17 @@ let string_of_arith_op (op : arith_op) : string =
   | Div -> "div"
   | Rem -> "rem"
 
+type if_cond = Eq | Ne | Lt | Ge | Gt | Le
+
+let string_of_if_cond (cond : if_cond) : string =
+  match cond with
+  | Eq -> "eq"
+  | Ne -> "ne"
+  | Lt -> "lt"
+  | Ge -> "ge"
+  | Gt -> "gt"
+  | Le -> "le"
+
 type instrbody =
   (* constants *)
   | Nop
@@ -104,18 +115,8 @@ type instrbody =
   | Fcmpg
   | Dcmpl
   | Dcmpg
-  | Ifeq of int
-  | Ifne of int
-  | Iflt of int
-  | Ifge of int
-  | Ifgt of int
-  | Ifle of int
-  | If_icmpeq of int
-  | If_icmpne of int
-  | If_icmplt of int
-  | If_icmpge of int
-  | If_icmpgt of int
-  | If_icmple of int
+  | If of if_cond * int
+  | If_icmp of if_cond * int
   | If_acmpeq of int
   | If_acmpne of int
   (* control *)
@@ -242,18 +243,10 @@ let string_of_instr (i : instrbody) : string =
     | Fcmpg -> ("fcmpg", "")
     | Dcmpl -> ("dcmpl", "")
     | Dcmpg -> ("dcmpg", "")
-    | Ifeq i -> ("ifeq", string_of_int i)
-    | Ifne i -> ("ifne", string_of_int i)
-    | Iflt i -> ("iflt", string_of_int i)
-    | Ifge i -> ("ifge", string_of_int i)
-    | Ifgt i -> ("ifgt", string_of_int i)
-    | Ifle i -> ("ifle", string_of_int i)
-    | If_icmpeq i -> ("if_icmpeq", string_of_int i)
-    | If_icmpne i -> ("if_icmpne", string_of_int i)
-    | If_icmplt i -> ("if_icmplt", string_of_int i)
-    | If_icmpge i -> ("if_icmpge", string_of_int i)
-    | If_icmpgt i -> ("if_icmpgt", string_of_int i)
-    | If_icmple i -> ("if_icmple", string_of_int i)
+    | If (cond, i) ->
+        (Printf.sprintf "if%s" (string_of_if_cond cond), string_of_int i)
+    | If_icmp (cond, i) ->
+        (Printf.sprintf "if_icmp%s" (string_of_if_cond cond), string_of_int i)
     | If_acmpeq i -> ("if_acmpeq", string_of_int i)
     | If_acmpne i -> ("if_acmpne", string_of_int i)
     | Goto i -> ("goto", string_of_int i)
