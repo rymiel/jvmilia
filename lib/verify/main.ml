@@ -669,6 +669,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       validTypeTransition env [ Top ] Int frame |> next
   | Aconst_null -> validTypeTransition env [] Null frame |> next
   | Ineg | I2b | I2c | I2s -> validTypeTransition env [ Int ] Int frame |> next
+  | Lneg -> validTypeTransition env [ Long ] Long frame |> next
   | Sipush _ | Bipush _ -> validTypeTransition env [] Int frame |> next
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
@@ -789,13 +790,16 @@ let chop (stack : vtype list) (remove : int) : vtype list =
   List.rev (chop_rev (List.rev stack) remove)
 
 let rec append (stack : vtype list) (extra : vtype list) : vtype list =
-  (* let () =
-       Printf.printf "[append] %s <- %s\n" (string_of_stack stack)
-         (string_of_stack extra)
-     in *)
+  let () =
+    Printf.printf "[append] %s <- %s\n" (string_of_stack stack)
+      (string_of_stack extra)
+  in
   match (stack, extra) with
   | _, [] -> stack
   | [], _ -> failwith "Ran out of space to append to"
+  | Top :: Top :: s_rest, a :: a_rest
+    when size a = 2 && (not @@ List.exists (( <> ) Top) s_rest) ->
+      a :: Top :: append s_rest a_rest
   | Top :: s_rest, a :: a_rest when not @@ List.exists (( <> ) Top) s_rest ->
       a :: append s_rest a_rest
   | long :: Top :: s_rest, _ when size long = 2 ->
