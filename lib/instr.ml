@@ -228,7 +228,7 @@ let string_of_instr (i : instrbody) : string =
     | Isub -> ("isub", "")
     | Bipush i -> ("bipush", string_of_int i)
     | Sipush i -> ("sipush", string_of_int i)
-    | Anewarray i -> ("instanceof", i.name)
+    | Anewarray i -> ("anewarray", i.name)
     | I2b -> ("i2b", "")
     | I2c -> ("i2c", "")
     | I2d -> ("i2d", "")
