@@ -45,7 +45,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       Ldc const
   | 0x13 ->
       let const = Io.read_u2 r |> const_pool_loadable_constant pool in
-      Ldc_w const
+      Ldc const
   | 0x14 ->
       let const = Io.read_u2 r |> const_pool_loadable_constant2 pool in
       Ldc2_w const

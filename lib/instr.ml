@@ -11,7 +11,6 @@ type instrbody =
   | Bipush of int
   | Sipush of int
   | Ldc of loadable_constant
-  | Ldc_w of loadable_constant
   | Ldc2_w of loadable_constant2
   (* loads *)
   | Iload of int
@@ -172,7 +171,6 @@ let string_of_instr (i : instrbody) : string =
     | Bipush i -> ("bipush", string_of_int i)
     | Sipush i -> ("sipush", string_of_int i)
     | Ldc i -> ("ldc", string_of_loadable_constant i)
-    | Ldc_w i -> ("ldc_w", string_of_loadable_constant i)
     | Ldc2_w i -> ("ldc2_w", string_of_loadable_constant2 i)
     | Iload i -> ("iload", string_of_int i)
     | Lload i -> ("lload", string_of_int i)
