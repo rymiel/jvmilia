@@ -195,6 +195,10 @@ type instrbody =
   | Fcmpg
   | Dcmpl
   | Dcmpg
+  | Jsr of int
+  | Ret of int
+  | Freturn
+  | Dreturn
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -411,6 +415,10 @@ let string_of_instr (i : instrbody) : string =
     | Fcmpg -> ("fcmpg", "")
     | Dcmpl -> ("dcmpl", "")
     | Dcmpg -> ("dcmpg", "")
+    | Jsr i -> ("jsr", string_of_int i)
+    | Ret i -> ("ret", string_of_int i)
+    | Freturn -> ("freturn", "")
+    | Dreturn -> ("dreturn", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

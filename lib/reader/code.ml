@@ -199,6 +199,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xa5 -> If_acmpeq (branchoffset ())
   | 0xa6 -> If_acmpne (branchoffset ())
   | 0xa7 -> Goto (branchoffset ())
+  | 0xa8 -> Jsr (branchoffset ())
+  | 0xa9 -> Ret (Io.read_u1 r)
   | 0xaa ->
       let () = Io.skip r (pad (pos + 1)) in
       let default = pos + Io.read_u4_int r in
@@ -222,6 +224,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       Lookupswitch (default, pairs)
   | 0xac -> Ireturn
   | 0xad -> Lreturn
+  | 0xae -> Freturn
+  | 0xaf -> Dreturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
   | 0xb2 ->
