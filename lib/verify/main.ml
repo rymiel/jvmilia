@@ -566,6 +566,11 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       else
         let _ = canPop frame [ Int ] in
         AfterGoto
+  | Lreturn ->
+      if env.return <> Long then failwith "ireturn: Function must return long"
+      else
+        let _ = canPop frame [ Long ] in
+        AfterGoto
   | Iconst _ -> validTypeTransition env [] Int frame |> next
   | Lconst _ -> validTypeTransition env [] Long frame |> next
   | Iload i -> loadIsTypeSafe env i Int frame |> next
