@@ -541,10 +541,9 @@ let loadable_vtype2 (c : loadable_constant2) : vtype =
 let isSmallArray (t : vtype) : bool =
   match t with Array Byte | Array Boolean | Null -> true | _ -> false
 
-let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
+let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
-  let defer (j : Instr.instrbody) = instructionIsTypeSafe j env offset frame in
   match i with
   | Aload i ->
       let n = loadIsTypeSafe env i Reference frame in
@@ -689,36 +688,30 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Astore i ->
       let n = storeIsTypeSafe env i Reference frame in
       (Frame n, exceptionStackFrame frame)
-  | If_acmpeq t ->
+  | If_acmpeq t | If_acmpne t ->
       let next_frame = canPop frame [ Reference; Reference ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
-  | If_acmpne t -> defer (If_acmpeq t)
-  | If_icmpeq t ->
+  | If_icmpeq t
+  | If_icmpge t
+  | If_icmpgt t
+  | If_icmple t
+  | If_icmplt t
+  | If_icmpne t ->
       let next_frame = canPop frame [ Int; Int ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
-  | If_icmpge t -> defer (If_icmpeq t)
-  | If_icmpgt t -> defer (If_icmpeq t)
-  | If_icmple t -> defer (If_icmpeq t)
-  | If_icmplt t -> defer (If_icmpeq t)
-  | If_icmpne t -> defer (If_icmpeq t)
-  | Ifeq t ->
+  | Ifeq t | Ifge t | Ifgt t | Ifle t | Iflt t | Ifne t ->
       let next_frame = canPop frame [ Int ] in
       let () = targetIsTypeSafe env next_frame t in
       (Frame next_frame, exceptionStackFrame frame)
-  | Ifge t -> defer (Ifeq t)
-  | Ifgt t -> defer (Ifeq t)
-  | Ifle t -> defer (Ifeq t)
-  | Iflt t -> defer (Ifeq t)
-  | Ifne t -> defer (Ifeq t)
   | Goto t ->
       let () = targetIsTypeSafe env frame t in
       (AfterGoto, exceptionStackFrame frame)
-  | Iadd ->
+  | Iadd | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul | Idiv ->
       let n = validTypeTransition env [ Int; Int ] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ladd ->
+  | Ladd | Lsub | Lmul ->
       let n = validTypeTransition env [ Long; Long ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | New _ ->
@@ -751,7 +744,6 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let t = loadable_vtype c in
       let n = validTypeTransition env [] t frame in
       (Frame n, exceptionStackFrame frame)
-  | Ldc_w c -> defer (Ldc c)
   | Ldc2_w c ->
       let t = loadable_vtype2 c in
       let n = validTypeTransition env [] t frame in
@@ -799,15 +791,12 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Aconst_null ->
       let n = validTypeTransition env [] Null frame in
       (Frame n, exceptionStackFrame frame)
-  | I2b | I2c -> defer Ineg
-  | Ineg ->
+  | Ineg | I2b | I2c ->
       let n = validTypeTransition env [ Int ] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Bipush i -> defer (Sipush i)
-  | Sipush _ ->
+  | Sipush _ | Bipush _ ->
       let n = validTypeTransition env [] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul | Idiv -> defer Iadd
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
       (Frame frame, exceptionStackFrame frame)
@@ -838,11 +827,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Newarray t ->
       let n = validTypeTransition env [ Int ] (Array t) frame in
       (Frame n, exceptionStackFrame frame)
-  | Ifnull t ->
+  | Ifnull t | Ifnonnull t ->
       let n = canPop frame [ Reference ] in
       let () = targetIsTypeSafe env n t in
       (Frame n, exceptionStackFrame frame)
-  | Ifnonnull t -> defer (Ifnull t)
   | I2d ->
       let n = validTypeTransition env [ Int ] Double frame in
       (Frame n, exceptionStackFrame frame)
@@ -852,21 +840,18 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | F2d ->
       let n = validTypeTransition env [ Float ] Double frame in
       (Frame n, exceptionStackFrame frame)
-  | Dmul -> defer Dadd
-  | Dadd ->
+  | Dadd | Dmul ->
       let n = validTypeTransition env [ Double; Double ] Double frame in
       (Frame n, exceptionStackFrame frame)
-  | Monitorenter ->
+  | Monitorenter | Monitorexit ->
       let n = canPop frame [ Reference ] in
       (Frame n, exceptionStackFrame frame)
-  | Monitorexit -> defer Monitorenter
   | I2l ->
       let n = validTypeTransition env [ Int ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | L2i ->
       let n = validTypeTransition env [ Long ] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Lsub | Lmul -> defer Ladd
   | Aaload ->
       let arraytype = List.nth frame.stack 1 in
       let component_type =
