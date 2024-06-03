@@ -63,5 +63,5 @@ let assert_end_of_file (r : reader) : unit =
   match res with Some () -> failwith "Expected end of file" | None -> ()
 
 let skip (r : reader) (n : int) : unit =
-  let buf = Bytes.create 1 in
+  let buf = Bytes.create n in
   really_read r buf n
