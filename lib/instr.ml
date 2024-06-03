@@ -145,6 +145,16 @@ type instrbody =
   | Faload
   | Daload
   | Saload
+  | Fstore of int
+  | Dstore of int
+  | Fstore_0
+  | Fstore_1
+  | Fstore_2
+  | Fstore_3
+  | Dstore_0
+  | Dstore_1
+  | Dstore_2
+  | Dstore_3
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -311,6 +321,16 @@ let string_of_instr (i : instrbody) : string =
     | Faload -> ("faload", "")
     | Daload -> ("daload", "")
     | Saload -> ("daload", "")
+    | Fstore i -> ("fstore", string_of_int i)
+    | Dstore i -> ("dstore", string_of_int i)
+    | Fstore_0 -> ("fstore_0", "")
+    | Fstore_1 -> ("fstore_1", "")
+    | Fstore_2 -> ("fstore_2", "")
+    | Fstore_3 -> ("fstore_3", "")
+    | Dstore_0 -> ("dstore_0", "")
+    | Dstore_1 -> ("dstore_1", "")
+    | Dstore_2 -> ("dstore_2", "")
+    | Dstore_3 -> ("dstore_3", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

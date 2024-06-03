@@ -84,6 +84,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x35 -> Saload
   | 0x36 -> Istore (Io.read_u1 r)
   | 0x37 -> Lstore (Io.read_u1 r)
+  | 0x38 -> Fstore (Io.read_u1 r)
+  | 0x39 -> Dstore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
   | 0x3b -> Istore_0
   | 0x3c -> Istore_1
@@ -93,6 +95,14 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x40 -> Lstore_1
   | 0x41 -> Lstore_2
   | 0x42 -> Lstore_3
+  | 0x43 -> Fstore_0
+  | 0x44 -> Fstore_1
+  | 0x45 -> Fstore_2
+  | 0x46 -> Fstore_3
+  | 0x47 -> Dstore_0
+  | 0x48 -> Dstore_1
+  | 0x49 -> Dstore_2
+  | 0x4a -> Dstore_3
   | 0x4b -> Astore_0
   | 0x4c -> Astore_1
   | 0x4d -> Astore_2
