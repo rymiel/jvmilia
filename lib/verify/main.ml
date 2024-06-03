@@ -541,368 +541,294 @@ let loadable_vtype2 (c : loadable_constant2) : vtype =
 let isSmallArray (t : vtype) : bool =
   match t with Array Byte | Array Boolean | Null -> true | _ -> false
 
+let next x = Frame x
+
+let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
+    (offset : int) (frame : frame) (exc_frame : frame ref) : mframe =
+  match i with
+  | Nop -> Frame frame
+  | Aload i -> loadIsTypeSafe env i Reference frame |> next
+  | Invokespecial m -> (
+      let op_args, r = parseMethodDescriptor m.desc in
+      match m.name with
+      | "<init>" ->
+          assert (r = Void);
+          let stack_args = List.rev op_args in
+          let f = canPop frame stack_args in
+          let loader = currentClassLoader env in
+          let head = List.hd f.stack in
+          let stack = List.tl f.stack in
+          let this_v, next_flags =
+            match f.stack with
+            | UninitializedThis :: _ ->
+                let this_v =
+                  rewrittenUninitializedTypeThis env (m.cls, loader)
+                in
+                let next_flags = { is_this_uninit = false } in
+                (this_v, next_flags)
+            | UninitializedOffset offset :: _ ->
+                let this_v =
+                  rewrittenUninitializedTypeOffset env offset (m.cls, loader)
+                in
+                let next_flags = frame.flags in
+                (this_v, next_flags)
+            | _ ->
+                failwith
+                  "invokespecial: Top of stack must have uninitialized value"
+          in
+          let this_name, this_loader = this_v in
+          let this = Class (this_name, this_loader) in
+          let next_stack = substitute head this stack in
+          let next_locals = substitute head this f.locals in
+          let exc_locals = substitute Top this f.locals in
+          exc_frame := { locals = exc_locals; stack = []; flags = f.flags };
+          let next_frame =
+            { locals = next_locals; stack = next_stack; flags = next_flags }
+          in
+          (* TODO: passesProtectedCheck *)
+          next next_frame
+      | "<clinit>" -> failwith "invokespecial: <clinit> is not allowed"
+      | _ ->
+          let this_name, this_loader = thisClass env in
+          let this = Class (this_name, this_loader) in
+          let method_class = Class (m.cls, this_loader) in
+          assert (isAssignable this method_class);
+          let stack_args = List.rev (this :: op_args) in
+          let next_frame = validTypeTransition env stack_args r frame in
+          let stack_args2 = List.rev (method_class :: op_args) in
+          let _ = validTypeTransition env stack_args2 r frame in
+          next next_frame)
+  | Invokevirtual m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      (*oh no*)
+      let _loader = currentClassLoader env in
+      let op_args, r = parseMethodDescriptor m.desc in
+      let cls = Vtype.read_class_internal_name m.cls in
+      let stack_arg_list = List.rev (cls :: op_args) in
+      let n = validTypeTransition env stack_arg_list r frame in
+      (* let arg_list = List.rev op_args in *)
+      (* let popped = canPop frame arg_list in *)
+      (* TODO: passesProtectedCheck *)
+      next n
+  | Invokestatic m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let stack_arg_list = List.rev op_args in
+      validTypeTransition env stack_arg_list r frame |> next
+  | Invokedynamic m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let stack_arg_list = List.rev op_args in
+      validTypeTransition env stack_arg_list r frame |> next
+  | Invokeinterface (m, count) ->
+      let assert_countIsValid (count : int) (in_frame : frame)
+          (out_frame : frame) : unit =
+        let in_len = List.length in_frame.stack in
+        let out_len = List.length out_frame.stack in
+        assert (in_len - out_len = count)
+      in
+
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let loader = currentClassLoader env in
+      let intf = Class (m.cls, loader) in
+      let stack_arg_list = List.rev (intf :: op_args) in
+      let temp_frame = canPop frame stack_arg_list in
+      let n = validTypeTransition env [] r temp_frame in
+      let () = assert_countIsValid count frame temp_frame in
+      next n
+  | Return ->
+      if env.return <> Void then failwith "return: Function must return void"
+      else if frame.flags.is_this_uninit then
+        failwith "return: Cannot return when this is uninitialized"
+      else AfterGoto
+  | Areturn ->
+      if not @@ isAssignable env.return Reference then
+        failwith "areturn: Function must return reference"
+      else
+        let _ = canPop frame [ env.return ] in
+        AfterGoto
+  | Ireturn ->
+      if env.return <> Int then failwith "ireturn: Function must return int"
+      else
+        let _ = canPop frame [ Int ] in
+        AfterGoto
+  | Iconst _ -> validTypeTransition env [] Int frame |> next
+  | Lconst _ -> validTypeTransition env [] Long frame |> next
+  | Iload i -> loadIsTypeSafe env i Int frame |> next
+  | Lload i -> loadIsTypeSafe env i Long frame |> next
+  | Fload i -> loadIsTypeSafe env i Float frame |> next
+  | Dload i -> loadIsTypeSafe env i Double frame |> next
+  | Istore i -> storeIsTypeSafe env i Int frame |> next
+  | Lstore i -> storeIsTypeSafe env i Long frame |> next
+  | Astore i -> storeIsTypeSafe env i Reference frame |> next
+  | If_acmpeq t | If_acmpne t ->
+      let next_frame = canPop frame [ Reference; Reference ] in
+      let () = targetIsTypeSafe env next_frame t in
+      next next_frame
+  | If_icmp (_, t) ->
+      let next_frame = canPop frame [ Int; Int ] in
+      let () = targetIsTypeSafe env next_frame t in
+      next next_frame
+  | If (_, t) ->
+      let next_frame = canPop frame [ Int ] in
+      let () = targetIsTypeSafe env next_frame t in
+      next next_frame
+  | Goto t ->
+      let () = targetIsTypeSafe env frame t in
+      AfterGoto
+  | Iarith _ | Ishl | Ishr | Iushr | Iand | Ior | Ixor ->
+      validTypeTransition env [ Int; Int ] Int frame |> next
+  | Larith _ | Land | Lor | Lxor ->
+      validTypeTransition env [ Long; Long ] Long frame |> next
+  | Lshl | Lshr | Lushr ->
+      validTypeTransition env [ Int; Long ] Long frame |> next
+  | Farith _ -> validTypeTransition env [ Float; Float ] Float frame |> next
+  | Darith _ -> validTypeTransition env [ Double; Double ] Double frame |> next
+  | New _ ->
+      let new_item = UninitializedOffset offset in
+      assert (not @@ List.mem new_item frame.stack);
+      let new_locals = substitute new_item Top frame.locals in
+      validTypeTransition env [] new_item { frame with locals = new_locals }
+      |> next
+  | Dup ->
+      let t, _ = popCategory1 frame.stack in
+      let next_stack = canSafelyPush env frame.stack t in
+      { frame with stack = next_stack } |> next
+  | Dup2 ->
+      let next_stack =
+        match frame.stack with
+        | Top :: _ ->
+            let t, _ = popCategory2 frame.stack in
+            canSafelyPush env frame.stack t
+        | _ ->
+            let t1, temp = popCategory1 frame.stack in
+            let t2, _ = popCategory1 temp in
+            canSafelyPushList env frame.stack [ t2; t1 ]
+      in
+      { frame with stack = next_stack } |> next
+  | Ldc c ->
+      let t = loadable_vtype c in
+      validTypeTransition env [] t frame |> next
+  | Ldc2_w c ->
+      let t = loadable_vtype2 c in
+      validTypeTransition env [] t frame |> next
+  | Pop ->
+      let _, rest = popCategory1 frame.stack in
+      { frame with stack = rest } |> next
+  | Athrow ->
+      let throwable = Class ("java/lang/Throwable", Loader.bootstrap_loader) in
+      let _ = canPop frame [ throwable ] in
+      AfterGoto
+  | Lcmp -> validTypeTransition env [ Long; Long ] Int frame |> next
+  | Getfield f ->
+      let t = parseFieldDescriptor f.desc in
+      (* TODO: passesProtectedCheck *)
+      let loader = currentClassLoader env in
+      validTypeTransition env [ Class (f.cls, loader) ] t frame |> next
+  | Putfield f ->
+      let t = parseFieldDescriptor f.desc in
+      (* TODO: <init> and uninitializedThis *)
+      let _popped = canPop frame [ t ] in
+      (* TODO: passesProtectedCheck *)
+      let loader = currentClassLoader env in
+      canPop frame [ t; Class (f.cls, loader) ] |> next
+  | Getstatic f ->
+      let t = parseFieldDescriptor f.desc in
+      validTypeTransition env [] t frame |> next
+  | Putstatic f ->
+      let t = parseFieldDescriptor f.desc in
+      canPop frame [ t ] |> next
+  | Arraylength ->
+      let arraytype = List.nth frame.stack 0 in
+      (match arraytype with
+      | Array _ -> ()
+      | _ -> failwith "arraylength: must have array on top of stack");
+      validTypeTransition env [ Top ] Int frame |> next
+  | Aconst_null -> validTypeTransition env [] Null frame |> next
+  | Ineg | I2b | I2c -> validTypeTransition env [ Int ] Int frame |> next
+  | Sipush _ | Bipush _ -> validTypeTransition env [] Int frame |> next
+  | Iinc (i, _) ->
+      assert (List.nth frame.locals i = Int);
+      next frame
+  | Baload ->
+      let arraytype = List.nth frame.stack 1 in
+      assert (isSmallArray arraytype);
+      validTypeTransition env [ Int; Top ] Int frame |> next
+  | Bastore ->
+      let arraytype = List.nth frame.stack 2 in
+      assert (isSmallArray arraytype);
+      canPop frame [ Int; Int; Top ] |> next
+  | Checkcast c ->
+      let t = Vtype.read_class_internal_name c.name in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      validTypeTransition env [ obj ] t frame |> next
+  | Instanceof c ->
+      let _ = Vtype.read_class_internal_name c.name in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      validTypeTransition env [ obj ] Int frame |> next
+  | Anewarray c ->
+      let t = Vtype.read_class_internal_name c.name in
+      validTypeTransition env [ Int ] (Array (T t)) frame |> next
+  | Newarray t -> validTypeTransition env [ Int ] (Array t) frame |> next
+  | Ifnull t | Ifnonnull t ->
+      let n = canPop frame [ Reference ] in
+      let () = targetIsTypeSafe env n t in
+      Frame n
+  | I2d -> validTypeTransition env [ Int ] Double frame |> next
+  | D2i -> validTypeTransition env [ Double ] Int frame |> next
+  | F2d -> validTypeTransition env [ Float ] Double frame |> next
+  | I2l -> validTypeTransition env [ Int ] Long frame |> next
+  | L2i -> validTypeTransition env [ Long ] Int frame |> next
+  | Monitorenter | Monitorexit -> canPop frame [ Reference ] |> next
+  | Aaload ->
+      let arraytype = List.nth frame.stack 1 in
+      let component_type =
+        match arraytype with
+        | Array (T x) -> x
+        | Null -> Null
+        | _ -> failwith "Invalid component type for aaload"
+      in
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      validTypeTransition env [ Int; Array (T obj) ] component_type frame
+      |> next
+  | Aastore ->
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      canPop frame [ obj; Int; Array (T obj) ] |> next
+  | Caload -> validTypeTransition env [ Int; Array Char ] Int frame |> next
+  | Castore -> canPop frame [ Int; Int; Array Char ] |> next
+  | Lookupswitch (default, pairs) ->
+      let sorted =
+        List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) pairs
+      in
+      assert (pairs = sorted);
+      let branch_frame = canPop frame [ Int ] in
+      let () =
+        List.iter (fun (_, v) -> targetIsTypeSafe env branch_frame v) pairs
+      in
+      let () = targetIsTypeSafe env branch_frame default in
+      AfterGoto
+  | Tableswitch (default, (low, high), offsets) ->
+      (* pretty sure it'd already have blown up if this were to fail*)
+      assert (low <= high);
+      let branch_frame = canPop frame [ Int ] in
+      let () = List.iter (targetIsTypeSafe env branch_frame) offsets in
+      let () = targetIsTypeSafe env branch_frame default in
+      AfterGoto
+  | unimplemented ->
+      failwith
+        (Printf.sprintf "TODO: unimplemented instruction %s"
+           (Instr.string_of_instr unimplemented))
+
 let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) : mframe * frame =
   Debug.instr i offset;
-  (* let next x = Frame x in *)
   let exc_frame = exceptionStackFrame frame |> ref in
-  let next_frame =
-    match i with
-    | Nop -> Frame frame
-    | Aload i ->
-        let n = loadIsTypeSafe env i Reference frame in
-        Frame n
-    | Invokespecial m -> (
-        let op_args, r = parseMethodDescriptor m.desc in
-        match m.name with
-        | "<init>" ->
-            assert (r = Void);
-            let stack_args = List.rev op_args in
-            let f = canPop frame stack_args in
-            let loader = currentClassLoader env in
-            let head = List.hd f.stack in
-            let stack = List.tl f.stack in
-            let this_v, next_flags =
-              match f.stack with
-              | UninitializedThis :: _ ->
-                  let this_v =
-                    rewrittenUninitializedTypeThis env (m.cls, loader)
-                  in
-                  let next_flags = { is_this_uninit = false } in
-                  (this_v, next_flags)
-              | UninitializedOffset offset :: _ ->
-                  let this_v =
-                    rewrittenUninitializedTypeOffset env offset (m.cls, loader)
-                  in
-                  let next_flags = frame.flags in
-                  (this_v, next_flags)
-              | _ ->
-                  failwith
-                    "invokespecial: Top of stack must have uninitialized value"
-            in
-            let this_name, this_loader = this_v in
-            let this = Class (this_name, this_loader) in
-            let next_stack = substitute head this stack in
-            let next_locals = substitute head this f.locals in
-            let exc_locals = substitute Top this f.locals in
-            let next_frame =
-              { locals = next_locals; stack = next_stack; flags = next_flags }
-            in
-            exc_frame := { locals = exc_locals; stack = []; flags = f.flags };
-            (* TODO: passesProtectedCheck *)
-            Frame next_frame
-        | "<clinit>" -> failwith "invokespecial: <clinit> is not allowed"
-        | _ ->
-            let this_name, this_loader = thisClass env in
-            let this = Class (this_name, this_loader) in
-            let method_class = Class (m.cls, this_loader) in
-            assert (isAssignable this method_class);
-            let stack_args = List.rev (this :: op_args) in
-            let next_frame = validTypeTransition env stack_args r frame in
-            let stack_args2 = List.rev (method_class :: op_args) in
-            let _ = validTypeTransition env stack_args2 r frame in
-            Frame next_frame)
-    | Invokevirtual m ->
-        assert (m.name <> "<init>");
-        assert (m.name <> "<clinit>");
-        (*oh no*)
-        let _loader = currentClassLoader env in
-        let op_args, r = parseMethodDescriptor m.desc in
-        let cls = Vtype.read_class_internal_name m.cls in
-        let stack_arg_list = List.rev (cls :: op_args) in
-        let n = validTypeTransition env stack_arg_list r frame in
-        (* let arg_list = List.rev op_args in *)
-        (* let popped = canPop frame arg_list in *)
-        (* TODO: passesProtectedCheck *)
-        Frame n
-    | Invokestatic m ->
-        assert (m.name <> "<init>");
-        assert (m.name <> "<clinit>");
-        let op_args, r = parseMethodDescriptor m.desc in
-        let stack_arg_list = List.rev op_args in
-        let n = validTypeTransition env stack_arg_list r frame in
-        Frame n
-    | Invokedynamic m ->
-        assert (m.name <> "<init>");
-        assert (m.name <> "<clinit>");
-        let op_args, r = parseMethodDescriptor m.desc in
-        let stack_arg_list = List.rev op_args in
-        let n = validTypeTransition env stack_arg_list r frame in
-        Frame n
-    | Invokeinterface (m, count) ->
-        let assert_countIsValid (count : int) (in_frame : frame)
-            (out_frame : frame) : unit =
-          let in_len = List.length in_frame.stack in
-          let out_len = List.length out_frame.stack in
-          assert (in_len - out_len = count)
-        in
-
-        assert (m.name <> "<init>");
-        assert (m.name <> "<clinit>");
-        let op_args, r = parseMethodDescriptor m.desc in
-        let loader = currentClassLoader env in
-        let intf = Class (m.cls, loader) in
-        let stack_arg_list = List.rev (intf :: op_args) in
-        let temp_frame = canPop frame stack_arg_list in
-        let n = validTypeTransition env [] r temp_frame in
-        let () = assert_countIsValid count frame temp_frame in
-        Frame n
-    | Return ->
-        if env.return = Void then
-          if frame.flags.is_this_uninit then
-            failwith "return: Cannot return when this is uninitialized"
-          else AfterGoto
-        else failwith "return: Function must return void"
-    | Areturn ->
-        if isAssignable env.return Reference then
-          let _ = canPop frame [ env.return ] in
-          AfterGoto
-        else failwith "areturn: Function must return reference"
-    | Ireturn ->
-        if env.return = Int then
-          let _ = canPop frame [ Int ] in
-          AfterGoto
-        else failwith "ireturn: Function must return int"
-    | Iconst _ ->
-        let next_frame = validTypeTransition env [] Int frame in
-        Frame next_frame
-    | Lconst _ ->
-        let next_frame = validTypeTransition env [] Long frame in
-        Frame next_frame
-    | Iload i ->
-        let n = loadIsTypeSafe env i Int frame in
-        Frame n
-    | Lload i ->
-        let n = loadIsTypeSafe env i Long frame in
-        Frame n
-    | Fload i ->
-        let n = loadIsTypeSafe env i Float frame in
-        Frame n
-    | Dload i ->
-        let n = loadIsTypeSafe env i Double frame in
-        Frame n
-    | Istore i ->
-        let n = storeIsTypeSafe env i Int frame in
-        Frame n
-    | Lstore i ->
-        let n = storeIsTypeSafe env i Long frame in
-        Frame n
-    | Astore i ->
-        let n = storeIsTypeSafe env i Reference frame in
-        Frame n
-    | If_acmpeq t | If_acmpne t ->
-        let next_frame = canPop frame [ Reference; Reference ] in
-        let () = targetIsTypeSafe env next_frame t in
-        Frame next_frame
-    | If_icmp (_, t) ->
-        let next_frame = canPop frame [ Int; Int ] in
-        let () = targetIsTypeSafe env next_frame t in
-        Frame next_frame
-    | If (_, t) ->
-        let next_frame = canPop frame [ Int ] in
-        let () = targetIsTypeSafe env next_frame t in
-        Frame next_frame
-    | Goto t ->
-        let () = targetIsTypeSafe env frame t in
-        AfterGoto
-    | Iarith _ | Ishl | Ishr | Iushr | Iand | Ior | Ixor ->
-        let n = validTypeTransition env [ Int; Int ] Int frame in
-        Frame n
-    | Larith _ | Land | Lor | Lxor ->
-        let n = validTypeTransition env [ Long; Long ] Long frame in
-        Frame n
-    | Lshl | Lshr | Lushr ->
-        let n = validTypeTransition env [ Int; Long ] Long frame in
-        Frame n
-    | Farith _ ->
-        let n = validTypeTransition env [ Float; Float ] Float frame in
-        Frame n
-    | Darith _ ->
-        let n = validTypeTransition env [ Double; Double ] Double frame in
-        Frame n
-    | New _ ->
-        let new_item = UninitializedOffset offset in
-        assert (not @@ List.mem new_item frame.stack);
-        let new_locals = substitute new_item Top frame.locals in
-        let n =
-          validTypeTransition env [] new_item { frame with locals = new_locals }
-        in
-        Frame n
-    | Dup ->
-        let t, _ = popCategory1 frame.stack in
-        let next_stack = canSafelyPush env frame.stack t in
-        let n = { frame with stack = next_stack } in
-        Frame n
-    | Dup2 ->
-        let next_stack =
-          match frame.stack with
-          | Top :: _ ->
-              let t, _ = popCategory2 frame.stack in
-              canSafelyPush env frame.stack t
-          | _ ->
-              let t1, temp = popCategory1 frame.stack in
-              let t2, _ = popCategory1 temp in
-              canSafelyPushList env frame.stack [ t2; t1 ]
-        in
-        let n = { frame with stack = next_stack } in
-        Frame n
-    | Ldc c ->
-        let t = loadable_vtype c in
-        let n = validTypeTransition env [] t frame in
-        Frame n
-    | Ldc2_w c ->
-        let t = loadable_vtype2 c in
-        let n = validTypeTransition env [] t frame in
-        Frame n
-    | Pop ->
-        let _, rest = popCategory1 frame.stack in
-        let n = { frame with stack = rest } in
-        Frame n
-    | Athrow ->
-        let throwable =
-          Class ("java/lang/Throwable", Loader.bootstrap_loader)
-        in
-        let _ = canPop frame [ throwable ] in
-        AfterGoto
-    | Lcmp ->
-        let n = validTypeTransition env [ Long; Long ] Int frame in
-        Frame n
-    | Getfield f ->
-        let t = parseFieldDescriptor f.desc in
-        (* TODO: passesProtectedCheck *)
-        let loader = currentClassLoader env in
-        let n = validTypeTransition env [ Class (f.cls, loader) ] t frame in
-        Frame n
-    | Putfield f ->
-        let t = parseFieldDescriptor f.desc in
-        (* TODO: <init> and uninitializedThis *)
-        let _popped = canPop frame [ t ] in
-        (* TODO: passesProtectedCheck *)
-        let loader = currentClassLoader env in
-        let n = canPop frame [ t; Class (f.cls, loader) ] in
-        Frame n
-    | Getstatic f ->
-        let t = parseFieldDescriptor f.desc in
-        let n = validTypeTransition env [] t frame in
-        Frame n
-    | Putstatic f ->
-        let t = parseFieldDescriptor f.desc in
-        let n = canPop frame [ t ] in
-        Frame n
-    | Arraylength ->
-        let arraytype = List.nth frame.stack 0 in
-        (match arraytype with
-        | Array _ -> ()
-        | _ -> failwith "arraylength: must have array on top of stack");
-        let n = validTypeTransition env [ Top ] Int frame in
-        Frame n
-    | Aconst_null ->
-        let n = validTypeTransition env [] Null frame in
-        Frame n
-    | Ineg | I2b | I2c ->
-        let n = validTypeTransition env [ Int ] Int frame in
-        Frame n
-    | Sipush _ | Bipush _ ->
-        let n = validTypeTransition env [] Int frame in
-        Frame n
-    | Iinc (i, _) ->
-        assert (List.nth frame.locals i = Int);
-        Frame frame
-    | Baload ->
-        let arraytype = List.nth frame.stack 1 in
-        assert (isSmallArray arraytype);
-        let n = validTypeTransition env [ Int; Top ] Int frame in
-        Frame n
-    | Bastore ->
-        let arraytype = List.nth frame.stack 2 in
-        assert (isSmallArray arraytype);
-        let n = canPop frame [ Int; Int; Top ] in
-        Frame n
-    | Checkcast c ->
-        let t = Vtype.read_class_internal_name c.name in
-        let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
-        let n = validTypeTransition env [ obj ] t frame in
-        Frame n
-    | Instanceof c ->
-        let _ = Vtype.read_class_internal_name c.name in
-        let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
-        let n = validTypeTransition env [ obj ] Int frame in
-        Frame n
-    | Anewarray c ->
-        let t = Vtype.read_class_internal_name c.name in
-        let n = validTypeTransition env [ Int ] (Array (T t)) frame in
-        Frame n
-    | Newarray t ->
-        let n = validTypeTransition env [ Int ] (Array t) frame in
-        Frame n
-    | Ifnull t | Ifnonnull t ->
-        let n = canPop frame [ Reference ] in
-        let () = targetIsTypeSafe env n t in
-        Frame n
-    | I2d ->
-        let n = validTypeTransition env [ Int ] Double frame in
-        Frame n
-    | D2i ->
-        let n = validTypeTransition env [ Double ] Int frame in
-        Frame n
-    | F2d ->
-        let n = validTypeTransition env [ Float ] Double frame in
-        Frame n
-    | Monitorenter | Monitorexit ->
-        let n = canPop frame [ Reference ] in
-        Frame n
-    | I2l ->
-        let n = validTypeTransition env [ Int ] Long frame in
-        Frame n
-    | L2i ->
-        let n = validTypeTransition env [ Long ] Int frame in
-        Frame n
-    | Aaload ->
-        let arraytype = List.nth frame.stack 1 in
-        let component_type =
-          match arraytype with
-          | Array (T x) -> x
-          | Null -> Null
-          | _ -> failwith "Invalid component type for aaload"
-        in
-        let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
-        let n =
-          validTypeTransition env [ Int; Array (T obj) ] component_type frame
-        in
-        Frame n
-    | Aastore ->
-        let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
-        let n = canPop frame [ obj; Int; Array (T obj) ] in
-        Frame n
-    | Caload ->
-        let n = validTypeTransition env [ Int; Array Char ] Int frame in
-        Frame n
-    | Castore ->
-        let n = canPop frame [ Int; Int; Array Char ] in
-        Frame n
-    | Lookupswitch (default, pairs) ->
-        let sorted =
-          List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) pairs
-        in
-        assert (pairs = sorted);
-        let branch_frame = canPop frame [ Int ] in
-        let () =
-          List.iter (fun (_, v) -> targetIsTypeSafe env branch_frame v) pairs
-        in
-        let () = targetIsTypeSafe env branch_frame default in
-        AfterGoto
-    | Tableswitch (default, (low, high), offsets) ->
-        (* pretty sure it'd already have blown up if this were to fail*)
-        assert (low <= high);
-        let branch_frame = canPop frame [ Int ] in
-        let () = List.iter (targetIsTypeSafe env branch_frame) offsets in
-        let () = targetIsTypeSafe env branch_frame default in
-        AfterGoto
-    | unimplemented ->
-        failwith
-          (Printf.sprintf "TODO: unimplemented instruction %s"
-             (Instr.string_of_instr unimplemented))
-  in
+  let next_frame = next_frame_of_instr i env offset frame exc_frame in
   (next_frame, !exc_frame)
 
 let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
