@@ -107,9 +107,14 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x4c -> Astore_1
   | 0x4d -> Astore_2
   | 0x4e -> Astore_3
+  | 0x4f -> Iastore
+  | 0x50 -> Lastore
+  | 0x51 -> Fastore
+  | 0x52 -> Dastore
   | 0x53 -> Aastore
   | 0x54 -> Bastore
   | 0x55 -> Castore
+  | 0x56 -> Sastore
   | 0x57 -> Pop
   | 0x59 -> Dup
   | 0x5a -> Dup_x1

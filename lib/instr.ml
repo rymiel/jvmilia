@@ -155,6 +155,11 @@ type instrbody =
   | Dstore_1
   | Dstore_2
   | Dstore_3
+  | Iastore
+  | Lastore
+  | Fastore
+  | Dastore
+  | Sastore
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -331,6 +336,11 @@ let string_of_instr (i : instrbody) : string =
     | Dstore_1 -> ("dstore_1", "")
     | Dstore_2 -> ("dstore_2", "")
     | Dstore_3 -> ("dstore_3", "")
+    | Iastore -> ("iastore", "")
+    | Lastore -> ("lastore", "")
+    | Fastore -> ("fastore", "")
+    | Dastore -> ("dastore", "")
+    | Sastore -> ("sastore", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
