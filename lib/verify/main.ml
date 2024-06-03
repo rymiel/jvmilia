@@ -837,14 +837,14 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
   let v =
     match desc with
     | Same -> { frame with stack = [] }
-    | SameLocals1StackItem i -> { frame with stack = [ i ] }
+    | SameLocals1StackItem i ->
+        { frame with stack = expandTypeList [ i ] |> List.rev }
     | Chop i -> { frame with stack = []; locals = chop frame.locals i }
     | Append i -> { frame with stack = []; locals = append frame.locals i }
     | FullFrame i ->
         {
           frame with
-          stack = List.rev i.stack;
-          (* TODO: probably doesn't handle longs yet *)
+          stack = expandTypeList i.stack |> List.rev;
           locals = expand_locals frame_size i.locals;
         }
   in
