@@ -24,20 +24,20 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   match opcode with
   | 0x00 -> Nop
   | 0x01 -> Aconst_null
-  | 0x02 -> Iconst_m1
-  | 0x03 -> Iconst_0
-  | 0x04 -> Iconst_1
-  | 0x05 -> Iconst_2
-  | 0x06 -> Iconst_3
-  | 0x07 -> Iconst_4
-  | 0x08 -> Iconst_5
-  | 0x09 -> Lconst_0
-  | 0x0a -> Lconst_1
-  | 0x0b -> Fconst_0
-  | 0x0c -> Fconst_1
-  | 0x0d -> Fconst_2
-  | 0x0e -> Dconst_0
-  | 0x0f -> Dconst_1
+  | 0x02 -> Iconst (-1)
+  | 0x03 -> Iconst 0
+  | 0x04 -> Iconst 1
+  | 0x05 -> Iconst 2
+  | 0x06 -> Iconst 3
+  | 0x07 -> Iconst 4
+  | 0x08 -> Iconst 5
+  | 0x09 -> Lconst 0
+  | 0x0a -> Lconst 1
+  | 0x0b -> Fconst 0.0
+  | 0x0c -> Fconst 1.0
+  | 0x0d -> Fconst 2.0
+  | 0x0e -> Dconst 0.0
+  | 0x0f -> Dconst 1.0
   | 0x10 -> Bipush (Io.read_u1 r)
   | 0x11 -> Sipush (Io.read_u2 r)
   | 0x12 ->
@@ -54,26 +54,26 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x17 -> Fload (Io.read_u1 r)
   | 0x18 -> Dload (Io.read_u1 r)
   | 0x19 -> Aload (Io.read_u1 r)
-  | 0x1a -> Iload_0
-  | 0x1b -> Iload_1
-  | 0x1c -> Iload_2
-  | 0x1d -> Iload_3
-  | 0x1e -> Lload_0
-  | 0x1f -> Lload_1
-  | 0x20 -> Lload_2
-  | 0x21 -> Lload_3
-  | 0x22 -> Fload_0
-  | 0x23 -> Fload_1
-  | 0x24 -> Fload_2
-  | 0x25 -> Fload_3
-  | 0x26 -> Dload_0
-  | 0x27 -> Dload_1
-  | 0x28 -> Dload_2
-  | 0x29 -> Dload_3
-  | 0x2a -> Aload_0
-  | 0x2b -> Aload_1
-  | 0x2c -> Aload_2
-  | 0x2d -> Aload_3
+  | 0x1a -> Iload 0
+  | 0x1b -> Iload 1
+  | 0x1c -> Iload 2
+  | 0x1d -> Iload 3
+  | 0x1e -> Lload 0
+  | 0x1f -> Lload 1
+  | 0x20 -> Lload 2
+  | 0x21 -> Lload 3
+  | 0x22 -> Fload 0
+  | 0x23 -> Fload 1
+  | 0x24 -> Fload 2
+  | 0x25 -> Fload 3
+  | 0x26 -> Dload 0
+  | 0x27 -> Dload 1
+  | 0x28 -> Dload 2
+  | 0x29 -> Dload 3
+  | 0x2a -> Aload 0
+  | 0x2b -> Aload 1
+  | 0x2c -> Aload 2
+  | 0x2d -> Aload 3
   | 0x2e -> Iaload
   | 0x2f -> Laload
   | 0x30 -> Faload
@@ -87,26 +87,26 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x38 -> Fstore (Io.read_u1 r)
   | 0x39 -> Dstore (Io.read_u1 r)
   | 0x3a -> Astore (Io.read_u1 r)
-  | 0x3b -> Istore_0
-  | 0x3c -> Istore_1
-  | 0x3d -> Istore_2
-  | 0x3e -> Istore_3
-  | 0x3f -> Lstore_0
-  | 0x40 -> Lstore_1
-  | 0x41 -> Lstore_2
-  | 0x42 -> Lstore_3
-  | 0x43 -> Fstore_0
-  | 0x44 -> Fstore_1
-  | 0x45 -> Fstore_2
-  | 0x46 -> Fstore_3
-  | 0x47 -> Dstore_0
-  | 0x48 -> Dstore_1
-  | 0x49 -> Dstore_2
-  | 0x4a -> Dstore_3
-  | 0x4b -> Astore_0
-  | 0x4c -> Astore_1
-  | 0x4d -> Astore_2
-  | 0x4e -> Astore_3
+  | 0x3b -> Istore 0
+  | 0x3c -> Istore 1
+  | 0x3d -> Istore 2
+  | 0x3e -> Istore 3
+  | 0x3f -> Lstore 0
+  | 0x40 -> Lstore 1
+  | 0x41 -> Lstore 2
+  | 0x42 -> Lstore 3
+  | 0x43 -> Fstore 0
+  | 0x44 -> Fstore 1
+  | 0x45 -> Fstore 2
+  | 0x46 -> Fstore 3
+  | 0x47 -> Dstore 0
+  | 0x48 -> Dstore 1
+  | 0x49 -> Dstore 2
+  | 0x4a -> Dstore 3
+  | 0x4b -> Astore 0
+  | 0x4c -> Astore 1
+  | 0x4d -> Astore 2
+  | 0x4e -> Astore 3
   | 0x4f -> Iastore
   | 0x50 -> Lastore
   | 0x51 -> Fastore

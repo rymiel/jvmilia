@@ -546,10 +546,6 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   Debug.instr i offset;
   let defer (j : Instr.instrbody) = instructionIsTypeSafe j env offset frame in
   match i with
-  | Aload_0 -> defer (Aload 0)
-  | Aload_1 -> defer (Aload 1)
-  | Aload_2 -> defer (Aload 2)
-  | Aload_3 -> defer (Aload 3)
   | Aload i ->
       let n = loadIsTypeSafe env i Reference frame in
       (Frame n, exceptionStackFrame frame)
@@ -666,61 +662,30 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
         let _ = canPop frame [ Int ] in
         (AfterGoto, exceptionStackFrame frame)
       else failwith "ireturn: Function must return int"
-  | Iconst_m1 ->
+  | Iconst _ ->
       let next_frame = validTypeTransition env [] Int frame in
       (Frame next_frame, exceptionStackFrame frame)
-  | Iconst_0 | Iconst_1 | Iconst_2 | Iconst_3 | Iconst_4 | Iconst_5 ->
-      defer Iconst_m1
-  | Lconst_0 ->
+  | Lconst _ ->
       let next_frame = validTypeTransition env [] Long frame in
       (Frame next_frame, exceptionStackFrame frame)
-  | Lconst_1 -> defer Lconst_0
-  | Iload_0 -> defer (Iload 0)
-  | Iload_1 -> defer (Iload 1)
-  | Iload_2 -> defer (Iload 2)
-  | Iload_3 -> defer (Iload 3)
   | Iload i ->
       let n = loadIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Lload_0 -> defer (Lload 0)
-  | Lload_1 -> defer (Lload 1)
-  | Lload_2 -> defer (Lload 2)
-  | Lload_3 -> defer (Lload 3)
   | Lload i ->
       let n = loadIsTypeSafe env i Long frame in
       (Frame n, exceptionStackFrame frame)
-  | Fload_0 -> defer (Fload 0)
-  | Fload_1 -> defer (Fload 1)
-  | Fload_2 -> defer (Fload 2)
-  | Fload_3 -> defer (Fload 3)
   | Fload i ->
       let n = loadIsTypeSafe env i Float frame in
       (Frame n, exceptionStackFrame frame)
-  | Dload_0 -> defer (Dload 0)
-  | Dload_1 -> defer (Dload 1)
-  | Dload_2 -> defer (Dload 2)
-  | Dload_3 -> defer (Dload 3)
   | Dload i ->
       let n = loadIsTypeSafe env i Double frame in
       (Frame n, exceptionStackFrame frame)
-  | Istore_0 -> defer (Istore 0)
-  | Istore_1 -> defer (Istore 1)
-  | Istore_2 -> defer (Istore 2)
-  | Istore_3 -> defer (Istore 3)
   | Istore i ->
       let n = storeIsTypeSafe env i Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Lstore_0 -> defer (Lstore 0)
-  | Lstore_1 -> defer (Lstore 1)
-  | Lstore_2 -> defer (Lstore 2)
-  | Lstore_3 -> defer (Lstore 3)
   | Lstore i ->
       let n = storeIsTypeSafe env i Long frame in
       (Frame n, exceptionStackFrame frame)
-  | Astore_0 -> defer (Astore 0)
-  | Astore_1 -> defer (Astore 1)
-  | Astore_2 -> defer (Astore 2)
-  | Astore_3 -> defer (Astore 3)
   | Astore i ->
       let n = storeIsTypeSafe env i Reference frame in
       (Frame n, exceptionStackFrame frame)

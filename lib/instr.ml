@@ -4,20 +4,10 @@ type instrbody =
   (* constants *)
   | Nop
   | Aconst_null
-  | Iconst_m1
-  | Iconst_0
-  | Iconst_1
-  | Iconst_2
-  | Iconst_3
-  | Iconst_4
-  | Iconst_5
-  | Lconst_0
-  | Lconst_1
-  | Fconst_0
-  | Fconst_1
-  | Fconst_2
-  | Dconst_0
-  | Dconst_1
+  | Iconst of int
+  | Lconst of int
+  | Fconst of float
+  | Dconst of float
   | Bipush of int
   | Sipush of int
   | Ldc of loadable_constant
@@ -29,26 +19,6 @@ type instrbody =
   | Fload of int
   | Dload of int
   | Aload of int
-  | Iload_0
-  | Iload_1
-  | Iload_2
-  | Iload_3
-  | Lload_0
-  | Lload_1
-  | Lload_2
-  | Lload_3
-  | Fload_0
-  | Fload_1
-  | Fload_2
-  | Fload_3
-  | Dload_0
-  | Dload_1
-  | Dload_2
-  | Dload_3
-  | Aload_0
-  | Aload_1
-  | Aload_2
-  | Aload_3
   | Iaload
   | Laload
   | Faload
@@ -63,26 +33,6 @@ type instrbody =
   | Fstore of int
   | Dstore of int
   | Astore of int
-  | Istore_0
-  | Istore_1
-  | Istore_2
-  | Istore_3
-  | Lstore_0
-  | Lstore_1
-  | Lstore_2
-  | Lstore_3
-  | Fstore_0
-  | Fstore_1
-  | Fstore_2
-  | Fstore_3
-  | Dstore_0
-  | Dstore_1
-  | Dstore_2
-  | Dstore_3
-  | Astore_0
-  | Astore_1
-  | Astore_2
-  | Astore_3
   | Iastore
   | Lastore
   | Fastore
@@ -215,20 +165,10 @@ let string_of_instr (i : instrbody) : string =
   let inner = function
     | Nop -> ("nop", "")
     | Aconst_null -> ("aconst_null", "")
-    | Iconst_m1 -> ("iconst_m1", "")
-    | Iconst_0 -> ("iconst_0", "")
-    | Iconst_1 -> ("iconst_1", "")
-    | Iconst_2 -> ("iconst_2", "")
-    | Iconst_3 -> ("iconst_3", "")
-    | Iconst_4 -> ("iconst_4", "")
-    | Iconst_5 -> ("iconst_5", "")
-    | Lconst_0 -> ("lconst_0", "")
-    | Lconst_1 -> ("lconst_1", "")
-    | Fconst_0 -> ("fconst_0", "")
-    | Fconst_1 -> ("fconst_1", "")
-    | Fconst_2 -> ("fconst_2", "")
-    | Dconst_0 -> ("dconst_0", "")
-    | Dconst_1 -> ("dconst_1", "")
+    | Iconst i -> ("iconst", string_of_int i)
+    | Lconst i -> ("lconst", string_of_int i)
+    | Fconst i -> ("fconst", string_of_float i)
+    | Dconst i -> ("dconst", string_of_float i)
     | Bipush i -> ("bipush", string_of_int i)
     | Sipush i -> ("sipush", string_of_int i)
     | Ldc i -> ("ldc", string_of_loadable_constant i)
@@ -239,26 +179,6 @@ let string_of_instr (i : instrbody) : string =
     | Fload i -> ("fload", string_of_int i)
     | Dload i -> ("dload", string_of_int i)
     | Aload i -> ("aload", string_of_int i)
-    | Iload_0 -> ("iload_0", "")
-    | Iload_1 -> ("iload_1", "")
-    | Iload_2 -> ("iload_2", "")
-    | Iload_3 -> ("iload_3", "")
-    | Lload_0 -> ("lload_0", "")
-    | Lload_1 -> ("lload_1", "")
-    | Lload_2 -> ("lload_2", "")
-    | Lload_3 -> ("lload_3", "")
-    | Fload_0 -> ("fload_0", "")
-    | Fload_1 -> ("fload_1", "")
-    | Fload_2 -> ("fload_2", "")
-    | Fload_3 -> ("fload_3", "")
-    | Dload_0 -> ("dload_0", "")
-    | Dload_1 -> ("dload_1", "")
-    | Dload_2 -> ("dload_2", "")
-    | Dload_3 -> ("dload_3", "")
-    | Aload_0 -> ("aload_0", "")
-    | Aload_1 -> ("aload_1", "")
-    | Aload_2 -> ("aload_2", "")
-    | Aload_3 -> ("aload_3", "")
     | Iaload -> ("iaload", "")
     | Laload -> ("laload", "")
     | Faload -> ("faload", "")
@@ -272,26 +192,6 @@ let string_of_instr (i : instrbody) : string =
     | Fstore i -> ("fstore", string_of_int i)
     | Dstore i -> ("dstore", string_of_int i)
     | Astore i -> ("astore", string_of_int i)
-    | Istore_0 -> ("istore_0", "")
-    | Istore_1 -> ("istore_1", "")
-    | Istore_2 -> ("istore_2", "")
-    | Istore_3 -> ("istore_3", "")
-    | Lstore_0 -> ("lstore_0", "")
-    | Lstore_1 -> ("lstore_1", "")
-    | Lstore_2 -> ("lstore_2", "")
-    | Lstore_3 -> ("lstore_3", "")
-    | Fstore_0 -> ("fstore_0", "")
-    | Fstore_1 -> ("fstore_1", "")
-    | Fstore_2 -> ("fstore_2", "")
-    | Fstore_3 -> ("fstore_3", "")
-    | Dstore_0 -> ("dstore_0", "")
-    | Dstore_1 -> ("dstore_1", "")
-    | Dstore_2 -> ("dstore_2", "")
-    | Dstore_3 -> ("dstore_3", "")
-    | Astore_0 -> ("astore_0", "")
-    | Astore_1 -> ("astore_1", "")
-    | Astore_2 -> ("astore_2", "")
-    | Astore_3 -> ("astore_3", "")
     | Iastore -> ("iastore", "")
     | Lastore -> ("lastore", "")
     | Fastore -> ("fastore", "")
