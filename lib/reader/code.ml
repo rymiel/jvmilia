@@ -151,11 +151,15 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x78 -> Ishl
   | 0x79 -> Lshl
   | 0x7a -> Ishr
+  | 0x7b -> Lshr
+  | 0x7c -> Iushr
+  | 0x7d -> Lushr
   | 0x7e -> Iand
   | 0x7f -> Land
   | 0x80 -> Ior
   | 0x81 -> Lor
   | 0x82 -> Ixor
+  | 0x83 -> Lxor
   | 0x84 ->
       let index = Io.read_u1 r in
       let const = Io.read_u1 r in

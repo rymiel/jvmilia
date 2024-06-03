@@ -179,6 +179,10 @@ type instrbody =
   | Lneg
   | Fneg
   | Dneg
+  | Lshr
+  | Iushr
+  | Lushr
+  | Lxor
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -379,6 +383,10 @@ let string_of_instr (i : instrbody) : string =
     | Lneg -> ("lneg", "")
     | Fneg -> ("fneg", "")
     | Dneg -> ("dneg", "")
+    | Lshr -> ("lshr", "")
+    | Iushr -> ("iushr", "")
+    | Lushr -> ("lushr", "")
+    | Lxor -> ("lxor", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
