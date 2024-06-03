@@ -183,6 +183,14 @@ type instrbody =
   | Iushr
   | Lushr
   | Lxor
+  | I2f
+  | L2f
+  | L2d
+  | F2i
+  | F2l
+  | D2l
+  | D2f
+  | I2s
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -387,6 +395,14 @@ let string_of_instr (i : instrbody) : string =
     | Iushr -> ("iushr", "")
     | Lushr -> ("lushr", "")
     | Lxor -> ("lxor", "")
+    | I2f -> ("i2f", "")
+    | L2f -> ("l2f", "")
+    | L2d -> ("l2d", "")
+    | F2i -> ("f2i", "")
+    | F2l -> ("f2l", "")
+    | D2l -> ("d2l", "")
+    | D2f -> ("d2f", "")
+    | I2s -> ("i2s", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

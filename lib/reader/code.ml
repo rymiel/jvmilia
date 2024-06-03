@@ -165,12 +165,20 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       let const = Io.read_u1 r in
       Iinc (index, const)
   | 0x85 -> I2l
+  | 0x86 -> I2f
   | 0x87 -> I2d
   | 0x88 -> L2i
+  | 0x89 -> L2f
+  | 0x8a -> L2d
+  | 0x8b -> F2i
+  | 0x8c -> F2l
   | 0x8d -> F2d
   | 0x8e -> D2i
+  | 0x8f -> D2l
+  | 0x90 -> D2f
   | 0x91 -> I2b
   | 0x92 -> I2c
+  | 0x93 -> I2s
   | 0x94 -> Lcmp
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
