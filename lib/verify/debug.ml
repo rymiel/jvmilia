@@ -63,7 +63,7 @@ let pop (result : bool) : bool =
 
 let instr (i : Instr.instrbody) (offset : int) : unit =
   print_string (String.make (!depth * indent) ' ');
-  Printf.printf "** %4d: %s\n" offset (Instr.string_of_instr i)
+  Printf.printf "** %4d: \027[36m%s\027[0m\n" offset (Instr.string_of_instr i)
 
 let frame (f : Basic.frame) : unit =
   print_string (String.make (!depth * indent) ' ');
