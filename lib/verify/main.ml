@@ -834,6 +834,14 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Dadd ->
       let n = validTypeTransition env [ Double; Double ] Double frame in
       (Frame n, exceptionStackFrame frame)
+  | Monitorenter ->
+      let n = canPop frame [ Reference ] in
+      (Frame n, exceptionStackFrame frame)
+  | Monitorexit -> defer Monitorenter
+  | I2l ->
+      let n = validTypeTransition env [ Int ] Long frame in
+      (Frame n, exceptionStackFrame frame)
+  | Lsub -> defer Ladd
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
