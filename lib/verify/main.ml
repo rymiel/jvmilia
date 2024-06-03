@@ -939,6 +939,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       in
       let () = targetIsTypeSafe env branch_frame default in
       (AfterGoto, exceptionStackFrame frame)
+  | Tableswitch (default, (low, high), offsets) ->
+      (* pretty sure it'd already have blown up if this were to fail*)
+      assert (low <= high);
+      let branch_frame = canPop frame [ Int ] in
+      let () = List.iter (targetIsTypeSafe env branch_frame) offsets in
+      let () = targetIsTypeSafe env branch_frame default in
+      (AfterGoto, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
