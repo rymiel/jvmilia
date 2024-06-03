@@ -820,6 +820,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let t = parseFieldDescriptor f.desc in
       let n = validTypeTransition env [] t frame in
       (Frame n, exceptionStackFrame frame)
+  | Putstatic f ->
+      let t = parseFieldDescriptor f.desc in
+      let n = canPop frame [ t ] in
+      (Frame n, exceptionStackFrame frame)
   | Arraylength ->
       let arraytype = List.nth frame.stack 0 in
       (match arraytype with
