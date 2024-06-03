@@ -886,10 +886,15 @@ let chop (stack : vtype list) (remove : int) : vtype list =
   List.rev (chop_rev (List.rev stack) remove)
 
 let rec append (stack : vtype list) (extra : vtype list) : vtype list =
+  (* let () =
+       Printf.printf "[append] %s <- %s\n" (string_of_stack stack)
+         (string_of_stack extra)
+     in *)
   match (stack, extra) with
   | _, [] -> stack
   | [], _ -> failwith "Ran out of space to append to"
-  | Top :: s_rest, a :: a_rest -> a :: append s_rest a_rest
+  | Top :: s_rest, a :: a_rest when not @@ List.exists (( <> ) Top) s_rest ->
+      a :: append s_rest a_rest
   | long :: Top :: s_rest, _ when sizeOf long = 2 ->
       long :: Top :: append s_rest extra
   | s :: s_rest, _ -> s :: append s_rest extra
@@ -907,6 +912,21 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
   in
   let this_offset = offset + delta in
   let next_offset = this_offset + 1 in
+  let () =
+    Printf.printf "%4d: %s\n" this_offset
+      (match desc with
+      | Same -> "same"
+      | SameLocals1StackItem i ->
+          Printf.sprintf "same_locals_1_stack_item %s" (string_of_vtype i)
+      | Chop i -> Printf.sprintf "chop %d" i
+      | Append i ->
+          List.map string_of_vtype i |> String.concat ", "
+          |> Printf.sprintf "append [%s]"
+      | FullFrame i ->
+          Printf.sprintf "full_frame locals=[%s] stack=[%s]"
+            (List.map string_of_vtype i.locals |> String.concat ", ")
+            (List.map string_of_vtype i.stack |> String.concat ", "))
+  in
   let v =
     match desc with
     | Same -> { frame with stack = [] }
@@ -923,22 +943,7 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
   in
   let has_uninit = List.mem UninitializedThis v.locals in
   let v_with_uninit = { v with flags = { is_this_uninit = has_uninit } } in
-  let () =
-    Printf.printf "%4d: %s\n      %s\n" this_offset
-      (match desc with
-      | Same -> "same"
-      | SameLocals1StackItem i ->
-          Printf.sprintf "same_locals_1_stack_item %s" (string_of_vtype i)
-      | Chop i -> Printf.sprintf "chop %d" i
-      | Append i ->
-          List.map string_of_vtype i |> String.concat ", "
-          |> Printf.sprintf "append [%s]"
-      | FullFrame i ->
-          Printf.sprintf "full_frame locals=[%s] stack=[%s]"
-            (List.map string_of_vtype i.locals |> String.concat ", ")
-            (List.map string_of_vtype i.stack |> String.concat ", "))
-      (string_of_frame v_with_uninit)
-  in
+  let () = Printf.printf "      %s\n" (string_of_frame v_with_uninit) in
   ((next_offset, v_with_uninit), (this_offset, v_with_uninit))
 
 let get_stack_map (code : code_attribute) : delta_frame list =
