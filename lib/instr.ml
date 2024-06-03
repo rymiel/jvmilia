@@ -135,6 +135,11 @@ type instrbody =
   | Lor
   | Lreturn
   | Nop
+  | Fconst_0
+  | Fconst_1
+  | Fconst_2
+  | Dconst_0
+  | Dconst_1
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -291,6 +296,11 @@ let string_of_instr (i : instrbody) : string =
     | Lor -> ("lor", "")
     | Lreturn -> ("lreturn", "")
     | Nop -> ("nop", "")
+    | Fconst_0 -> ("fconst_0", "")
+    | Fconst_1 -> ("fconst_1", "")
+    | Fconst_2 -> ("fconst_2", "")
+    | Dconst_0 -> ("dconst_0", "")
+    | Dconst_1 -> ("dconst_1", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

@@ -33,6 +33,11 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x08 -> Iconst_5
   | 0x09 -> Lconst_0
   | 0x0a -> Lconst_1
+  | 0x0b -> Fconst_0
+  | 0x0c -> Fconst_1
+  | 0x0d -> Fconst_2
+  | 0x0e -> Dconst_0
+  | 0x0f -> Dconst_1
   | 0x10 -> Bipush (Io.read_u1 r)
   | 0x11 -> Sipush (Io.read_u2 r)
   | 0x12 ->
@@ -46,6 +51,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       Ldc2_w const
   | 0x15 -> Iload (Io.read_u1 r)
   | 0x16 -> Lload (Io.read_u1 r)
+  | 0x17 -> Fload (Io.read_u1 r)
+  | 0x18 -> Dload (Io.read_u1 r)
   | 0x19 -> Aload (Io.read_u1 r)
   | 0x1a -> Iload_0
   | 0x1b -> Iload_1
