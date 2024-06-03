@@ -813,6 +813,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       let n = validTypeTransition env [ obj ] Int frame in
       (Frame n, exceptionStackFrame frame)
+  | Anewarray c ->
+      let t = Vtype.read_class_internal_name c.name in
+      let n = validTypeTransition env [ Int ] (Array (T t)) frame in
+      (Frame n, exceptionStackFrame frame)
   | Newarray t ->
       let n = validTypeTransition env [ Int ] (Array t) frame in
       (Frame n, exceptionStackFrame frame)
@@ -842,6 +846,10 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let n = validTypeTransition env [ Int ] Long frame in
       (Frame n, exceptionStackFrame frame)
   | Lsub -> defer Ladd
+  | Aastore ->
+      let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
+      let n = canPop frame [ obj; Int; Array (T obj) ] in
+      (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
