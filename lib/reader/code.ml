@@ -116,9 +116,14 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x55 -> Castore
   | 0x56 -> Sastore
   | 0x57 -> Pop
+  | 0x58 -> Pop2
   | 0x59 -> Dup
   | 0x5a -> Dup_x1
+  | 0x5b -> Dup_x2
   | 0x5c -> Dup2
+  | 0x5d -> Dup2_x1
+  | 0x5e -> Dup2_x2
+  | 0x5f -> Swap
   | 0x60 -> Iadd
   | 0x61 -> Ladd
   | 0x64 -> Isub
