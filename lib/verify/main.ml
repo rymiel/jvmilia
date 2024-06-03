@@ -23,9 +23,6 @@ let classSuperClassName (cls : jclass) : string =
            "classSuperClassName: This class (%S) does not have a superclass"
            cls.name)
 
-(* classInterfaces(Class, Interfaces) *)
-let classInterfaces (cls : jclass) : string list = cls.superinterfaces
-
 (* classMethods(Class, Methods) *)
 let classMethods (cls : jclass) : jmethod list = cls.methods
 
@@ -43,26 +40,14 @@ let isBootstrapLoader (loader : jloader) : bool =
 (* methodName(Method, Name) *)
 let methodName (mth : jmethod) : string = mth.name
 
-(* methodAccessFlags(Method, AccessFlags) *)
-let methodAccessFlags (mth : jmethod) : method_access_flags = mth.access_flags
-
 (* methodDescriptor(Method, Descriptor) *)
 let methodDescriptor (mth : jmethod) : string = mth.desc
-
-(* methodAttributes(Method, Attributes) *)
-let methodAttributes (mth : jmethod) : attribute list = mth.attributes
-
-(* isInit(Method) *)
-let isInit (mth : jmethod) : bool = mth.name = "<init>"
 
 let method_matches_desc (d : method_desc) (m : jmethod) : bool =
   m.name = d.name && m.desc = d.desc
 
 let member_method_opt (desc : method_desc) (cls : jclass) : jmethod option =
   List.find_opt (method_matches_desc desc) cls.methods
-
-let member_method (desc : method_desc) (cls : jclass) : jmethod =
-  List.find (method_matches_desc desc) cls.methods
 
 (* loadedClass(Name, InitiatingLoader, ClassDefinition) *)
 let load_class (name : string) (loader : jloader) : jclass =

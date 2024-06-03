@@ -4,7 +4,6 @@ let depth = ref 0
 type entry = string * int ref
 
 let stack = ref []
-let pending = ref false
 let stack_push (v : entry) = stack := v :: !stack
 
 let stack_pop () : entry =
