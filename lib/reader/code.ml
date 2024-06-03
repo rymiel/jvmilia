@@ -22,6 +22,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   in
   let pad x = modulo ~-x 4 in
   match opcode with
+  | 0x00 -> Nop
   | 0x01 -> Aconst_null
   | 0x02 -> Iconst_m1
   | 0x03 -> Iconst_0

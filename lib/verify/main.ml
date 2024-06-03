@@ -946,6 +946,7 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let () = List.iter (targetIsTypeSafe env branch_frame) offsets in
       let () = targetIsTypeSafe env branch_frame default in
       (AfterGoto, exceptionStackFrame frame)
+  | Nop -> (Frame frame, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
