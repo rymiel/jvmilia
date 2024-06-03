@@ -625,6 +625,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       let stack_arg_list = List.rev op_args in
       let n = validTypeTransition env stack_arg_list r frame in
       (Frame n, exceptionStackFrame frame)
+  | Invokedynamic m ->
+      assert (m.name <> "<init>");
+      assert (m.name <> "<clinit>");
+      let op_args, r = parseMethodDescriptor m.desc in
+      let stack_arg_list = List.rev op_args in
+      let n = validTypeTransition env stack_arg_list r frame in
+      (Frame n, exceptionStackFrame frame)
   | Invokeinterface (m, count) ->
       let assert_countIsValid (count : int) (in_frame : frame)
           (out_frame : frame) : unit =
@@ -903,6 +910,9 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
       (Frame n, exceptionStackFrame frame)
   | Lshl ->
       let n = validTypeTransition env [ Int; Long ] Long frame in
+      (Frame n, exceptionStackFrame frame)
+  | Caload ->
+      let n = validTypeTransition env [ Int; Array Char ] Int frame in
       (Frame n, exceptionStackFrame frame)
   | unimplemented ->
       failwith
