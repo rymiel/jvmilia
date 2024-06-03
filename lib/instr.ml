@@ -125,6 +125,7 @@ type instrbody =
   | Invokedynamic of Shared.dynamic_desc
   | Caload
   | Lookupswitch of int * (int * int) list
+  | Tableswitch of int * (int * int) * int list
   | Castore
   | Idiv
   | Land
@@ -271,6 +272,13 @@ let string_of_instr (i : instrbody) : string =
             (pairs
             |> List.map (fun (k, v) ->
                    string_of_int k ^ ": " ^ string_of_int v ^ ", ")
+            |> String.concat "")
+            default )
+    | Tableswitch (default, (low, high), targets) ->
+        ( "tableswitch",
+          Printf.sprintf "(%d-%d) {%sdefault: %d}" low high
+            (targets
+            |> List.map (fun v -> string_of_int v ^ ", ")
             |> String.concat "")
             default )
     | Castore -> ("castore", "")

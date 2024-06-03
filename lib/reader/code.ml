@@ -20,7 +20,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
     let result = x mod y in
     if result >= 0 then result else result + y
   in
-  let pad = modulo (3 - pos) 4 in
+  let pad x = modulo ~-x 4 in
   match opcode with
   | 0x01 -> Aconst_null
   | 0x02 -> Iconst_m1
@@ -135,12 +135,18 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0xa5 -> If_acmpeq (branchoffset ())
   | 0xa6 -> If_acmpne (branchoffset ())
   | 0xa7 -> Goto (branchoffset ())
+  | 0xaa ->
+      let () = Io.skip r (pad (pos + 1)) in
+      let default = pos + Io.read_u4_int r in
+      let low = Io.read_u4_int r in
+      let high = Io.read_u4_int r in
+      let noffsets = high - low + 1 in
+      let offsets =
+        Io.read_list_sized r noffsets (fun r -> pos + Io.read_u4_int r)
+      in
+      Tableswitch (default, (low, high), offsets)
   | 0xab ->
-      (* let () =
-           Printf.printf "lookupswitch at %d, pad %d, next at %d\n" pos pad
-             (pos + 1 + pad)
-         in *)
-      let () = Io.skip r pad in
+      let () = Io.skip r (pad (pos + 1)) in
       let default = pos + Io.read_u4_int r in
       let npairs = Io.read_u4_int r in
       let pairs =
