@@ -85,6 +85,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x55 -> Castore
   | 0x57 -> Pop
   | 0x59 -> Dup
+  | 0x5a -> Dup_x1
   | 0x5c -> Dup2
   | 0x60 -> Iadd
   | 0x61 -> Ladd
@@ -101,6 +102,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x7e -> Iand
   | 0x7f -> Land
   | 0x80 -> Ior
+  | 0x81 -> Lor
   | 0x82 -> Ixor
   | 0x84 ->
       let index = Io.read_u1 r in
@@ -143,6 +145,7 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
       in
       Lookupswitch (default, pairs)
   | 0xac -> Ireturn
+  | 0xad -> Lreturn
   | 0xb0 -> Areturn
   | 0xb1 -> Return
   | 0xb2 ->

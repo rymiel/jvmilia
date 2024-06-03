@@ -130,6 +130,9 @@ type instrbody =
   | Land
   | Ineg
   | Dadd
+  | Dup_x1
+  | Lor
+  | Lreturn
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -275,6 +278,9 @@ let string_of_instr (i : instrbody) : string =
     | Land -> ("land", "")
     | Ineg -> ("ineg", "")
     | Dadd -> ("dadd", "")
+    | Dup_x1 -> ("dup_x1", "")
+    | Lor -> ("lor", "")
+    | Lreturn -> ("lreturn", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args
