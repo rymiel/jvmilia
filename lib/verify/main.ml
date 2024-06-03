@@ -452,6 +452,16 @@ let isSmallArray (t : vtype) : bool =
 
 let next x = Frame x
 
+let check_value_return env frame instr t =
+  if env.return <> t then
+    failwith
+      (Printf.sprintf "%s: Function must return %s"
+         (Instr.string_of_instr instr)
+         (string_of_vtype t))
+  else
+    let _ = canPop frame [ t ] in
+    AfterGoto
+
 let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
     (offset : int) (frame : frame) (exc_frame : frame ref) : mframe =
   match i with
@@ -561,16 +571,10 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       else
         let _ = canPop frame [ env.return ] in
         AfterGoto
-  | Ireturn ->
-      if env.return <> Int then failwith "ireturn: Function must return int"
-      else
-        let _ = canPop frame [ Int ] in
-        AfterGoto
-  | Lreturn ->
-      if env.return <> Long then failwith "ireturn: Function must return long"
-      else
-        let _ = canPop frame [ Long ] in
-        AfterGoto
+  | Ireturn -> check_value_return env frame i Int
+  | Lreturn -> check_value_return env frame i Long
+  | Freturn -> check_value_return env frame i Float
+  | Dreturn -> check_value_return env frame i Double
   | Iconst _ -> validTypeTransition env [] Int frame |> next
   | Lconst _ -> validTypeTransition env [] Long frame |> next
   | Iload i -> loadIsTypeSafe env i Int frame |> next
@@ -664,7 +668,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       | _ -> failwith "arraylength: must have array on top of stack");
       validTypeTransition env [ Top ] Int frame |> next
   | Aconst_null -> validTypeTransition env [] Null frame |> next
-  | Ineg | I2b | I2c -> validTypeTransition env [ Int ] Int frame |> next
+  | Ineg | I2b | I2c | I2s -> validTypeTransition env [ Int ] Int frame |> next
   | Sipush _ | Bipush _ -> validTypeTransition env [] Int frame |> next
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
@@ -693,6 +697,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       let n = canPop frame [ Reference ] in
       let () = targetIsTypeSafe env n t in
       Frame n
+  | I2f -> validTypeTransition env [ Int ] Float frame |> next
   | I2d -> validTypeTransition env [ Int ] Double frame |> next
   | D2i -> validTypeTransition env [ Double ] Int frame |> next
   | F2d -> validTypeTransition env [ Float ] Double frame |> next
