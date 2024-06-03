@@ -16,7 +16,11 @@ let read_newarray_type (atype : int) : Vtype.arraytype =
 let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
     instrbody =
   let branchoffset () = pos + Io.read_i2 r in
-  let pad = (pos - 1) mod 4 in
+  let modulo x y =
+    let result = x mod y in
+    if result >= 0 then result else result + y
+  in
+  let pad = modulo (3 - pos) 4 in
   match opcode with
   | 0x01 -> Aconst_null
   | 0x02 -> Iconst_m1
