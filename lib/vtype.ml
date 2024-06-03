@@ -75,7 +75,7 @@ and parse_arraytype (s : string) (offset : int ref) : arraytype =
       T (Class (classname, Bootstrap))
   | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
 
-let read_class_internal_name (s : string) : vtype =
+let parse_class_internal_name (s : string) : vtype =
   if String.starts_with ~prefix:"[" s then (
     let offset = ref 0 in
     let t = parse_vtype s offset in
@@ -83,3 +83,31 @@ let read_class_internal_name (s : string) : vtype =
     match t with Array _ -> t | _ -> failwith "Not an array type?"
     (* kissing owner this a good idea *))
   else Class (s, Bootstrap)
+
+let parse_method_descriptor (desc : string) : vtype list * vtype =
+  let s = desc in
+  assert (String.get s 0 = '(');
+  let offset = ref 1 in
+  let args = ref [] in
+  while String.get s !offset <> ')' do
+    let t = parse_vtype s offset in
+    args := !args @ [ t ]
+  done;
+  incr offset;
+  let ret = parse_vtype s offset in
+  assert (!offset = String.length desc);
+  (!args, ret)
+
+let parse_field_descriptor (desc : string) : vtype =
+  let offset = ref 0 in
+  let t = parse_vtype desc offset in
+  assert (!offset = String.length desc);
+  t
+
+let size (t : vtype) : int =
+  match t with
+  | Top | OneWord | Int | Float | Reference | Uninitialized | UninitializedThis
+  | Null | UninitializedOffset _ | Array _ | Class _ ->
+      1
+  | TwoWord | Long | Double -> 2
+  | Void -> failwith "Void has no size"

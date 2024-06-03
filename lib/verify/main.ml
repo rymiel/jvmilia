@@ -43,33 +43,8 @@ let load_class (name : string) (loader : jloader) : jclass =
   | UserDefined n ->
       failwith (Printf.sprintf "Cannot use user-defined loader %s" n)
 
-(* parseMethodDescriptor(Descriptor, ArgTypeList, ReturnType) *)
-let parseMethodDescriptor (desc : string) : vtype list * vtype =
-  let s = desc in
-  assert (String.get s 0 = '(');
-  let offset = ref 1 in
-  let args = ref [] in
-  while String.get s !offset <> ')' do
-    let t = parse_vtype s offset in
-    args := !args @ [ t ]
-  done;
-  incr offset;
-  let ret = parse_vtype s offset in
-  assert (!offset = String.length desc);
-  (!args, ret)
-
-(* parseFieldDescriptor(Descriptor, Type) *)
-let parseFieldDescriptor (desc : string) : vtype =
-  let offset = ref 0 in
-  let t = parse_vtype desc offset in
-  assert (!offset = String.length desc);
-  t
-
 let thisClass (env : jenvironment) : vclass = (env.cls.name, env.cls.loader)
-
-let currentClassLoader (env : jenvironment) : jloader =
-  let _, loader = thisClass env in
-  loader
+let currentClassLoader (env : jenvironment) : jloader = env.cls.loader
 
 let rec superclassChain (name : string) (loader : jloader) : vclass list =
   let cls = load_class name loader in
@@ -190,21 +165,11 @@ let rec mergeStackMapAndCode (stack_map : jstack_map list)
       else failwith "Undefined: case 1"
   | _ -> failwith "Undefined: case 2"
 
-let sizeOf (t : vtype) : int =
-  match t with
-  | Top | OneWord | Int | Float | Reference | Uninitialized | UninitializedThis
-  | UninitializedOffset _
-  | Class (_, _)
-  | Array _ | Null ->
-      1
-  | TwoWord | Long | Double -> 2
-  | Void -> failwith "Void has no size"
-
 let rec expandTypeList (args : vtype list) : vtype list =
   match args with
   | [] -> []
   | x :: xs -> (
-      match sizeOf x with
+      match size x with
       | 1 -> x :: expandTypeList xs
       | 2 -> x :: Top :: expandTypeList xs
       | _ -> failwith "Invalid size")
@@ -227,7 +192,7 @@ let rec expandToLength (al : 'a list) (size : int) (filler : 'a) : 'a list =
 
 let methodInitialStackFrame (cls : jclass) (mth : jmethod) (frame_size : int) :
     frame * vtype =
-  let raw_args, ret = parseMethodDescriptor mth.desc in
+  let raw_args, ret = parse_method_descriptor mth.desc in
   let args = expandTypeList raw_args in
   let this = methodInitialThisType cls mth in
   let flags =
@@ -310,30 +275,21 @@ let instructionSatisfiesHandlers (_env : jenvironment) (_offset : int)
 
 let popMatchingType (stack : vtype list) (t : vtype) : vtype list * vtype =
   try
-    match stack with
-    | Top :: actual :: rest ->
-        if sizeOf actual = 2 then
-          if isAssignable actual t then (rest, actual)
-          else
-            failwith
-              (Printf.sprintf "%s not assignable to %s" (string_of_vtype actual)
-                 (string_of_vtype t))
-        else
-          failwith
-            (Printf.sprintf "Top of stack is size 1 despite top guard: %s"
-               (string_of_vtype actual))
-    | actual :: rest ->
-        if sizeOf actual = 1 then
-          if isAssignable actual t then (rest, actual)
-          else
-            failwith
-              (Printf.sprintf "%s not assignable to %s" (string_of_vtype actual)
-                 (string_of_vtype t))
-        else
-          failwith
-            (Printf.sprintf "Top of stack is size 2 without top guard: %s"
-               (string_of_vtype actual))
-    | _ -> failwith "Invalid stack state"
+    let expected_size, actual, rest =
+      match stack with
+      | Top :: actual :: rest -> (2, actual, rest)
+      | actual :: rest -> (1, actual, rest)
+      | _ -> failwith "Invalid stack state"
+    in
+    if size actual <> expected_size then
+      failwith
+        (Printf.sprintf "Top of stack expected to be size %d, but was size %d"
+           expected_size (size actual));
+    if not @@ isAssignable actual t then
+      failwith
+        (Printf.sprintf "%s not assignable to %s" (string_of_vtype actual)
+           (string_of_vtype t));
+    (rest, actual)
   with Failure f ->
     failwith
       (Printf.sprintf "Failure trying to pop %s from stack %s: %s"
@@ -350,13 +306,13 @@ let rec popMatchingList (stack : vtype list) (expected : vtype list) :
 let popCategory1 (stack : vtype list) : vtype * vtype list =
   let head = List.hd stack in
   assert (head <> Top);
-  assert (sizeOf head = 1);
+  assert (size head = 1);
   (head, List.tl stack)
 
 let popCategory2 (stack : vtype list) : vtype * vtype list =
   match stack with
   | Top :: t :: rest ->
-      assert (sizeOf t = 2);
+      assert (size t = 2);
       (t, rest)
   | _ -> failwith "Can't pop category 2"
 
@@ -364,7 +320,7 @@ let pushOperandStack (stack : vtype list) (t : vtype) : vtype list =
   match t with
   | Void -> stack
   | _ -> (
-      match sizeOf t with
+      match size t with
       | 1 -> t :: stack
       | 2 -> Top :: t :: stack
       | _ -> failwith "Invalid size")
@@ -396,11 +352,11 @@ let loadIsTypeSafe (env : jenvironment) (index : int) (t : vtype)
          (string_of_vtype actual_type))
 
 let modifyPreIndexVariable (t : vtype) : vtype =
-  match sizeOf t with 1 -> t | 2 -> Top | _ -> failwith "Invalid size"
+  match size t with 1 -> t | 2 -> Top | _ -> failwith "Invalid size"
 
 let modifyLocalVariable (index : int) (t : vtype) (locals : vtype list) :
     vtype list =
-  let size = sizeOf t in
+  let size = size t in
   let modify (i : int) (n : vtype) : vtype =
     if i = index - 1 then modifyPreIndexVariable n
     else if i = index then (
@@ -502,7 +458,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Nop -> Frame frame
   | Aload i -> loadIsTypeSafe env i Reference frame |> next
   | Invokespecial m -> (
-      let op_args, r = parseMethodDescriptor m.desc in
+      let op_args, r = parse_method_descriptor m.desc in
       match m.name with
       | "<init>" ->
           assert (r = Void);
@@ -556,8 +512,8 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       assert (m.name <> "<clinit>");
       (*oh no*)
       let _loader = currentClassLoader env in
-      let op_args, r = parseMethodDescriptor m.desc in
-      let cls = Vtype.read_class_internal_name m.cls in
+      let op_args, r = parse_method_descriptor m.desc in
+      let cls = Vtype.parse_class_internal_name m.cls in
       let stack_arg_list = List.rev (cls :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
       (* let arg_list = List.rev op_args in *)
@@ -567,13 +523,13 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Invokestatic m ->
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parseMethodDescriptor m.desc in
+      let op_args, r = parse_method_descriptor m.desc in
       let stack_arg_list = List.rev op_args in
       validTypeTransition env stack_arg_list r frame |> next
   | Invokedynamic m ->
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parseMethodDescriptor m.desc in
+      let op_args, r = parse_method_descriptor m.desc in
       let stack_arg_list = List.rev op_args in
       validTypeTransition env stack_arg_list r frame |> next
   | Invokeinterface (m, count) ->
@@ -586,7 +542,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
 
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parseMethodDescriptor m.desc in
+      let op_args, r = parse_method_descriptor m.desc in
       let loader = currentClassLoader env in
       let intf = Class (m.cls, loader) in
       let stack_arg_list = List.rev (intf :: op_args) in
@@ -679,22 +635,22 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       AfterGoto
   | Lcmp -> validTypeTransition env [ Long; Long ] Int frame |> next
   | Getfield f ->
-      let t = parseFieldDescriptor f.desc in
+      let t = parse_field_descriptor f.desc in
       (* TODO: passesProtectedCheck *)
       let loader = currentClassLoader env in
       validTypeTransition env [ Class (f.cls, loader) ] t frame |> next
   | Putfield f ->
-      let t = parseFieldDescriptor f.desc in
+      let t = parse_field_descriptor f.desc in
       (* TODO: <init> and uninitializedThis *)
       let _popped = canPop frame [ t ] in
       (* TODO: passesProtectedCheck *)
       let loader = currentClassLoader env in
       canPop frame [ t; Class (f.cls, loader) ] |> next
   | Getstatic f ->
-      let t = parseFieldDescriptor f.desc in
+      let t = parse_field_descriptor f.desc in
       validTypeTransition env [] t frame |> next
   | Putstatic f ->
-      let t = parseFieldDescriptor f.desc in
+      let t = parse_field_descriptor f.desc in
       canPop frame [ t ] |> next
   | Arraylength ->
       let arraytype = List.nth frame.stack 0 in
@@ -717,15 +673,15 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       assert (isSmallArray arraytype);
       canPop frame [ Int; Int; Top ] |> next
   | Checkcast c ->
-      let t = Vtype.read_class_internal_name c.name in
+      let t = Vtype.parse_class_internal_name c.name in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] t frame |> next
   | Instanceof c ->
-      let _ = Vtype.read_class_internal_name c.name in
+      let _ = Vtype.parse_class_internal_name c.name in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] Int frame |> next
   | Anewarray c ->
-      let t = Vtype.read_class_internal_name c.name in
+      let t = Vtype.parse_class_internal_name c.name in
       validTypeTransition env [ Int ] (Array (T t)) frame |> next
   | Newarray t -> validTypeTransition env [ Int ] (Array t) frame |> next
   | Ifnull t | Ifnonnull t ->
@@ -814,7 +770,7 @@ let rec chop_rev (stack : vtype list) (remove : int) : vtype list =
   else
     match stack with
     | [] -> failwith "Ran out of space to chop off"
-    | Top :: long :: rest when sizeOf long = 2 ->
+    | Top :: long :: rest when size long = 2 ->
         Top :: Top :: chop_rev rest (remove - 1)
     | Top :: rest -> Top :: chop_rev rest remove
     | _ :: rest -> Top :: chop_rev rest (remove - 1)
@@ -832,7 +788,7 @@ let rec append (stack : vtype list) (extra : vtype list) : vtype list =
   | [], _ -> failwith "Ran out of space to append to"
   | Top :: s_rest, a :: a_rest when not @@ List.exists (( <> ) Top) s_rest ->
       a :: append s_rest a_rest
-  | long :: Top :: s_rest, _ when sizeOf long = 2 ->
+  | long :: Top :: s_rest, _ when size long = 2 ->
       long :: Top :: append s_rest extra
   | s :: s_rest, _ -> s :: append s_rest extra
 
