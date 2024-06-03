@@ -1,15 +1,9 @@
 open Shared
 
 type instrbody =
-  | Aload_0
-  | Aload_1
-  | Aload_2
-  | Aload_3
-  | Aload of int
-  | Invokevirtual of method_desc
-  | Invokespecial of method_desc
-  | Invokestatic of method_desc
-  | Return
+  (* constants *)
+  | Nop
+  | Aconst_null
   | Iconst_m1
   | Iconst_0
   | Iconst_1
@@ -17,136 +11,66 @@ type instrbody =
   | Iconst_3
   | Iconst_4
   | Iconst_5
-  | Istore_0
-  | Istore_1
-  | Istore_2
-  | Istore_3
-  | Istore of int
-  | Iload_0
-  | Iload_1
-  | Iload_2
-  | Iload_3
-  | Iload of int
-  | Iadd
-  | Ireturn
-  | If_acmpeq of int
-  | If_acmpne of int
-  | Goto of int
-  | New of class_desc
-  | Dup
-  | Ldc of loadable_constant
-  | Ldc_w of loadable_constant
-  | Ldc2_w of loadable_constant2
-  | Areturn
   | Lconst_0
   | Lconst_1
-  | Lstore of int
-  | Lstore_0
-  | Lstore_1
-  | Lstore_2
-  | Lstore_3
-  | Lload of int
-  | Lload_0
-  | Lload_1
-  | Lload_2
-  | Lload_3
-  | Astore of int
-  | Astore_0
-  | Astore_1
-  | Astore_2
-  | Astore_3
-  | Ifeq of int
-  | Ifne of int
-  | Iflt of int
-  | Ifge of int
-  | Ifgt of int
-  | Ifle of int
-  | Pop
-  | Athrow
-  | Lcmp
-  | If_icmpeq of int
-  | If_icmpne of int
-  | If_icmplt of int
-  | If_icmpge of int
-  | If_icmpgt of int
-  | If_icmple of int
-  | Ladd
-  | Getfield of field_desc
-  | Putfield of field_desc
-  | Getstatic of field_desc
-  | Putstatic of field_desc
-  | Aconst_null
-  | Ifnull of int
-  | Ifnonnull of int
-  | Checkcast of class_desc
-  | Instanceof of class_desc
-  | Monitorenter
-  | Monitorexit
-  | Invokeinterface of method_desc * int
-  | Arraylength
-  | Aaload
-  | Iinc of int * int
-  | Isub
-  | Bipush of int
-  | Sipush of int
-  | Anewarray of class_desc
-  | I2b
-  | I2c
-  | I2d
-  | Ishl
-  | Baload
-  | Iand
-  | Ior
-  | Bastore
-  | Newarray of Vtype.arraytype
-  | Fload_0
-  | Fload_1
-  | Fload_2
-  | Fload_3
-  | Fload of int
-  | Dload_0
-  | Dload_1
-  | Dload_2
-  | Dload_3
-  | Dload of int
-  | F2d
-  | Dmul
-  | D2i
-  | Ishr
-  | Ixor
-  | Imul
-  | I2l
-  | Lsub
-  | Aastore
-  | Lmul
-  | Lshl
-  | Dup2
-  | L2i
-  | Invokedynamic of Shared.dynamic_desc
-  | Caload
-  | Lookupswitch of int * (int * int) list
-  | Tableswitch of int * (int * int) * int list
-  | Castore
-  | Idiv
-  | Land
-  | Ineg
-  | Dadd
-  | Dup_x1
-  | Lor
-  | Lreturn
-  | Nop
   | Fconst_0
   | Fconst_1
   | Fconst_2
   | Dconst_0
   | Dconst_1
+  | Bipush of int
+  | Sipush of int
+  | Ldc of loadable_constant
+  | Ldc_w of loadable_constant
+  | Ldc2_w of loadable_constant2
+  (* loads *)
+  | Iload of int
+  | Lload of int
+  | Fload of int
+  | Dload of int
+  | Aload of int
+  | Iload_0
+  | Iload_1
+  | Iload_2
+  | Iload_3
+  | Lload_0
+  | Lload_1
+  | Lload_2
+  | Lload_3
+  | Fload_0
+  | Fload_1
+  | Fload_2
+  | Fload_3
+  | Dload_0
+  | Dload_1
+  | Dload_2
+  | Dload_3
+  | Aload_0
+  | Aload_1
+  | Aload_2
+  | Aload_3
   | Iaload
   | Laload
   | Faload
   | Daload
+  | Aaload
+  | Baload
+  | Caload
   | Saload
+  (* stores *)
+  | Istore of int
+  | Lstore of int
   | Fstore of int
   | Dstore of int
+  | Astore of int
+  | Istore_0
+  | Istore_1
+  | Istore_2
+  | Istore_3
+  | Lstore_0
+  | Lstore_1
+  | Lstore_2
+  | Lstore_3
   | Fstore_0
   | Fstore_1
   | Fstore_2
@@ -155,20 +79,42 @@ type instrbody =
   | Dstore_1
   | Dstore_2
   | Dstore_3
+  | Astore_0
+  | Astore_1
+  | Astore_2
+  | Astore_3
   | Iastore
   | Lastore
   | Fastore
   | Dastore
+  | Aastore
+  | Bastore
+  | Castore
   | Sastore
+  (* stack *)
+  | Pop
   | Pop2
+  | Dup
+  | Dup_x1
   | Dup_x2
+  | Dup2
   | Dup2_x1
   | Dup2_x2
   | Swap
+  (* math *)
+  | Iadd
+  | Ladd
   | Fadd
+  | Dadd
+  | Isub
+  | Lsub
   | Fsub
   | Dsub
+  | Imul
+  | Lmul
   | Fmul
+  | Dmul
+  | Idiv
   | Ldiv
   | Fdiv
   | Ddiv
@@ -176,30 +122,94 @@ type instrbody =
   | Lrem
   | Frem
   | Drem
+  | Ineg
   | Lneg
   | Fneg
   | Dneg
+  | Ishl
+  | Lshl
+  | Ishr
   | Lshr
   | Iushr
   | Lushr
+  | Iand
+  | Land
+  | Ior
+  | Lor
+  | Ixor
   | Lxor
+  | Iinc of int * int
+  (* conversions *)
+  | I2l
   | I2f
+  | I2d
+  | L2i
   | L2f
   | L2d
   | F2i
   | F2l
+  | F2d
+  | D2i
   | D2l
   | D2f
+  | I2b
+  | I2c
   | I2s
+  (* comparisons *)
+  | Lcmp
   | Fcmpl
   | Fcmpg
   | Dcmpl
   | Dcmpg
+  | Ifeq of int
+  | Ifne of int
+  | Iflt of int
+  | Ifge of int
+  | Ifgt of int
+  | Ifle of int
+  | If_icmpeq of int
+  | If_icmpne of int
+  | If_icmplt of int
+  | If_icmpge of int
+  | If_icmpgt of int
+  | If_icmple of int
+  | If_acmpeq of int
+  | If_acmpne of int
+  (* control *)
+  | Goto of int
   | Jsr of int
   | Ret of int
+  | Tableswitch of int * (int * int) * int list
+  | Lookupswitch of int * (int * int) list
+  | Ireturn
+  | Lreturn
   | Freturn
   | Dreturn
+  | Areturn
+  | Return
+  (* references *)
+  | Getstatic of field_desc
+  | Putstatic of field_desc
+  | Getfield of field_desc
+  | Putfield of field_desc
+  | Invokevirtual of method_desc
+  | Invokespecial of method_desc
+  | Invokestatic of method_desc
+  | Invokeinterface of method_desc * int
+  | Invokedynamic of Shared.dynamic_desc
+  | New of class_desc
+  | Newarray of Vtype.arraytype
+  | Anewarray of class_desc
+  | Arraylength
+  | Athrow
+  | Checkcast of class_desc
+  | Instanceof of class_desc
+  | Monitorenter
+  | Monitorexit
+  (* extended *)
   | Multianewarray of class_desc * int
+  | Ifnull of int
+  | Ifnonnull of int
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
