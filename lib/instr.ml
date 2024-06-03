@@ -191,6 +191,10 @@ type instrbody =
   | D2l
   | D2f
   | I2s
+  | Fcmpl
+  | Fcmpg
+  | Dcmpl
+  | Dcmpg
 
 let string_of_instr (i : instrbody) : string =
   let inner = function
@@ -403,6 +407,10 @@ let string_of_instr (i : instrbody) : string =
     | D2l -> ("d2l", "")
     | D2f -> ("d2f", "")
     | I2s -> ("i2s", "")
+    | Fcmpl -> ("fcmpl", "")
+    | Fcmpg -> ("fcmpg", "")
+    | Dcmpl -> ("dcmpl", "")
+    | Dcmpg -> ("dcmpg", "")
   in
   let mnemonic, args = inner i in
   Printf.sprintf "%-13s %s" mnemonic args

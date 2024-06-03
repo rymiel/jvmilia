@@ -180,6 +180,10 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x92 -> I2c
   | 0x93 -> I2s
   | 0x94 -> Lcmp
+  | 0x95 -> Fcmpl
+  | 0x96 -> Fcmpg
+  | 0x97 -> Dcmpl
+  | 0x98 -> Dcmpg
   | 0x99 -> Ifeq (branchoffset ())
   | 0x9a -> Ifne (branchoffset ())
   | 0x9b -> Iflt (branchoffset ())
