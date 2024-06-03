@@ -792,10 +792,10 @@ let chop (stack : vtype list) (remove : int) : vtype list =
   List.rev (chop_rev (List.rev stack) remove)
 
 let rec append (stack : vtype list) (extra : vtype list) : vtype list =
-  let () =
-    Printf.printf "[append] %s <- %s\n" (string_of_stack stack)
-      (string_of_stack extra)
-  in
+  (* let () =
+       Printf.printf "[append] %s <- %s\n" (string_of_stack stack)
+         (string_of_stack extra)
+     in *)
   match (stack, extra) with
   | _, [] -> stack
   | [], _ -> failwith "Ran out of space to append to"
