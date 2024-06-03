@@ -137,11 +137,13 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
              (pos + 1 + pad)
          in *)
       let () = Io.skip r pad in
-      let default = Io.read_u4_int r in
+      let default = pos + Io.read_u4_int r in
       let npairs = Io.read_u4_int r in
       let pairs =
         Io.read_list_sized r npairs (fun r ->
-            (Io.read_u4_int r, Io.read_u4_int r))
+            let m = Io.read_u4_int r in
+            let offset = Io.read_u4_int r in
+            (m, pos + offset))
       in
       Lookupswitch (default, pairs)
   | 0xac -> Ireturn
