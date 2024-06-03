@@ -696,6 +696,13 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Fload i ->
       let n = loadIsTypeSafe env i Float frame in
       (Frame n, exceptionStackFrame frame)
+  | Dload_0 -> defer (Dload 0)
+  | Dload_1 -> defer (Dload 1)
+  | Dload_2 -> defer (Dload 2)
+  | Dload_3 -> defer (Dload 3)
+  | Dload i ->
+      let n = loadIsTypeSafe env i Double frame in
+      (Frame n, exceptionStackFrame frame)
   | Istore_0 -> defer (Istore 0)
   | Istore_1 -> defer (Istore 1)
   | Istore_2 -> defer (Istore 2)
@@ -831,7 +838,7 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Sipush _ ->
       let n = validTypeTransition env [] Int frame in
       (Frame n, exceptionStackFrame frame)
-  | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul -> defer Iadd
+  | Ishl | Ishr | Iand | Ior | Isub | Ixor | Imul | Idiv -> defer Iadd
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
       (Frame frame, exceptionStackFrame frame)
@@ -914,6 +921,20 @@ let rec instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
   | Caload ->
       let n = validTypeTransition env [ Int; Array Char ] Int frame in
       (Frame n, exceptionStackFrame frame)
+  | Castore ->
+      let n = canPop frame [ Int; Int; Array Char ] in
+      (Frame n, exceptionStackFrame frame)
+  | Lookupswitch (default, pairs) ->
+      let sorted =
+        List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) pairs
+      in
+      assert (pairs = sorted);
+      let branch_frame = canPop frame [ Int ] in
+      let () =
+        List.iter (fun (_, v) -> targetIsTypeSafe env branch_frame v) pairs
+      in
+      let () = targetIsTypeSafe env branch_frame default in
+      (AfterGoto, exceptionStackFrame frame)
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
