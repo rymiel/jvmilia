@@ -790,18 +790,23 @@ let rec mergedCodeIsTypeSafe (env : jenvironment) (code : merged_code list)
 (* in *)
 (* Debug.pop result *)
 
-let rec chop_rev (stack : vtype list) (remove : int) : vtype list =
+let rec chop_rev (stack : vtype list) (remove : int) (original_remove : int) :
+    vtype list =
   if remove = 0 then stack
   else
     match stack with
     | [] -> failwith "Ran out of space to chop off"
     | Top :: long :: rest when size long = 2 ->
-        Top :: Top :: chop_rev rest (remove - 1)
-    | Top :: rest -> Top :: chop_rev rest remove
-    | _ :: rest -> Top :: chop_rev rest (remove - 1)
+        Top :: Top :: chop_rev rest (remove - 1) original_remove
+    | Top :: rest ->
+        Top
+        :: chop_rev rest
+             (if remove = original_remove then remove else remove - 1)
+             original_remove
+    | _ :: rest -> Top :: chop_rev rest (remove - 1) original_remove
 
 let chop (stack : vtype list) (remove : int) : vtype list =
-  List.rev (chop_rev (List.rev stack) remove)
+  List.rev (chop_rev (List.rev stack) remove remove)
 
 let rec append (stack : vtype list) (extra : vtype list) : vtype list =
   (* let () =
