@@ -445,7 +445,7 @@ let loadable_vtype (c : loadable_constant) : vtype =
   | Class _ -> Class ("java/lang/Class", Loader.bootstrap_loader)
 
 let loadable_vtype2 (c : loadable_constant2) : vtype =
-  match c with Long _ -> Long
+  match c with Long _ -> Long | Double _ -> Double
 
 (* TODO: assertion candidate *)
 let isSmallArray (t : vtype) : bool =

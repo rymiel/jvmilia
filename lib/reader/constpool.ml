@@ -4,6 +4,7 @@ type cp_info =
   | IntegerInfo of int32
   | FloatInfo of float
   | LongInfo of int64
+  | DoubleInfo of float
   | ClassInfo of { name_idx : int }
   | StringInfo of { str_idx : int }
   | FieldRefInfo of { cls_idx : int; nat_idx : int }
@@ -34,6 +35,11 @@ let read_cp_float (r : Io.reader) =
 let read_cp_long (r : Io.reader) =
   let value = Io.read_u8 r in
   LongInfo value
+
+let read_cp_double (r : Io.reader) =
+  let value = Io.read_u8 r in
+  let f = Int64.float_of_bits value in
+  DoubleInfo f
 
 let read_cp_class (r : Io.reader) =
   let name_idx = Io.read_u2 r in
@@ -84,6 +90,7 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | 3 -> read_cp_integer r
   | 4 -> read_cp_float r
   | 5 -> read_cp_long r
+  | 6 -> read_cp_double r
   | 7 -> read_cp_class r
   | 8 -> read_cp_string r
   | 9 -> read_cp_field_ref r
@@ -96,7 +103,7 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   | i -> failwith (Printf.sprintf "Invalid constant pool tag %i" i)
 
 let cp_info_size (x : cp_info) : int =
-  match x with LongInfo _ -> 2 | _ -> 1 (* TODO: double *)
+  match x with LongInfo _ | DoubleInfo _ -> 2 | _ -> 1
 
 type cp_entry =
   | Invalid  (** takes up the "gap" after Long or Double *)
@@ -104,6 +111,7 @@ type cp_entry =
   | Integer of int32
   | Float of float
   | Long of int64
+  | Double of float
   | Class of Shared.class_desc
   | String of string
   | FieldRef of Shared.field_desc
@@ -121,6 +129,7 @@ let cp_entry_name (info : cp_entry) : string =
   | Integer _ -> "CONSTANT_Integer"
   | Float _ -> "CONSTANT_Float"
   | Long _ -> "CONSTANT_Long"
+  | Double _ -> "CONSTANT_Double"
   | Class _ -> "CONSTANT_Class"
   | String _ -> "CONSTANT_String"
   | FieldRef _ -> "CONSTANT_FieldRef"
@@ -140,6 +149,7 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | IntegerInfo x -> Integer x
   | FloatInfo x -> Float x
   | LongInfo x -> Long x
+  | DoubleInfo x -> Double x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | StringInfo x -> String (resolve_utf8 pool x.str_idx)
   | FieldRefInfo x ->
@@ -292,6 +302,7 @@ let const_pool_loadable_constant2 (cp : const_pool) (index : int) :
   let entry = Array.get cp (index - 1) in
   match entry with
   | Long l -> Long l
+  | Double d -> Double d
   | _ ->
       failwith
         (Printf.sprintf "%s is not a loadable constant 2" (cp_entry_name entry))

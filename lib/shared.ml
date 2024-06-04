@@ -94,8 +94,14 @@ type exception_handler = {
 }
 
 type jloader = Bootstrap | UserDefined of string
-type loadable_constant = Integer of int32 | Float of float | String of string | Class of string
-type loadable_constant2 = Long of int64
+
+type loadable_constant =
+  | Integer of int32
+  | Float of float
+  | String of string
+  | Class of string
+
+type loadable_constant2 = Long of int64 | Double of float
 
 let string_of_loadable_constant (c : loadable_constant) : string =
   match c with
@@ -105,4 +111,6 @@ let string_of_loadable_constant (c : loadable_constant) : string =
   | Class s -> Printf.sprintf "class %S" s
 
 let string_of_loadable_constant2 (c : loadable_constant2) : string =
-  match c with Long l -> Printf.sprintf "long %Ld" l
+  match c with
+  | Long l -> Printf.sprintf "long %Ld" l
+  | Double d -> Printf.sprintf "double %f" d
