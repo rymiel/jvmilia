@@ -578,6 +578,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Dreturn -> check_value_return env frame i Double
   | Iconst _ -> validTypeTransition env [] Int frame |> next
   | Lconst _ -> validTypeTransition env [] Long frame |> next
+  | Fconst _ -> validTypeTransition env [] Float frame |> next
   | Iload i -> loadIsTypeSafe env i Int frame |> next
   | Lload i -> loadIsTypeSafe env i Long frame |> next
   | Fload i -> loadIsTypeSafe env i Float frame |> next
@@ -585,6 +586,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Istore i -> storeIsTypeSafe env i Int frame |> next
   | Lstore i -> storeIsTypeSafe env i Long frame |> next
   | Astore i -> storeIsTypeSafe env i Reference frame |> next
+  | Fstore i -> storeIsTypeSafe env i Float frame |> next
   | If_acmpeq t | If_acmpne t ->
       let next_frame = canPop frame [ Reference; Reference ] in
       let () = targetIsTypeSafe env next_frame t in
@@ -702,6 +704,9 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | I2f -> validTypeTransition env [ Int ] Float frame |> next
   | I2d -> validTypeTransition env [ Int ] Double frame |> next
   | D2i -> validTypeTransition env [ Double ] Int frame |> next
+  | D2f -> validTypeTransition env [ Double ] Float frame |> next
+  | F2i -> validTypeTransition env [ Float ] Int frame |> next
+  | F2l -> validTypeTransition env [ Float ] Long frame |> next
   | F2d -> validTypeTransition env [ Float ] Double frame |> next
   | I2l -> validTypeTransition env [ Int ] Long frame |> next
   | L2i -> validTypeTransition env [ Long ] Int frame |> next
@@ -742,6 +747,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       let () = List.iter (targetIsTypeSafe env branch_frame) offsets in
       let () = targetIsTypeSafe env branch_frame default in
       AfterGoto
+  | Fcmpl | Fcmpg -> validTypeTransition env [ Float; Float ] Int frame |> next
   | unimplemented ->
       failwith
         (Printf.sprintf "TODO: unimplemented instruction %s"
