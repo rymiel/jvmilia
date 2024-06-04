@@ -2,6 +2,7 @@ type cp_info =
   | InvalidInfo  (** takes up the "gap" after Long or Double *)
   | Utf8Info of string
   | IntegerInfo of int32
+  | FloatInfo of float
   | LongInfo of int64
   | ClassInfo of { name_idx : int }
   | StringInfo of { str_idx : int }
@@ -24,6 +25,11 @@ let read_cp_utf8 (r : Io.reader) =
 let read_cp_integer (r : Io.reader) =
   let value = Io.read_u4 r in
   IntegerInfo value
+
+let read_cp_float (r : Io.reader) =
+  let value = Io.read_u4 r in
+  let f = Int32.float_of_bits value in
+  FloatInfo f
 
 let read_cp_long (r : Io.reader) =
   let value = Io.read_u8 r in
@@ -76,6 +82,7 @@ let read_const_pool_info (r : Io.reader) : cp_info =
   match tag with
   | 1 -> read_cp_utf8 r
   | 3 -> read_cp_integer r
+  | 4 -> read_cp_float r
   | 5 -> read_cp_long r
   | 7 -> read_cp_class r
   | 8 -> read_cp_string r
@@ -95,6 +102,7 @@ type cp_entry =
   | Invalid  (** takes up the "gap" after Long or Double *)
   | Utf8 of string
   | Integer of int32
+  | Float of float
   | Long of int64
   | Class of Shared.class_desc
   | String of string
@@ -111,6 +119,7 @@ let cp_entry_name (info : cp_entry) : string =
   | Invalid -> "--"
   | Utf8 _ -> "CONSTANT_Utf8"
   | Integer _ -> "CONSTANT_Integer"
+  | Float _ -> "CONSTANT_Float"
   | Long _ -> "CONSTANT_Long"
   | Class _ -> "CONSTANT_Class"
   | String _ -> "CONSTANT_String"
@@ -129,6 +138,7 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
   | InvalidInfo -> Invalid
   | Utf8Info x -> Utf8 x
   | IntegerInfo x -> Integer x
+  | FloatInfo x -> Float x
   | LongInfo x -> Long x
   | ClassInfo x -> Class { name = resolve_utf8 pool x.name_idx }
   | StringInfo x -> String (resolve_utf8 pool x.str_idx)
@@ -270,6 +280,7 @@ let const_pool_loadable_constant (cp : const_pool) (index : int) :
   let entry = Array.get cp (index - 1) in
   match entry with
   | Integer x -> Integer x
+  | Float x -> Float x
   | String s -> String s
   | Class s -> Class s.name
   | _ ->

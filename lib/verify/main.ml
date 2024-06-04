@@ -440,6 +440,7 @@ let exceptionStackFrame (frame : frame) : frame = { frame with stack = [] }
 let loadable_vtype (c : loadable_constant) : vtype =
   match c with
   | Integer _ -> Int
+  | Float _ -> Float
   | String _ -> Class ("java/lang/String", Loader.bootstrap_loader)
   | Class _ -> Class ("java/lang/Class", Loader.bootstrap_loader)
 
