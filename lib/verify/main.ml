@@ -73,42 +73,49 @@ let isJavaSubclassOf (sub : string) (sub_l : jloader) (super : string)
 let array_supertypes =
   [ "java/lang/Object"; "java/lang/Cloneable"; "java/io/Serializable" ]
 
+let rec isJavaAssignable (a : vtype) (b : vtype) : bool =
+  match (a, b) with
+  | x, y when x = y -> true
+  | Class (_, _), Class ("java/lang/Object", Bootstrap) -> true
+  | Class (f, fl), Class (t, tl) ->
+      let tc = load_class t tl in
+      if classIsInterface tc then true else isJavaSubclassOf f fl t tl
+  | Array _, Class (name, loader)
+    when loader = Loader.bootstrap_loader && List.mem name array_supertypes ->
+      true
+  | Array _, Class (_, _) -> false
+  | Array (T f), Array (T t) -> isJavaAssignable f t
+  | Array f, Array t -> f = t
+  | _, _ -> false
+
 let rec isAssignable (a : vtype) (b : vtype) : bool =
-  if a = b then true
-  else
-    match (a, b) with
-    | Void, _ -> failwith "void is not assignable"
-    | _, Void -> failwith "void cannot be assigned to"
-    | Top, _ -> false
-    | OneWord, Top -> true
-    | TwoWord, Top -> true
-    | OneWord, _ -> false
-    | TwoWord, _ -> false
-    | Null, Class (_, _) -> true
-    | Null, Array _ -> true
-    | Class (_, _), Class ("java/lang/Object", Bootstrap) -> true
-    | Class (f, fl), Class (t, tl) ->
-        let tc = load_class t tl in
-        if classIsInterface tc then true else isJavaSubclassOf f fl t tl
-    | Array _, Class (name, loader)
-      when loader = Loader.bootstrap_loader && List.mem name array_supertypes ->
-        true
-    | Array _, Class (_, _) -> false
-    | Array (T (Class (f, fl))), Array (T (Class (t, tl))) ->
-        isAssignable (Class (f, fl)) (Class (t, tl))
-    | Array f, Array t -> f = t
-    | Int, x -> isAssignable OneWord x
-    | Float, x -> isAssignable OneWord x
-    | Long, x -> isAssignable TwoWord x
-    | Double, x -> isAssignable TwoWord x
-    | Reference, x -> isAssignable OneWord x
-    | Class (_, _), x -> isAssignable Reference x
-    | Array _, x -> isAssignable Reference x
-    | Uninitialized, x -> isAssignable Reference x
-    | UninitializedThis, x -> isAssignable Uninitialized x
-    | UninitializedOffset _, x -> isAssignable Uninitialized x
-    | Null, x ->
-        isAssignable (Class ("java/lang/Object", Loader.bootstrap_loader)) x
+  match (a, b) with
+  | x, y when x = y -> true
+  | Void, _ -> failwith "void is not assignable"
+  | _, Void -> failwith "void cannot be assigned to"
+  | Top, _ -> false
+  | OneWord, Top -> true
+  | TwoWord, Top -> true
+  | OneWord, _ -> false
+  | TwoWord, _ -> false
+  | Null, Class (_, _) -> true
+  | Null, Array _ -> true
+  | Class (f, fl), Class (t, tl) ->
+      isJavaAssignable (Class (f, fl)) (Class (t, tl))
+  | Array f, Class (t, tl) -> isJavaAssignable (Array f) (Class (t, tl))
+  | Array f, Array t -> isJavaAssignable (Array f) (Array t)
+  | Int, x -> isAssignable OneWord x
+  | Float, x -> isAssignable OneWord x
+  | Long, x -> isAssignable TwoWord x
+  | Double, x -> isAssignable TwoWord x
+  | Reference, x -> isAssignable OneWord x
+  | Class (_, _), x -> isAssignable Reference x
+  | Array _, x -> isAssignable Reference x
+  | Uninitialized, x -> isAssignable Reference x
+  | UninitializedThis, x -> isAssignable Uninitialized x
+  | UninitializedOffset _, x -> isAssignable Uninitialized x
+  | Null, x ->
+      isAssignable (Class ("java/lang/Object", Loader.bootstrap_loader)) x
 
 let rec finalMethodNotOverridden (mth : jmethod) (superclass : jclass) : bool =
   match
@@ -621,6 +628,11 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Dup ->
       let t, _ = popCategory1 frame.stack in
       let next_stack = canSafelyPush env frame.stack t in
+      { frame with stack = next_stack } |> next
+  | Dup_x1 ->
+      let t1, s1 = popCategory1 frame.stack in
+      let t2, s2 = popCategory1 s1 in
+      let next_stack = canSafelyPushList env s2 [ t1; t2; t1 ] in
       { frame with stack = next_stack } |> next
   | Dup2 ->
       let next_stack =
