@@ -8,4 +8,4 @@ An experiment in creating a Java Virtual Machine in OCaml.
 dune exec jvmilia -- verify java/lang/Object
 ```
 
-Class files are loaded from `test/classes/`
+Class files are loaded from `class/`
