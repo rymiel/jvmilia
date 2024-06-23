@@ -10,13 +10,9 @@
 
 using jvmilia::JVMData, jvmilia::Context;
 
-value handle_to_value(void *handle) {
-  return caml_copy_int64(std::bit_cast<uint64_t>(handle));
-}
+value handle_to_value(void* handle) { return caml_copy_int64(std::bit_cast<uint64_t>(handle)); }
 
-template <typename T = void> T *value_to_handle(value val) {
-  return std::bit_cast<T *>(Int64_val(val));
-}
+template <typename T = void> T* value_to_handle(value val) { return std::bit_cast<T*>(Int64_val(val)); }
 
 int fib(int n) {
   if (n < 2)
@@ -28,12 +24,12 @@ int fib(int n) {
 CAMLprim value fib_native(value n) { return Val_int(fib(Int_val(n))); }
 
 CAMLprim value load_library_native(value path) {
-  const char *path_str = String_val(path);
-  char *current_path = get_current_dir_name();
+  const char* path_str = String_val(path);
+  char* current_path = get_current_dir_name();
   printf("We are in: %s\n", current_path);
   free(current_path);
   printf("Loading library: %s\n", path_str);
-  void *library = dlopen(path_str, RTLD_LAZY | RTLD_GLOBAL);
+  void* library = dlopen(path_str, RTLD_LAZY | RTLD_GLOBAL);
   printf("Library: %p\n", library);
   // link_map *map = nullptr;
   // dlinfo(library, RTLD_DI_LINKMAP, &map);
@@ -69,10 +65,10 @@ CAMLprim value load_library_native(value path) {
 }
 
 CAMLprim value load_method_native(value lib_val, value name_val) {
-  void *lib = value_to_handle(lib_val);
-  const char *name = String_val(name_val);
+  void* lib = value_to_handle(lib_val);
+  const char* name = String_val(name_val);
 
-  void *method = dlsym(lib, name);
+  void* method = dlsym(lib, name);
 
   return handle_to_value(method);
 }
@@ -80,7 +76,7 @@ CAMLprim value load_method_native(value lib_val, value name_val) {
 CAMLprim value make_native_interface_native(value unit) {
   (void)unit;
 
-  JNINativeInterface *interface = new JNINativeInterface;
+  JNINativeInterface* interface = new JNINativeInterface;
   *interface = {
       nullptr,
       nullptr,
@@ -147,18 +143,12 @@ CAMLprim value make_native_interface_native(value unit) {
       /* CallVoidMethod= */ &jvmilia::CallVoidMethod,
       /* CallVoidMethodV= */ &jvmilia::CallVoidMethodV,
       /* CallVoidMethodA= */ &jvmilia::CallVoidMethodA,
-      /* CallNonvirtualObjectMethod= */
-      &jvmilia::CallNonvirtualObjectMethod,
-      /* CallNonvirtualObjectMethodV= */
-      &jvmilia::CallNonvirtualObjectMethodV,
-      /* CallNonvirtualObjectMethodA= */
-      &jvmilia::CallNonvirtualObjectMethodA,
-      /* CallNonvirtualBooleanMethod= */
-      &jvmilia::CallNonvirtualBooleanMethod,
-      /* CallNonvirtualBooleanMethodV= */
-      &jvmilia::CallNonvirtualBooleanMethodV,
-      /* CallNonvirtualBooleanMethodA= */
-      &jvmilia::CallNonvirtualBooleanMethodA,
+      /* CallNonvirtualObjectMethod= */ &jvmilia::CallNonvirtualObjectMethod,
+      /* CallNonvirtualObjectMethodV= */ &jvmilia::CallNonvirtualObjectMethodV,
+      /* CallNonvirtualObjectMethodA= */ &jvmilia::CallNonvirtualObjectMethodA,
+      /* CallNonvirtualBooleanMethod= */ &jvmilia::CallNonvirtualBooleanMethod,
+      /* CallNonvirtualBooleanMethodV= */ &jvmilia::CallNonvirtualBooleanMethodV,
+      /* CallNonvirtualBooleanMethodA= */ &jvmilia::CallNonvirtualBooleanMethodA,
       /* CallNonvirtualByteMethod= */ &jvmilia::CallNonvirtualByteMethod,
       /* CallNonvirtualByteMethodV= */ &jvmilia::CallNonvirtualByteMethodV,
       /* CallNonvirtualByteMethodA= */ &jvmilia::CallNonvirtualByteMethodA,
@@ -166,10 +156,8 @@ CAMLprim value make_native_interface_native(value unit) {
       /* CallNonvirtualCharMethodV= */ &jvmilia::CallNonvirtualCharMethodV,
       /* CallNonvirtualCharMethodA= */ &jvmilia::CallNonvirtualCharMethodA,
       /* CallNonvirtualShortMethod= */ &jvmilia::CallNonvirtualShortMethod,
-      /* CallNonvirtualShortMethodV= */
-      &jvmilia::CallNonvirtualShortMethodV,
-      /* CallNonvirtualShortMethodA= */
-      &jvmilia::CallNonvirtualShortMethodA,
+      /* CallNonvirtualShortMethodV= */ &jvmilia::CallNonvirtualShortMethodV,
+      /* CallNonvirtualShortMethodA= */ &jvmilia::CallNonvirtualShortMethodA,
       /* CallNonvirtualIntMethod= */ &jvmilia::CallNonvirtualIntMethod,
       /* CallNonvirtualIntMethodV= */ &jvmilia::CallNonvirtualIntMethodV,
       /* CallNonvirtualIntMethodA= */ &jvmilia::CallNonvirtualIntMethodA,
@@ -177,16 +165,11 @@ CAMLprim value make_native_interface_native(value unit) {
       /* CallNonvirtualLongMethodV= */ &jvmilia::CallNonvirtualLongMethodV,
       /* CallNonvirtualLongMethodA= */ &jvmilia::CallNonvirtualLongMethodA,
       /* CallNonvirtualFloatMethod= */ &jvmilia::CallNonvirtualFloatMethod,
-      /* CallNonvirtualFloatMethodV= */
-      &jvmilia::CallNonvirtualFloatMethodV,
-      /* CallNonvirtualFloatMethodA= */
-      &jvmilia::CallNonvirtualFloatMethodA,
-      /* CallNonvirtualDoubleMethod= */
-      &jvmilia::CallNonvirtualDoubleMethod,
-      /* CallNonvirtualDoubleMethodV= */
-      &jvmilia::CallNonvirtualDoubleMethodV,
-      /* CallNonvirtualDoubleMethodA= */
-      &jvmilia::CallNonvirtualDoubleMethodA,
+      /* CallNonvirtualFloatMethodV= */ &jvmilia::CallNonvirtualFloatMethodV,
+      /* CallNonvirtualFloatMethodA= */ &jvmilia::CallNonvirtualFloatMethodA,
+      /* CallNonvirtualDoubleMethod= */ &jvmilia::CallNonvirtualDoubleMethod,
+      /* CallNonvirtualDoubleMethodV= */ &jvmilia::CallNonvirtualDoubleMethodV,
+      /* CallNonvirtualDoubleMethodA= */ &jvmilia::CallNonvirtualDoubleMethodA,
       /* CallNonvirtualVoidMethod= */ &jvmilia::CallNonvirtualVoidMethod,
       /* CallNonvirtualVoidMethodV= */ &jvmilia::CallNonvirtualVoidMethodV,
       /* CallNonvirtualVoidMethodA= */ &jvmilia::CallNonvirtualVoidMethodA,
@@ -287,16 +270,14 @@ CAMLprim value make_native_interface_native(value unit) {
       /* GetLongArrayElements= */ &jvmilia::GetLongArrayElements,
       /* GetFloatArrayElements= */ &jvmilia::GetFloatArrayElements,
       /* GetDoubleArrayElements= */ &jvmilia::GetDoubleArrayElements,
-      /* ReleaseBooleanArrayElements= */
-      &jvmilia::ReleaseBooleanArrayElements,
+      /* ReleaseBooleanArrayElements= */ &jvmilia::ReleaseBooleanArrayElements,
       /* ReleaseByteArrayElements= */ &jvmilia::ReleaseByteArrayElements,
       /* ReleaseCharArrayElements= */ &jvmilia::ReleaseCharArrayElements,
       /* ReleaseShortArrayElements= */ &jvmilia::ReleaseShortArrayElements,
       /* ReleaseIntArrayElements= */ &jvmilia::ReleaseIntArrayElements,
       /* ReleaseLongArrayElements= */ &jvmilia::ReleaseLongArrayElements,
       /* ReleaseFloatArrayElements= */ &jvmilia::ReleaseFloatArrayElements,
-      /* ReleaseDoubleArrayElements= */
-      &jvmilia::ReleaseDoubleArrayElements,
+      /* ReleaseDoubleArrayElements= */ &jvmilia::ReleaseDoubleArrayElements,
       /* GetBooleanArrayRegion= */ &jvmilia::GetBooleanArrayRegion,
       /* GetByteArrayRegion= */ &jvmilia::GetByteArrayRegion,
       /* GetCharArrayRegion= */ &jvmilia::GetCharArrayRegion,
@@ -321,8 +302,7 @@ CAMLprim value make_native_interface_native(value unit) {
       /* GetStringRegion= */ &jvmilia::GetStringRegion,
       /* GetStringUTFRegion= */ &jvmilia::GetStringUTFRegion,
       /* GetPrimitiveArrayCritical= */ &jvmilia::GetPrimitiveArrayCritical,
-      /* ReleasePrimitiveArrayCritical= */
-      &jvmilia::ReleasePrimitiveArrayCritical,
+      /* ReleasePrimitiveArrayCritical= */ &jvmilia::ReleasePrimitiveArrayCritical,
       /* GetStringCritical= */ &jvmilia::GetStringCritical,
       /* ReleaseStringCritical= */ &jvmilia::ReleaseStringCritical,
       /* NewWeakGlobalRef= */ &jvmilia::NewWeakGlobalRef,
@@ -335,9 +315,9 @@ CAMLprim value make_native_interface_native(value unit) {
       /* GetModule= */ &jvmilia::GetModule,
       /* IsVirtualThread= */ &jvmilia::IsVirtualThread,
   };
-  JVMData *data = new JVMData;
+  JVMData* data = new JVMData;
 
-  Context *context = new Context;
+  Context* context = new Context;
   context->interface = interface;
   context->data = data;
 
@@ -348,17 +328,15 @@ CAMLprim value make_native_interface_native(value unit) {
 }
 
 CAMLprim value free_native_interface_native(value handle) {
-  auto *context = value_to_handle<Context>(handle);
+  auto* context = value_to_handle<Context>(handle);
 
   delete context;
 
   return Val_unit;
 }
 
-using noargs_void = void(JNIEnv *, jclass);
-CAMLprim value execute_native_noargs_void_native(value interface_int,
-                                                 value cls_value,
-                                                 value fn_int) {
+using noargs_void = void(JNIEnv*, jclass);
+CAMLprim value execute_native_noargs_void_native(value interface_int, value cls_value, value fn_int) {
   auto context = value_to_handle<Context>(interface_int);
   auto cls_string = String_val(cls_value);
   auto cls = std::bit_cast<jclass>(cls_string);
