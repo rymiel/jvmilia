@@ -7,3 +7,4 @@ val pop : bool -> bool
 val instr : Instr.instrbody -> int -> unit
 val frame : Basic.frame -> unit
 val after_goto : unit -> unit
+val concise : bool
