@@ -3,9 +3,6 @@
 
 extern "C" {
 
-// external fib : int -> int = "fib_native"
-CAMLprim value fib_native(value n);
-
 // external load_library : string -> int64 = "load_library_native"
 CAMLprim value load_library_native(value name);
 

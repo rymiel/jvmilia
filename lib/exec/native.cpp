@@ -14,52 +14,9 @@ value handle_to_value(void* handle) { return caml_copy_int64(std::bit_cast<uint6
 
 template <typename T = void> T* value_to_handle(value val) { return std::bit_cast<T*>(Int64_val(val)); }
 
-int fib(int n) {
-  if (n < 2)
-    return 1;
-  else
-    return fib(n - 1) + fib(n - 2);
-}
-
-CAMLprim value fib_native(value n) { return Val_int(fib(Int_val(n))); }
-
 CAMLprim value load_library_native(value path) {
   const char* path_str = String_val(path);
-  char* current_path = get_current_dir_name();
-  printf("We are in: %s\n", current_path);
-  free(current_path);
-  printf("Loading library: %s\n", path_str);
   void* library = dlopen(path_str, RTLD_LAZY | RTLD_GLOBAL);
-  printf("Library: %p\n", library);
-  // link_map *map = nullptr;
-  // dlinfo(library, RTLD_DI_LINKMAP, &map);
-
-  // Elf64_Sym *symtab = nullptr;
-  // char *strtab = nullptr;
-  // int symentries = 0;
-  // for (auto section = map->l_ld; section->d_tag != DT_NULL; ++section) {
-  //   if (section->d_tag == DT_SYMTAB) {
-  //     symtab = (Elf64_Sym *)section->d_un.d_ptr;
-  //   }
-  //   if (section->d_tag == DT_STRTAB) {
-  //     strtab = (char *)section->d_un.d_ptr;
-  //   }
-  //   if (section->d_tag == DT_SYMENT) {
-  //     symentries = section->d_un.d_val;
-  //   }
-  // }
-  // int size = strtab - (char *)symtab;
-  // for (int k = 0; k < size / symentries; ++k) {
-  //   auto sym = &symtab[k];
-  //   // If sym is function
-  //   if (ELF64_ST_TYPE(symtab[k].st_info) == STT_FUNC) {
-  //     // str is name of each symbol
-  //     auto str = &strtab[sym->st_name];
-  //     printf("%s\n", str);
-  //   }
-  // }
-
-  // dlclose(library);
 
   return handle_to_value(library);
 }

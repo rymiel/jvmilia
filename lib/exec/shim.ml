@@ -1,4 +1,3 @@
-external fib : int -> int = "fib_native"
 external load_library : string -> int64 = "load_library_native"
 external load_method : int64 -> string -> int64 = "load_method_native"
 external make_native_interface : unit -> int64 = "make_native_interface_native"
