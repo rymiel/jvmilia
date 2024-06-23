@@ -29,25 +29,11 @@ let method_matches_desc (d : method_desc) (m : jmethod) : bool =
 let member_method_opt (desc : method_desc) (cls : jclass) : jmethod option =
   List.find_opt (method_matches_desc desc) cls.methods
 
-(* loadedClass(Name, InitiatingLoader, ClassDefinition) *)
-let load_class (name : string) (loader : jloader) : jclass =
-  match loader with
-  | Bootstrap -> (
-      let impl = Loader.bootstrap_loader_impl () in
-      match Loader.StringMap.find_opt name !(impl.known) with
-      | Some existing -> existing
-      | None ->
-          let cls = impl.load name in
-          impl.known := Loader.StringMap.add name cls !(impl.known);
-          cls)
-  | UserDefined n ->
-      failwith (Printf.sprintf "Cannot use user-defined loader %s" n)
-
 let thisClass (env : jenvironment) : vclass = (env.cls.name, env.cls.loader)
 let currentClassLoader (env : jenvironment) : jloader = env.cls.loader
 
 let rec superclassChain (name : string) (loader : jloader) : vclass list =
-  let cls = load_class name loader in
+  let cls = Loader.load_class name loader in
   match cls.name with
   | "java/lang/Object" ->
       assert (isBootstrapLoader cls.loader);
@@ -64,8 +50,8 @@ let isJavaSubclassOf (sub : string) (sub_l : jloader) (super : string)
     let res = List.find_opt (fun (x, _) -> x = super) chain in
     match res with
     | Some (_, c_l) ->
-        let a = load_class super c_l in
-        let b = load_class super super_l in
+        let a = Loader.load_class super c_l in
+        let b = Loader.load_class super super_l in
         assert (a = b);
         true
     | None -> false
@@ -78,7 +64,7 @@ let rec isJavaAssignable (a : vtype) (b : vtype) : bool =
   | x, y when x = y -> true
   | Class (_, _), Class ("java/lang/Object", Bootstrap) -> true
   | Class (f, fl), Class (t, tl) ->
-      let tc = load_class t tl in
+      let tc = Loader.load_class t tl in
       if classIsInterface tc then true else isJavaSubclassOf f fl t tl
   | Array _, Class (name, loader)
     when loader = Loader.bootstrap_loader && List.mem name array_supertypes ->
@@ -140,12 +126,12 @@ and doesNotOverrideFinalMethodOfSuperclass (cls : jclass) (mth : jmethod) : bool
   if cls.name = "java/lang/Object" then Debug.pop true
   else
     let superclass_name = classSuperClassName cls in
-    let superclass = load_class superclass_name cls.loader in
+    let superclass = Loader.load_class superclass_name cls.loader in
     let result = finalMethodNotOverridden mth superclass in
     Debug.pop result
 
 let doesNotOverrideFinalMethod (cls : jclass) (mth : jmethod) : bool =
-  Debug.push "doesNotOverrideFinalMethod" (Debug.method_diagnostic mth cls);
+  (* Debug.push "doesNotOverrideFinalMethod" (Debug.method_diagnostic mth cls); *)
   let result =
     (cls.name = "java/lang/Object" && isBootstrapLoader cls.loader)
     || mth.access_flags.is_private || mth.access_flags.is_static
@@ -153,7 +139,8 @@ let doesNotOverrideFinalMethod (cls : jclass) (mth : jmethod) : bool =
        && (not mth.access_flags.is_static)
        && doesNotOverrideFinalMethodOfSuperclass cls mth
   in
-  Debug.pop result
+  (* Debug.pop result *)
+  result
 
 let rec mergeStackMapAndCode (stack_map : jstack_map list)
     (code : Instr.instruction list) : merged_code list =
@@ -844,13 +831,11 @@ let expand_locals (frame_size : int) (locals : vtype list) : vtype list =
 
 let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
     ((delta, desc) : delta_frame) : jstack_map * jstack_map =
-  let () =
-    if offset = 0 then Printf.printf "   0: %s\n" (string_of_frame frame)
-    else ()
-  in
+  if offset = 0 && not Debug.concise then
+    Printf.printf "   0: %s\n" (string_of_frame frame);
   let this_offset = offset + delta in
   let next_offset = this_offset + 1 in
-  let () =
+  if not Debug.concise then
     Printf.printf "%4d: %s\n" this_offset
       (match desc with
       | Same -> "same"
@@ -863,8 +848,7 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
       | FullFrame i ->
           Printf.sprintf "full_frame locals=[%s] stack=[%s]"
             (List.map string_of_vtype i.locals |> String.concat ", ")
-            (List.map string_of_vtype i.stack |> String.concat ", "))
-  in
+            (List.map string_of_vtype i.stack |> String.concat ", "));
   let v =
     match desc with
     | Same -> { frame with stack = [] }
@@ -881,7 +865,8 @@ let convert_stack_map (frame_size : int) ((offset, frame) : jstack_map)
   in
   let has_uninit = List.mem UninitializedThis v.locals in
   let v_with_uninit = { v with flags = { is_this_uninit = has_uninit } } in
-  let () = Printf.printf "      %s\n" (string_of_frame v_with_uninit) in
+  if not Debug.concise then
+    Printf.printf "      %s\n" (string_of_frame v_with_uninit);
   ((next_offset, v_with_uninit), (this_offset, v_with_uninit))
 
 let get_stack_map (code : code_attribute) : delta_frame list =
@@ -893,7 +878,7 @@ let get_stack_map (code : code_attribute) : delta_frame list =
   match v with Some x -> x | None -> []
 
 let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
-  Debug.push "methodWithCodeIsTypeSafe" (Debug.method_diagnostic mth cls);
+  (* Debug.push "methodWithCodeIsTypeSafe" (Debug.method_diagnostic mth cls); *)
   let find_code (attr : attribute) : code_attribute option =
     match attr with Code x -> Some x | _ -> None
   in
@@ -929,7 +914,8 @@ let methodWithCodeIsTypeSafe (cls : jclass) (mth : jmethod) : bool =
       assert (handlersAreLegal env);
 
       let result = mergedCodeIsTypeSafe env merged (Frame stack_frame) in
-      Debug.pop result
+      (* Debug.pop result *)
+      result
   | None ->
       failwith
         (Printf.sprintf "Method %s is missing Code attribute"
@@ -962,7 +948,7 @@ let classIsTypeSafe (cls : jclass) : bool =
         let super_chain = superclassChain cls.name cls.loader in
         let () = assert (not (List.is_empty super_chain)) in
         let superclass_name = classSuperClassName cls in
-        let superclass = load_class superclass_name cls.loader in
+        let superclass = Loader.load_class superclass_name cls.loader in
         let () =
           if classIsNotFinal superclass then ()
           else

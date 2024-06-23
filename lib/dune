@@ -2,4 +2,8 @@
 
 (library
  (name jvmilia)
- (libraries unix))
+ (foreign_stubs
+  (language cxx)
+  (names native jni)
+  (flags -std=c++20 -fPIC))
+ (libraries ctypes ctypes-foreign))
