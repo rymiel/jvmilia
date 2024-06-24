@@ -1,8 +1,6 @@
 open Java
 open Basic
 
-type instrlink = { instr : Instr.instruction; next : instrlink option }
-
 let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
     =
   let matches (m : jmethod) = m.desc = desc && m.name = name in
