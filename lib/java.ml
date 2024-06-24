@@ -8,11 +8,19 @@ type jmethod = {
   attributes : attribute list;
 }
 
+type jfield = {
+  name : string;
+  access_flags : field_access_flags;
+  desc : string;
+  attributes : attribute list;
+}
+
 type jclass = {
   name : string;
   access_flags : class_access_flags;
   superclass : string option;
   superinterfaces : string list;
   methods : jmethod list;
+  fields : jfield list;
   loader : jloader;
 }

@@ -100,19 +100,12 @@ and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
       StackMapTable table
   | _ -> Unknown (name, bytes)
 
-type field_info = {
-  access_flags : field_access_flags;
-  name : string;
-  descriptor : string;
-  attributes : attribute list;
-}
-
-let read_field_info (pool : const_pool) (r : Io.reader) : field_info =
+let read_field_info (pool : const_pool) (r : Io.reader) : jfield =
   let access_flags = field_access_flags_of_int (Io.read_u2 r) in
   let name = const_pool_utf8 pool (Io.read_u2 r) in
-  let descriptor = const_pool_utf8 pool (Io.read_u2 r) in
+  let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  { access_flags; name; descriptor; attributes }
+  { access_flags; name; desc; attributes }
 
 let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
   let access_flags = method_access_flags_of_int (Io.read_u2 r) in
@@ -129,7 +122,7 @@ type class_file = {
   this_class : string;
   super_class : string option;
   interfaces : string list;
-  fields : field_info list;
+  fields : jfield list;
   methods : jmethod list;
   attributes : attribute list;
 }
@@ -141,6 +134,7 @@ let convert_class_file (file : class_file) (loader : jloader) : jclass =
     superclass = file.super_class;
     superinterfaces = file.interfaces;
     methods = file.methods;
+    fields = file.fields;
     loader;
   }
 
