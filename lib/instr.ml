@@ -305,3 +305,17 @@ let string_of_instr (i : instrbody) : string =
   Printf.sprintf "%-13s %s" mnemonic args
 
 type instruction = int * instrbody
+
+module IntMap = Map.Make (Int)
+
+type mappedinstr = { body : instrbody; next : int }
+type instrmap = mappedinstr IntMap.t
+
+let map_instrs (instrlist : instruction list) : instrmap =
+  let rev = List.rev instrlist in
+  let fold (map, next) (addr, body) =
+    (IntMap.add addr { body; next } map, addr)
+  in
+  (* -1 means "no next instruction" *)
+  let result, _ = List.fold_left fold (IntMap.empty, -1) rev in
+  result
