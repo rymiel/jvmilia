@@ -1,17 +1,29 @@
 open Java
 module StringMap = Map.Make (String)
 
-type evalue = Void | Null
-type exec_frame = { locals : evalue array; mutable stack : evalue list }
-type eclass = { raw : jclass; mutable static : evalue StringMap.t }
+type evalue = Void | Null | Class of eclassvalue
+and eclassvalue = { cls : eclass }
+and eclass = { raw : jclass; mutable static : evalue StringMap.t }
+
+type exec_frame = {
+  locals : evalue array;
+  mutable stack : evalue list;
+  mutable pc : int;
+  mutable nextpc : int;
+  mutable retval : evalue option;
+}
+
 type instrlink = { instr : Instr.instruction; next : instrlink option }
 
 let string_of_evalue (value : evalue) : string =
-  match value with Void -> "void" | Null -> "null"
+  match value with
+  | Void -> "void"
+  | Null -> "null"
+  | Class v -> Printf.sprintf "class %s" v.cls.raw.name
 
 let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
     =
-  let matches m = m.desc = desc && m.name = name in
+  let matches (m : jmethod) = m.desc = desc && m.name = name in
   List.find_opt matches cls.raw.methods
 
 class jvm libjava interface =
@@ -36,7 +48,7 @@ class jvm libjava interface =
     method private add_frame (frame_size : int) =
       let locals = Array.make frame_size Void in
       let stack = [] in
-      let new_frame = { locals; stack } in
+      let new_frame = { locals; stack; pc = 0; nextpc = 0; retval = None } in
       frames <- new_frame :: frames
 
     method private mark_loaded (cls : eclass) =
@@ -111,7 +123,20 @@ class jvm libjava interface =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" cls.raw.name mth.name mth.desc);
       self#add_frame code.frame_size;
-      List.iter (self#exec_instr cls mth code) code.code;
+      let frame = self#curframe in
+      let map = Instr.map_instrs code.code in
+      (* Instr.IntMap.iter
+         (fun k (v : Instr.mappedinstr) ->
+           Printf.printf "%d = %s -> %d\n" k
+             (Instr.string_of_instr v.body)
+             v.next)
+         map; *)
+      while frame.pc <> -1 && Option.is_none frame.retval do
+        let m = Instr.IntMap.find frame.pc map in
+        frame.nextpc <- m.next;
+        self#exec_instr cls mth code m.body;
+        frame.pc <- frame.nextpc
+      done;
       Debug.pop ()
 
     method private exec (cls : eclass) (mth : jmethod) : unit =
