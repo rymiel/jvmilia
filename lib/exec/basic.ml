@@ -17,7 +17,7 @@ let string_of_evalue (value : evalue) : string =
   match value with
   | Void -> "void"
   | Null -> "null"
-  | Class v -> Printf.sprintf "class %s" v.cls.raw.name
+  | Class v -> Printf.sprintf "%x:%s" (Obj.magic v) v.cls.raw.name
 
 let string_of_frame (f : exec_frame) : string =
   let locals_s =

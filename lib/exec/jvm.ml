@@ -102,8 +102,13 @@ class jvm libjava interface =
             (fun i (field : jfield) ->
               Printf.printf "%d %s %s" i field.name field.desc)
             fields;
-          (* todo: declare these *)
-          failwith (Printf.sprintf "new %s" def_cls.raw.name)
+          (* todo: declare fields *)
+          self#push (Class { cls = def_cls })
+      | Dup ->
+          (* todo: longs/doubles stuff*)
+          let v = self#pop () in
+          self#push v;
+          self#push v
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
