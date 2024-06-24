@@ -30,3 +30,13 @@ let pop () : unit =
   print_string top;
   print_newline ();
   ()
+
+let instr (i : Instr.instrbody) (offset : int) : unit =
+  print_string (String.make (!depth * indent) ' ');
+  Printf.printf "** %4d: \027[36m%s\027[0m\n" offset (Instr.string_of_instr i)
+
+let frame (f : Basic.exec_frame) : unit =
+  print_string (String.make (!depth * indent) ' ');
+  print_string "::";
+  print_string (Basic.string_of_frame f);
+  print_newline ()

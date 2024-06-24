@@ -1,25 +1,7 @@
 open Java
-module StringMap = Map.Make (String)
-
-type evalue = Void | Null | Class of eclassvalue
-and eclassvalue = { cls : eclass }
-and eclass = { raw : jclass; mutable static : evalue StringMap.t }
-
-type exec_frame = {
-  locals : evalue array;
-  mutable stack : evalue list;
-  mutable pc : int;
-  mutable nextpc : int;
-  mutable retval : evalue option;
-}
+open Basic
 
 type instrlink = { instr : Instr.instruction; next : instrlink option }
-
-let string_of_evalue (value : evalue) : string =
-  match value with
-  | Void -> "void"
-  | Null -> "null"
-  | Class v -> Printf.sprintf "class %s" v.cls.raw.name
 
 let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
     =
@@ -86,9 +68,10 @@ class jvm libjava interface =
       ecls
 
     method private exec_instr (_cls : eclass) (_mth : jmethod)
-        (_code : Attr.code_attribute) (instr : Instr.instruction) : unit =
-      let _i, body = instr in
-      match body with
+        (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
+      Debug.frame self#curframe;
+      Debug.instr instr self#curframe.pc;
+      match instr with
       | Invokestatic method_desc ->
           let def_cls = self#load_class method_desc.cls in
           let def_mth =
