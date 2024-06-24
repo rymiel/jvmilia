@@ -113,6 +113,16 @@ class jvm libjava interface =
           Printf.printf "putstatic %s %s %s %s\n" def_cls.raw.name
             field_desc.name field_desc.desc (string_of_evalue value)
       | Aconst_null -> self#push Null
+      | Return -> self#curframe.retval <- Some Void
+      | New class_desc ->
+          let def_cls = self#load_class class_desc.name in
+          let fields = def_cls.raw.fields in
+          List.iteri
+            (fun i (field : jfield) ->
+              Printf.printf "%d %s %s" i field.name field.desc)
+            fields;
+          (* todo: declare these *)
+          failwith (Printf.sprintf "new %s" def_cls.raw.name)
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
