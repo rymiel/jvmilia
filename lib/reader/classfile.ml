@@ -112,7 +112,8 @@ let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  { access_flags; name; desc; attributes }
+  let nargs = Vtype.parse_method_nargs desc in
+  { access_flags; name; desc; attributes; nargs }
 
 type class_file = {
   major_version : int;

@@ -72,6 +72,7 @@ and parse_arraytype (s : string) (offset : int ref) : arraytype =
       done;
       let classname = String.sub s !offset !count in
       offset := !offset + !count + 1;
+      (* is this a good idea *)
       T (Class (classname, Bootstrap))
   | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
 
@@ -97,6 +98,17 @@ let parse_method_descriptor (desc : string) : vtype list * vtype =
   let ret = parse_vtype s offset in
   assert (!offset = String.length desc);
   (!args, ret)
+
+let parse_method_nargs (desc : string) : int =
+  let s = desc in
+  assert (String.get s 0 = '(');
+  let offset = ref 1 in
+  let args = ref 0 in
+  while String.get s !offset <> ')' do
+    let _ = parse_vtype s offset in
+    incr args
+  done;
+  !args
 
 let parse_field_descriptor (desc : string) : vtype =
   let offset = ref 0 in

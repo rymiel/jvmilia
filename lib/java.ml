@@ -6,6 +6,7 @@ type jmethod = {
   access_flags : method_access_flags;
   desc : string;
   attributes : attribute list;
+  nargs : int;
 }
 
 type jfield = {
