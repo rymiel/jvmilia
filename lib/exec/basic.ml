@@ -1,8 +1,15 @@
 open Java
 module StringMap = Map.Make (String)
 
-type evalue = Void | Null | Class of eclassvalue
+type evalue =
+  | Void
+  | Null
+  | Class of eclassvalue
+  | Int of int
+  | Array of earrayvalue
+
 and eclassvalue = { cls : eclass }
+and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
 and eclass = { raw : jclass; mutable static : evalue StringMap.t }
 
 type exec_frame = {
@@ -14,10 +21,18 @@ type exec_frame = {
 }
 
 let string_of_evalue (value : evalue) : string =
-  match value with
-  | Void -> "void"
-  | Null -> "null"
-  | Class v -> Printf.sprintf "%x:%s" (Obj.magic v) v.cls.raw.name
+  let base =
+    match value with
+    | Void -> "void"
+    | Null -> "null"
+    | Class v -> v.cls.raw.name
+    | Int v -> Printf.sprintf "int %d" v
+    | Array v ->
+        Printf.sprintf "array %s[%d]"
+          (Vtype.string_of_arraytype v.ty)
+          (Array.length v.arr)
+  in
+  Printf.sprintf "%x:%s" (Obj.magic value) base
 
 let string_of_frame (f : exec_frame) : string =
   let locals_s =

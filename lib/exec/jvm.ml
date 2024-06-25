@@ -25,11 +25,21 @@ class jvm libjava interface =
       frame.stack <- List.tl frame.stack;
       value
 
+    method private local n : evalue = self#curframe.locals.(n)
+
     method private add_frame (frame_size : int) =
       let locals = Array.make frame_size Void in
       let stack = [] in
       let new_frame = { locals; stack; pc = 0; nextpc = 0; retval = None } in
       frames <- new_frame :: frames
+
+    (* i might regret this returning just evalue instead of evalue option *)
+    method private pop_frame () : evalue =
+      let frame = self#curframe in
+      frames <- List.tl frames;
+      match frame.retval with
+      | Some v -> v
+      | None -> failwith "Frame returned nothing"
 
     method private mark_loaded (cls : eclass) =
       loaded <- StringMap.add cls.raw.name cls loaded
@@ -52,14 +62,14 @@ class jvm libjava interface =
       (* mark as loaded before clinit, otherwise we recurse *)
       (match find_method ecls "<clinit>" "()V" with
       | Some clinit ->
-          self#exec ecls clinit;
+          self#exec ecls clinit [];
           ()
       | None -> ());
       (* openjdk is special *)
       (if cls.name = "java/lang/System" then
          match find_method ecls "initPhase1" "()V" with
          | Some init ->
-             self#exec ecls init;
+             self#exec ecls init [];
              ()
          | None -> ());
       (* todo other verification/linking stuff idk *)
@@ -83,7 +93,23 @@ class jvm libjava interface =
             def_mth.access_flags.is_static
             && not def_mth.access_flags.is_abstract);
           (* todo frame stuff *)
-          self#exec def_cls def_mth
+          (* todo arguments *)
+          self#exec def_cls def_mth []
+      | Invokespecial method_desc ->
+          let def_cls = self#load_class method_desc.cls in
+          (* todo proper method resolution *)
+          (* todo find actual method, looking up superclasses if necessary *)
+          let def_mth =
+            match find_method def_cls method_desc.name method_desc.desc with
+            | Some m -> m
+            | None ->
+                failwith
+                  "Cannot find method to invokespecial (TODO add more info)"
+          in
+          let objectref = self#pop () in
+          (* todo frame stuff *)
+          (* todo arguments *)
+          self#exec def_cls def_mth [ objectref ]
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           failwith (Printf.sprintf "getstatic %s" def_cls.raw.name)
@@ -109,16 +135,37 @@ class jvm libjava interface =
           let v = self#pop () in
           self#push v;
           self#push v
+      | Aload i ->
+          (* todo: longs/doubles stuff*)
+          let v = self#local i in
+          self#push v
+      | Ldc x ->
+          (* todo *)
+          assert (match x with Shared.Class _ -> true | _ -> false);
+          self#push (Class { cls = self#load_class "java/lang/Class" })
+      | Iconst v -> self#push (Int v)
+      | Anewarray c ->
+          let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
+          let size =
+            match self#pop () with
+            | Int v -> v
+            | x ->
+                failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
+          in
+          let arr = Array.make size Null in
+          self#push (Array { ty; arr })
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
                (Instr.string_of_instr x))
 
     method private exec_code (cls : eclass) (mth : jmethod)
-        (code : Attr.code_attribute) : unit =
+        (code : Attr.code_attribute) (args : evalue list) : unit =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" cls.raw.name mth.name mth.desc);
       self#add_frame code.frame_size;
+      (* todo longs and stuff *)
+      List.iteri (fun i v -> self#curframe.locals.(i) <- v) args;
       let frame = self#curframe in
       let map = Instr.map_instrs code.code in
       (* Instr.IntMap.iter
@@ -133,9 +180,14 @@ class jvm libjava interface =
         self#exec_instr cls mth code m.body;
         frame.pc <- frame.nextpc
       done;
+      (match self#pop_frame () with
+      | Void -> ()
+      | x ->
+          failwith (Printf.sprintf "unhandled return %s" (string_of_evalue x)));
       Debug.pop ()
 
-    method private exec (cls : eclass) (mth : jmethod) : unit =
+    method private exec (cls : eclass) (mth : jmethod) (args : evalue list)
+        : unit =
       let find_code (attr : Attr.attribute) : Attr.code_attribute option =
         match attr with Code x -> Some x | _ -> None
       in
@@ -151,7 +203,7 @@ class jvm libjava interface =
         Shim.execute_native_noargs_void interface cls.raw.name method_handle)
       else
         match List.find_map find_code mth.attributes with
-        | Some code_attr -> self#exec_code cls mth code_attr
+        | Some code_attr -> self#exec_code cls mth code_attr args
         | None -> failwith "Can't execute non-code method"
 
     method exec_main (main_class_name : string) : unit =
@@ -161,7 +213,8 @@ class jvm libjava interface =
           let flags = main_method.access_flags in
           if not flags.is_static then failwith "Main method is not static";
           if not flags.is_public then failwith "Main method is not public";
-          self#exec main_class main_method
+          (* todo: the String[] argument *)
+          self#exec main_class main_method []
       | None -> failwith "This class does not have a main method"
   end
 
