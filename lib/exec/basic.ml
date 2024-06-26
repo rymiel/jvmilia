@@ -8,7 +8,7 @@ type evalue =
   | Int of int
   | Array of earrayvalue
 
-and eclassvalue = { cls : eclass }
+and eclassvalue = { cls : eclass; mutable fields : evalue StringMap.t }
 and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
 and eclass = { raw : jclass; mutable static : evalue StringMap.t }
 

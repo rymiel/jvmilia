@@ -6,6 +6,15 @@ let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
   let matches (m : jmethod) = m.desc = desc && m.name = name in
   List.find_opt matches cls.raw.methods
 
+let rec split (list : 'a list) (n : int) : 'a list * 'a list =
+  if n = 0 then ([], list)
+  else
+    match list with
+    | [] -> failwith "Ran out of list to split"
+    | x :: xs ->
+        let a, b = split xs (n - 1) in
+        (x :: a, b)
+
 class jvm libjava interface =
   object (self)
     val mutable frames : exec_frame list = []
@@ -25,7 +34,14 @@ class jvm libjava interface =
       frame.stack <- List.tl frame.stack;
       value
 
-    method private local n : evalue = self#curframe.locals.(n)
+    method private pop_list n : evalue list =
+      let frame = self#curframe in
+      let popped, remaining = split frame.stack n in
+      frame.stack <- remaining;
+      popped
+
+    method private load n : evalue = self#curframe.locals.(n)
+    method private store n v : unit = self#curframe.locals.(n) <- v
 
     method private add_frame (frame_size : int) =
       let locals = Array.make frame_size Void in
@@ -94,7 +110,10 @@ class jvm libjava interface =
             && not def_mth.access_flags.is_abstract);
           (* todo frame stuff *)
           (* todo arguments *)
-          self#exec def_cls def_mth []
+          let args = self#pop_list def_mth.nargs in
+          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
+            (String.concat ", " (List.map string_of_evalue args));
+          self#exec def_cls def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
@@ -107,12 +126,45 @@ class jvm libjava interface =
                   "Cannot find method to invokespecial (TODO add more info)"
           in
           let objectref = self#pop () in
+          (* todo remove this constraint *)
+          assert (
+            match objectref with
+            | Class x ->
+                x.cls.raw.name = method_desc.cls
+                || method_desc.cls = "java/lang/Object"
+            | _ -> false);
           (* todo frame stuff *)
           (* todo arguments *)
+          assert (def_mth.nargs = 0);
+          self#exec def_cls def_mth [ objectref ]
+      | Invokevirtual method_desc ->
+          let def_cls = self#load_class method_desc.cls in
+          (* todo proper method resolution *)
+          (* todo find actual method, looking up superclasses if necessary *)
+          let def_mth =
+            match find_method def_cls method_desc.name method_desc.desc with
+            | Some m -> m
+            | None ->
+                failwith
+                  "Cannot find method to invokevirtual (TODO add more info)"
+          in
+          let objectref = self#pop () in
+          (* todo remove this constraint *)
+          assert (
+            match objectref with
+            | Class x -> x.cls.raw.name = method_desc.cls
+            | _ -> false);
+          (* todo frame stuff *)
+          (* todo arguments *)
+          assert (def_mth.nargs = 0);
           self#exec def_cls def_mth [ objectref ]
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           failwith (Printf.sprintf "getstatic %s" def_cls.raw.name)
+      | Getfield field_desc -> (
+          match self#pop () with
+          | Class x -> StringMap.find field_desc.name x.fields |> self#push
+          | _ -> failwith "Can't get field of non-object type")
       | Putstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           let value = self#pop () in
@@ -129,20 +181,23 @@ class jvm libjava interface =
               Printf.printf "%d %s %s" i field.name field.desc)
             fields;
           (* todo: declare fields *)
-          self#push (Class { cls = def_cls })
+          self#push (Class { cls = def_cls; fields = StringMap.empty })
       | Dup ->
           (* todo: longs/doubles stuff*)
           let v = self#pop () in
           self#push v;
           self#push v
-      | Aload i ->
-          (* todo: longs/doubles stuff*)
-          let v = self#local i in
-          self#push v
+      | Aload i -> self#load i |> self#push
+      | Astore i -> self#pop () |> self#store i
+      | Ifnonnull target -> (
+          match self#pop () with
+          | Null -> ()
+          | _ -> self#curframe.nextpc <- target)
       | Ldc x ->
           (* todo *)
           assert (match x with Shared.Class _ -> true | _ -> false);
-          self#push (Class { cls = self#load_class "java/lang/Class" })
+          let fields = StringMap.add "classLoader" Null StringMap.empty in
+          self#push (Class { cls = self#load_class "java/lang/Class"; fields })
       | Iconst v -> self#push (Int v)
       | Anewarray c ->
           let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
