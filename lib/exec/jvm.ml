@@ -255,6 +255,7 @@ class jvm libjava interface =
           native_name;
         let method_handle = Shim.load_method libjava native_name in
         Printf.printf "%s -> %#Lx\n%!" native_name method_handle;
+        if method_handle = 0L then failwith "Method handle is null";
         Shim.execute_native_noargs_void interface cls.raw.name method_handle)
       else
         match List.find_map find_code mth.attributes with

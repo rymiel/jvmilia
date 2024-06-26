@@ -296,10 +296,15 @@ CAMLprim value free_native_interface_native(value handle) {
 using noargs_void = void(JNIEnv*, jclass);
 CAMLprim value execute_native_noargs_void_native(value interface_int, value cls_value, value fn_int) {
   CAMLparam3(interface_int, cls_value, fn_int);
-  auto context = value_to_handle<Context>(interface_int);
-  auto cls_string = String_val(cls_value);
-  auto cls = std::bit_cast<jclass>(cls_string);
-  auto function = value_to_handle<noargs_void>(fn_int);
+  auto* context = value_to_handle<Context>(interface_int);
+  const char* cls_string = String_val(cls_value);
+  auto* cls = std::bit_cast<jclass>(cls_string);
+  auto* function = value_to_handle<noargs_void>(fn_int);
+
+  if (function == nullptr) {
+    std::puts("Function handle is null!");
+    std::exit(1);
+  }
 
   function(&context->interface, cls);
 
