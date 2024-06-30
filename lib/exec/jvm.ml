@@ -19,8 +19,8 @@ class jvm libjava interface =
   object (self)
     val mutable frames : exec_frame list = []
     val mutable loaded : eclass StringMap.t = StringMap.empty
-    val libjava : int64 = libjava
-    val interface : int64 = interface
+    val libjava : int = libjava
+    val interface : int = interface
     method free = Shim.free_native_interface interface
     method private curframe = List.hd frames
 
@@ -264,9 +264,9 @@ class jvm libjava interface =
                 native_name;
               Shim.load_method libjava native_name
         in
-        Printf.printf "%s %s %s -> %#Lx\n%!" cls.raw.name mth.name mth.desc
+        Printf.printf "%s %s %s -> %#x\n%!" cls.raw.name mth.name mth.desc
           method_handle;
-        if method_handle = 0L then failwith "Method handle is null";
+        if method_handle = 0 then failwith "Method handle is null";
         let param_types, ret_type = Vtype.parse_method_descriptor mth.desc in
         let args_real =
           if mth.access_flags.is_static then
@@ -281,7 +281,7 @@ class jvm libjava interface =
             receiver :: args
           else args
         in
-        Printf.printf "%#Lx ((%s) -> %s) [%s]\n%!" method_handle
+        Printf.printf "%#x ((%s) -> %s) [%s]\n%!" method_handle
           (String.concat ", " (List.map Vtype.string_of_vtype param_types))
           (Vtype.string_of_vtype ret_type)
           (String.concat ", " (List.map string_of_evalue args_real));
@@ -312,5 +312,5 @@ let create_jvm (loader : string -> jclass) : jvm =
   Loader.initialize_bootstrap_loader loader;
   let libjava = Shim.load_library "./class/extern-lib/libjava.so" in
   let interface = Shim.make_native_interface () in
-  Printf.printf "libjava: %#Lx\n" libjava;
+  Printf.printf "libjava: %#x\n" libjava;
   new jvm libjava interface

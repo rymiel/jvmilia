@@ -1,19 +1,18 @@
-external load_library : string -> int64 = "load_library_native"
-external load_method : int64 -> string -> int64 = "load_method_native"
-external make_native_interface : unit -> int64 = "make_native_interface_native"
-external free_native_interface : int64 -> unit = "free_native_interface_native"
+external load_library : string -> int = "load_library_native"
+external load_method : int -> string -> int = "load_method_native"
+external make_native_interface : unit -> int = "make_native_interface_native"
+external free_native_interface : int -> unit = "free_native_interface_native"
 
-external execute_native_noargs_void : int64 -> string -> int64 -> unit
+external execute_native_noargs_void : int -> string -> int -> unit
   = "execute_native_noargs_void_native"
 
 external execute_native_auto :
-  int64 ->
+  int ->
   Basic.evalue list ->
   Vtype.vtype list ->
   Vtype.vtype ->
-  int64 ->
+  int ->
   Basic.evalue = "execute_native_auto_native"
 
-external get_registered_fnptr :
-  int64 -> string -> string -> string -> int64 option
+external get_registered_fnptr : int -> string -> string -> string -> int option
   = "get_registered_fnptr_native"

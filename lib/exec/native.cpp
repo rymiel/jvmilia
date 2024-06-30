@@ -35,15 +35,9 @@ std::filesystem::path create_temporary_file(std::filesystem::path& temp_dir, std
   return temp_dir / (std::to_string(i) + "_" + std::string(id) + "_" + std::string(suffix));
 }
 
-std::ofstream open_as_temporary(std::filesystem::path& path) {
-  auto os = std::ofstream(path.c_str());
-  // unlink(path.c_str());
-  return os;
-}
+value handle_to_value(void* handle) { return Val_long(std::bit_cast<uint64_t>(handle)); }
 
-value handle_to_value(void* handle) { return caml_copy_int64(std::bit_cast<uint64_t>(handle)); }
-
-template <typename T = void> T* value_to_handle(value val) { return std::bit_cast<T*>(Int64_val(val)); }
+template <typename T = void> T* value_to_handle(value val) { return std::bit_cast<T*>(Long_val(val)); }
 
 CAMLprim value load_library_native(value path) {
   const char* path_str = String_val(path);
@@ -625,36 +619,36 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   auto arg_evalues = list_vector_map(params, &evalue_conversion);
   auto param_vtypes = list_vector_map(param_types, &vtype_conversion);
   for (auto v : param_vtypes) {
-    std::printf("* %s\n", vtype_string(v).data());
+    std::printf("<- %s\n", vtype_string(v).data());
   }
 
   auto ret_vtype = vtype_conversion(ret_type);
-  std::printf("* %s\n", vtype_string(ret_vtype).data());
+  std::printf("-> %s\n", vtype_string(ret_vtype).data());
 
   // compat
-  if (param_types == Val_emptylist && params != Val_emptylist && value_is_cons(params) &&
-      evalue_is_class(Field(params, 0)) && Field(params, 1) == Val_emptylist && ret_vtype == vtype::Void) {
-    const char* cls_string = evalue_class_name(Field(params, 0));
+  // if (param_types == Val_emptylist && params != Val_emptylist && value_is_cons(params) &&
+  //     evalue_is_class(Field(params, 0)) && Field(params, 1) == Val_emptylist && ret_vtype == vtype::Void) {
+  //   const char* cls_string = evalue_class_name(Field(params, 0));
 
-    std::printf("cls_string %s\n", cls_string);
+  //   std::printf("cls_string %s\n", cls_string);
 
-    auto* cls = std::bit_cast<jclass>(cls_string);
-    auto* function = value_to_handle<noargs_void>(fn_ptr);
+  //   auto* cls = std::bit_cast<jclass>(cls_string);
+  //   auto* function = value_to_handle<noargs_void>(fn_ptr);
 
-    if (function == nullptr) {
-      std::puts("Function handle is null!");
-      std::exit(1);
-    }
-    function(&context->interface, cls);
-    CAMLreturn(Val_unit);
-  }
+  //   if (function == nullptr) {
+  //     std::puts("Function handle is null!");
+  //     std::exit(1);
+  //   }
+  //   function(&context->interface, cls);
+  //   CAMLreturn(Val_unit);
+  // }
 
   {
     auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
     build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
     auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
     auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
-    auto os = open_as_temporary(src_path);
+    auto os = std::ofstream(src_path.c_str());
     build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), os);
     os.flush();
 
@@ -683,11 +677,15 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
     }
 
     void* bridge_ptr = dlsym(library, bridge_name.c_str());
+    // TODO: cache
     err = dlerror();
     if (err != nullptr) {
       printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
       std::exit(1);
     }
+
+    unlink(src_path.c_str());
+    unlink(dst_path.c_str());
 
     auto* bridge = std::bit_cast<bridge_t>(bridge_ptr);
     std::printf("bridge: %p\n", bridge);
@@ -695,6 +693,10 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
     auto result = bridge(value_to_handle<fn_t>(fn_ptr), &context->interface, arg_evalues);
 
     std::printf("result: %lx\n", result.j);
+
+    if (ret_vtype == vtype::Void) {
+      CAMLreturn(Val_unit);
+    }
   }
 
   std::exit(1);
