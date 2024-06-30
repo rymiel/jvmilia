@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdarg>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
+
 extern "C" {
 
 using JNIEnv = const struct JNINativeInterface*;
@@ -396,6 +398,7 @@ struct JNINativeInterface {
 namespace jvmilia {
 struct JVMData {
   std::unordered_map<std::string, void*> registeredNatives;
+  std::filesystem::path temp;
 };
 
 struct Context {

@@ -2,14 +2,44 @@
 #include "jni.h"
 #include <bit>
 #include <caml/alloc.h>
+#include <caml/fail.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
+#include <cassert>
+#include <concepts>
+#include <cstring>
 #include <dlfcn.h>
 #include <elf.h>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <link.h>
+#include <sstream>
+#include <string_view>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
 using jvmilia::JVMData, jvmilia::Context;
+
+std::filesystem::path create_temporary_directory() {
+  auto tmp_dir = std::filesystem::temp_directory_path();
+  auto path = tmp_dir / "jvmilia";
+  std::filesystem::create_directory(path);
+  return path;
+}
+
+std::filesystem::path create_temporary_file(std::filesystem::path& temp_dir, std::string_view id,
+                                            std::string_view suffix) {
+  auto i = getpid();
+  return temp_dir / (std::to_string(i) + "_" + std::string(id) + "_" + std::string(suffix));
+}
+
+std::ofstream open_as_temporary(std::filesystem::path& path) {
+  auto os = std::ofstream(path.c_str());
+  // unlink(path.c_str());
+  return os;
+}
 
 value handle_to_value(void* handle) { return caml_copy_int64(std::bit_cast<uint64_t>(handle)); }
 
@@ -281,6 +311,8 @@ CAMLprim value make_native_interface_native(value unit) {
   };
   JVMData* data = new JVMData;
 
+  data->temp = create_temporary_directory();
+
   Context* context = new Context;
   context->interface = interface;
   context->data = data;
@@ -293,6 +325,8 @@ CAMLprim value make_native_interface_native(value unit) {
 
 CAMLprim value free_native_interface_native(value handle) {
   auto* context = value_to_handle<Context>(handle);
+
+  std::filesystem::remove_all(context->data->temp);
 
   delete context;
 
@@ -314,6 +348,356 @@ CAMLprim value execute_native_noargs_void_native(value interface_int, value cls_
 
   function(&context->interface, cls);
 
+  CAMLreturn(Val_unit);
+}
+
+bool value_is_cons(value v) {
+  CAMLparam1(v);
+
+  CAMLreturnT(bool, Is_block(v) && Tag_val(v) == 0 && Wosize_val(v) == 2);
+}
+
+void iter_list(value input, std::invocable<value> auto fn) {
+  CAMLparam1(input);
+  CAMLlocal3(list, a, b);
+
+  list = input;
+
+  while (true) {
+    if (list == Val_emptylist) {
+      // printf("(empty list)\n");
+      CAMLreturn0;
+    } else {
+      assert(value_is_cons(list));
+      a = Field(list, 0);
+      b = Field(list, 1);
+      // printf("car = %p; cdr = %p\n", std::bit_cast<void*>(a), std::bit_cast<void*>(b));
+      fn(a);
+      list = b;
+    }
+  }
+
+  CAMLreturn0;
+}
+
+auto list_vector(value list) -> std::vector<value> {
+  CAMLparam1(list);
+
+  auto vec = std::vector<value>{};
+
+  iter_list(list, [&vec](value v) { vec.push_back(v); });
+
+  CAMLreturnT(auto&, vec);
+}
+
+template <std::invocable<value> Fn>
+auto list_vector_map(value list, Fn fn) -> std::vector<std::invoke_result_t<Fn, value>> {
+  CAMLparam1(list);
+
+  auto vec = std::vector<std::invoke_result_t<Fn, value>>{};
+
+  iter_list(list, [&vec, &fn](value v) { vec.push_back(fn(v)); });
+
+  CAMLreturnT(auto&, vec);
+}
+
+void dump_value(value input, int max_depth = 100, std::vector<int> depth = {}) {
+  CAMLparam1(input);
+
+  int indent = depth.size();
+
+  for (int i = 0; i < indent; i++) {
+    std::putchar('\t');
+  }
+
+  if (indent > 0) {
+    std::putchar('[');
+    bool flag = false;
+    for (int i : depth) {
+      if (flag) {
+        std::putchar('.');
+      }
+      printf("%d", i);
+      flag = true;
+    }
+    std::printf("] ");
+  }
+
+  if (Is_block(input)) {
+    auto tag = Tag_val(input);
+    if (tag < No_scan_tag) {
+      auto wosize = Wosize_val(input);
+      std::printf("block (tag=%d, wosize=%lu, p=%p)", tag, wosize, std::bit_cast<void*>(input));
+      if (max_depth == 0) {
+        std::puts(" <...>");
+        CAMLreturn0;
+      } else {
+        std::puts("");
+        for (int i = 0; i < wosize; i++) {
+          auto d = depth;
+          d.push_back(i);
+          dump_value(Field(input, i), max_depth - 1, d);
+        }
+      }
+    } else if (tag == String_tag) {
+      std::printf("string (\"%s\")\n", String_val(input));
+    } else {
+      std::printf("raw block (tag=%d, p=%p)\n", tag, std::bit_cast<void*>(input));
+    }
+  } else {
+    std::printf("int %ld\n", Long_val(input));
+  }
+
+  CAMLreturn0;
+}
+
+bool evalue_is_class(value evalue) {
+  CAMLparam1(evalue);
+
+  CAMLreturnT(bool, Is_block(evalue) && Tag_val(evalue) == 0 && Wosize_val(evalue) == 1);
+}
+
+const char* evalue_class_name(value evalue) {
+  CAMLparam1(evalue);
+
+  assert(evalue_is_class(evalue));
+
+  // Class.eclassvalue(0).cls(0).raw(0).name(0)
+  const char* name = String_val(Field(Field(Field(Field(evalue, 0), 0), 0), 0));
+
+  CAMLreturnT(const char*, name);
+}
+
+jvalue evalue_conversion(value v) {
+  jvalue j = {};
+  if (evalue_is_class(v)) {
+    j.l = std::bit_cast<jclass>(evalue_class_name(v));
+    return j;
+  } else {
+    std::puts("unimplement evalue");
+    std::exit(4);
+  }
+}
+
+enum struct vtype { Nil, Class, Void, Int };
+
+auto vtype_string(vtype v) -> std::string_view {
+  switch (v) {
+  case vtype::Class: return "class";
+  case vtype::Void: return "void";
+  case vtype::Nil: return "nil";
+  case vtype::Int: return "int";
+  }
+  __builtin_unreachable();
+}
+
+void vtype_c_type(vtype ty, std::ostream& os) {
+  switch (ty) {
+  case vtype::Class: os << "void*"; return;
+  case vtype::Void: os << "void"; return;
+  case vtype::Nil: os << "nil"; return;
+  case vtype::Int: os << "int"; return;
+  }
+  __builtin_unreachable();
+}
+
+void vtype_c_active_union(vtype ty, std::ostream& os) {
+  switch (ty) {
+  case vtype::Class: os << "l"; return;
+  case vtype::Void: os << "void"; return;
+  case vtype::Nil: os << "nil"; return;
+  case vtype::Int: os << "i"; return;
+  }
+  __builtin_unreachable();
+}
+
+auto vtype_conversion(value v) -> vtype {
+  CAMLparam1(v);
+
+  if (Is_block(v)) {
+    switch (Tag_val(v)) {
+    case 0: dump_value(v); caml_failwith("Invalid vtype in this context");
+    case 1: {
+      const char* name = String_val(Field(v, 0));
+      if (strcmp(name, "java/lang/Class") == 0) {
+        return vtype::Class;
+      }
+      caml_failwith("Unimplemented class vtype");
+    }
+    default: caml_failwith("Unimplemented block vtype");
+    }
+  } else {
+    switch (Long_val(v)) {
+    case 2: return vtype::Int;
+    case 11: return vtype::Void;
+    default: caml_failwith("Unimplemented integer vtype");
+    }
+  }
+}
+
+std::string build_bridge_name(std::vector<vtype>& args, vtype ret) {
+  std::stringstream bridge_os{};
+  bridge_os << "jvmilia_bridge_";
+  for (auto v : args) {
+    vtype_c_active_union(v, bridge_os);
+  }
+  bridge_os << "_";
+  vtype_c_active_union(ret, bridge_os);
+
+  return bridge_os.str();
+}
+
+void build_source(std::vector<vtype>& args, vtype ret, void* target, std::ostream& os) {
+  bool not_void = ret != vtype::Void;
+  os << "#include <vector>\n#include <bit>\n\n";
+  os << "union jvalue { unsigned char z; signed char b; unsigned short c; short s; int i; long j; float f; double d; "
+        "void* l; };\n\n";
+  vtype_c_type(ret, os);
+  os << " target(";
+  os << "void** env, void* receiver";
+  int i = 0;
+  for (auto v : args) {
+    os << ", ";
+    vtype_c_type(v, os);
+    os << " arg" << i;
+    i++;
+  }
+  os << ");\n";
+  os << "using target_type = decltype(target);\n\n";
+  os << "extern \"C\" jvalue jvmilia_bridge_";
+  for (auto v : args) {
+    vtype_c_active_union(v, os);
+  }
+  os << "_";
+  vtype_c_active_union(ret, os);
+  os << "(void* fn_ptr, void** env, std::vector<jvalue> args) {\n";
+  os << "  auto function = std::bit_cast<target_type*>(fn_ptr);\n";
+  os << "  jvalue ret;\n";
+  os << "  ret.j = 0;\n";
+  os << "  ";
+  if (not_void) {
+    os << "auto result = ";
+  }
+  os << "function(env, args[0].l";
+  i = 1;
+  for (auto v : args) {
+    os << ", args[";
+    os << i << "].";
+    vtype_c_active_union(v, os);
+    i++;
+  }
+  os << ");\n";
+  if (not_void) {
+    os << "  ret.";
+    vtype_c_active_union(ret, os);
+    os << " = result;\n";
+  }
+  os << "  return ret;\n";
+  os << "}\n";
+}
+
+using fn_t = void (*)(void);
+using bridge_t = jvalue (*)(fn_t*, JNIEnv*, std::vector<jvalue>);
+CAMLprim value execute_native_auto_native(value interface, value params, value param_types, value ret_type,
+                                          value fn_ptr) {
+  CAMLparam5(interface, params, param_types, ret_type, fn_ptr);
+  auto* context = value_to_handle<Context>(interface);
+
+  auto foo = Val_emptylist;
+  std::printf("params: %p\nparam_types: %p\nret_type: %p\n", std::bit_cast<void*>(params),
+              std::bit_cast<void*>(param_types), std::bit_cast<void*>(ret_type));
+
+  // std::puts("params:");
+  // int i = 0;
+  // iter_list(params, [&i](value v) {
+  //   dump_value(v, 3, {i});
+  //   i++;
+  // });
+  // std::puts("param_types:");
+  // i = 0;
+  // iter_list(param_types, [&i](value v) {
+  //   dump_value(v, 4, {i});
+  //   i++;
+  // });
+  // std::printf("ret_type: ");
+  // dump_value(ret_type, 4);
+
+  auto arg_evalues = list_vector_map(params, &evalue_conversion);
+  auto param_vtypes = list_vector_map(param_types, &vtype_conversion);
+  for (auto v : param_vtypes) {
+    std::printf("* %s\n", vtype_string(v).data());
+  }
+
+  auto ret_vtype = vtype_conversion(ret_type);
+  std::printf("* %s\n", vtype_string(ret_vtype).data());
+
+  // compat
+  if (param_types == Val_emptylist && params != Val_emptylist && value_is_cons(params) &&
+      evalue_is_class(Field(params, 0)) && Field(params, 1) == Val_emptylist && ret_vtype == vtype::Void) {
+    const char* cls_string = evalue_class_name(Field(params, 0));
+
+    std::printf("cls_string %s\n", cls_string);
+
+    auto* cls = std::bit_cast<jclass>(cls_string);
+    auto* function = value_to_handle<noargs_void>(fn_ptr);
+
+    if (function == nullptr) {
+      std::puts("Function handle is null!");
+      std::exit(1);
+    }
+    function(&context->interface, cls);
+    CAMLreturn(Val_unit);
+  }
+
+  {
+    auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
+    build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
+    auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
+    auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
+    auto os = open_as_temporary(src_path);
+    build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), os);
+    os.flush();
+
+    auto child = fork();
+    std::printf("fork: %d\n", child);
+    if (child == 0) {
+      execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
+      std::exit(1);
+    } else {
+      int status;
+      do {
+        if (::waitpid(child, &status, 0) == -1) {
+          std::perror("waitpid");
+          break;
+        }
+      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+      std::puts("Exited");
+    }
+
+    void* library = dlopen(dst_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+
+    const char* err = dlerror();
+    if (err != nullptr) {
+      printf("error: execute_native_auto_native: dlopen: %s: %s\n", dst_path.c_str(), err);
+      std::exit(1);
+    }
+
+    void* bridge_ptr = dlsym(library, bridge_name.c_str());
+    err = dlerror();
+    if (err != nullptr) {
+      printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
+      std::exit(1);
+    }
+
+    auto* bridge = std::bit_cast<bridge_t>(bridge_ptr);
+    std::printf("bridge: %p\n", bridge);
+
+    auto result = bridge(value_to_handle<fn_t>(fn_ptr), &context->interface, arg_evalues);
+
+    std::printf("result: %lx\n", result.j);
+  }
+
+  std::exit(1);
   CAMLreturn(Val_unit);
 }
 

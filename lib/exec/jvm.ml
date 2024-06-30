@@ -198,6 +198,7 @@ class jvm libjava interface =
           assert (match x with Shared.Class _ -> true | _ -> false);
           let fields = StringMap.add "classLoader" Null StringMap.empty in
           self#push (Class { cls = self#load_class "java/lang/Class"; fields })
+          (* todo extract *)
       | Iconst v -> self#push (Int v)
       | Anewarray c ->
           let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
@@ -220,6 +221,7 @@ class jvm libjava interface =
         (Printf.sprintf "%s.%s %s" cls.raw.name mth.name mth.desc);
       self#add_frame code.frame_size;
       (* todo longs and stuff *)
+      Debug.frame self#curframe;
       List.iteri (fun i v -> self#curframe.locals.(i) <- v) args;
       let frame = self#curframe in
       let map = Instr.map_instrs code.code in
@@ -265,7 +267,29 @@ class jvm libjava interface =
         Printf.printf "%s %s %s -> %#Lx\n%!" cls.raw.name mth.name mth.desc
           method_handle;
         if method_handle = 0L then failwith "Method handle is null";
-        Shim.execute_native_noargs_void interface cls.raw.name method_handle)
+        let param_types, ret_type = Vtype.parse_method_descriptor mth.desc in
+        let args_real =
+          if mth.access_flags.is_static then
+            (* todo extract *)
+            let receiver =
+              Class
+                {
+                  cls = self#load_class "java/lang/Class";
+                  fields = StringMap.empty;
+                }
+            in
+            receiver :: args
+          else args
+        in
+        Printf.printf "%#Lx ((%s) -> %s) [%s]\n%!" method_handle
+          (String.concat ", " (List.map Vtype.string_of_vtype param_types))
+          (Vtype.string_of_vtype ret_type)
+          (String.concat ", " (List.map string_of_evalue args_real));
+        let result =
+          Shim.execute_native_auto interface args_real param_types ret_type
+            method_handle
+        in
+        Printf.printf "Return value: %s\n%!" (string_of_evalue result))
       else
         match List.find_map find_code mth.attributes with
         | Some code_attr -> self#exec_code cls mth code_attr args

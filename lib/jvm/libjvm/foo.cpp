@@ -1,7 +1,18 @@
+#include "../../exec/jni.h"
+#include <bit>
 #include <cstdio>
 #include <cstdlib>
+
 extern "C" {
-void lib_function() { printf("Hello world\n"); }
+
+jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
+  auto* unused_name = std::bit_cast<const char*>(unused);
+  auto* cls_name = std::bit_cast<const char*>(cls);
+  std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
+  //   std::exit(1);
+
+  return 0;
+}
 
 void JVM_ActiveProcessorCount() {
   std::puts("libjvm: JVM_ActiveProcessorCount");
@@ -137,10 +148,6 @@ void JVM_DefineClassWithSource() {
 }
 void JVM_DefineModule() {
   std::puts("libjvm: JVM_DefineModule");
-  std::exit(1);
-}
-void JVM_DesiredAssertionStatus() {
-  std::puts("libjvm: JVM_DesiredAssertionStatus");
   std::exit(1);
 }
 void JVM_DumpClassListToFile() {

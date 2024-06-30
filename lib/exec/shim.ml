@@ -6,5 +6,14 @@ external free_native_interface : int64 -> unit = "free_native_interface_native"
 external execute_native_noargs_void : int64 -> string -> int64 -> unit
   = "execute_native_noargs_void_native"
 
-external get_registered_fnptr : int64 -> string -> string -> string -> int64 option
+external execute_native_auto :
+  int64 ->
+  Basic.evalue list ->
+  Vtype.vtype list ->
+  Vtype.vtype ->
+  int64 ->
+  Basic.evalue = "execute_native_auto_native"
+
+external get_registered_fnptr :
+  int64 -> string -> string -> string -> int64 option
   = "get_registered_fnptr_native"
