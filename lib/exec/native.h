@@ -17,4 +17,7 @@ CAMLprim value free_native_interface_native(value handle);
 
 // external execute_native_noargs_void : int64 -> string -> int64 -> unit = "execute_native_noargs_void_native"
 CAMLprim value execute_native_noargs_void_native(value interface, value cls, value handle);
+
+// external get_registered_fnptr : int64 -> string -> string -> string -> int64 option = "get_registered_fnptr_native"
+CAMLprim value get_registered_fnptr_native(value interface, value class_name, value method, value signature);
 }

@@ -19,6 +19,12 @@ CAMLprim value load_library_native(value path) {
   const char* path_str = String_val(path);
   void* library = dlopen(path_str, RTLD_LAZY | RTLD_GLOBAL);
 
+  const char* err = dlerror();
+  if (err != nullptr) {
+    printf("error: load_library_native: dlopen: %s: %s\n", path_str, err);
+    std::exit(1);
+  }
+
   return handle_to_value(library);
 }
 
@@ -309,4 +315,28 @@ CAMLprim value execute_native_noargs_void_native(value interface_int, value cls_
   function(&context->interface, cls);
 
   CAMLreturn(Val_unit);
+}
+
+CAMLprim value get_registered_fnptr_native(value interface_int, value class_name, value method, value signature) {
+  CAMLparam4(interface_int, class_name, method, signature);
+
+  auto* context = value_to_handle<Context>(interface_int);
+  const char* cls_string = String_val(class_name);
+  const char* mth_string = String_val(method);
+  const char* sig_string = String_val(signature);
+
+  auto key = jvmilia::registerKey(cls_string, mth_string, sig_string);
+  printf("get_registered_fnptr_native: looking up: %s\n", key.data());
+  auto& map = context->data->registeredNatives;
+  auto iter = map.find(key);
+  if (iter == map.end()) {
+    printf("get_registered_fnptr_native: didn't find %s\n", key.data());
+    CAMLreturn(Val_none);
+  }
+
+  void* fnptr = iter->second;
+  printf("get_registered_fnptr_native: found %s: %p\n", key.data(), fnptr);
+  auto fnptr_value = handle_to_value(fnptr);
+  auto return_value = caml_alloc_some(fnptr_value);
+  CAMLreturn(return_value);
 }

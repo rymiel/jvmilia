@@ -16,13 +16,14 @@ JVMData* getData(JNIEnv* env) {
 
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   auto* data = getData(env);
+  const char* className = std::bit_cast<const char*>(clazz);
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
-    auto key = std::string(method.name) + ";" + method.signature;
-    data->registered_natives.insert_or_assign(key, method.fnPtr);
+    auto key = registerKey(className, method.name, method.signature);
+    data->registeredNatives.insert_or_assign(key, method.fnPtr);
   }
 
-  for (auto [k, v] : data->registered_natives) {
+  for (auto [k, v] : data->registeredNatives) {
     printf("%s -> %p\n", k.data(), v);
   }
 

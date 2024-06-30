@@ -247,14 +247,23 @@ class jvm libjava interface =
         match attr with Code x -> Some x | _ -> None
       in
       if mth.access_flags.is_native then (
-        let as_underscore c = if c = '/' then '_' else c in
-        let native_name =
-          "Java_" ^ String.map as_underscore cls.raw.name ^ "_" ^ mth.name
+        let registered =
+          Shim.get_registered_fnptr interface cls.raw.name mth.name mth.desc
         in
-        Printf.printf "Native method %s.%s -> %s\n" cls.raw.name mth.name
-          native_name;
-        let method_handle = Shim.load_method libjava native_name in
-        Printf.printf "%s -> %#Lx\n%!" native_name method_handle;
+        let method_handle =
+          match registered with
+          | Some fnptr -> fnptr
+          | None ->
+              let as_underscore c = if c = '/' then '_' else c in
+              let native_name =
+                "Java_" ^ String.map as_underscore cls.raw.name ^ "_" ^ mth.name
+              in
+              Printf.printf "Native method %s.%s -> %s\n" cls.raw.name mth.name
+                native_name;
+              Shim.load_method libjava native_name
+        in
+        Printf.printf "%s %s %s -> %#Lx\n%!" cls.raw.name mth.name mth.desc
+          method_handle;
         if method_handle = 0L then failwith "Method handle is null";
         Shim.execute_native_noargs_void interface cls.raw.name method_handle)
       else
@@ -277,8 +286,7 @@ class jvm libjava interface =
 let create_jvm (loader : string -> jclass) : jvm =
   (* TODO: maybe this should be stored in jvm *)
   Loader.initialize_bootstrap_loader loader;
-  let libjvm = Shim.load_library "/usr/lib/jvm/default/lib/server/libjvm.so" in
   let libjava = Shim.load_library "./class/extern-lib/libjava.so" in
   let interface = Shim.make_native_interface () in
-  Printf.printf "libjvm: %#Lx, libjava: %#Lx\n" libjvm libjava;
+  Printf.printf "libjava: %#Lx\n" libjava;
   new jvm libjava interface
