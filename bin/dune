@@ -1,4 +1,4 @@
 (executable
  (public_name jvmilia)
  (name main)
- (libraries jvmilia))
+ (libraries jvmilia libjvmilia))

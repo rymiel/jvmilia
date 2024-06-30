@@ -1,0 +1,24 @@
+(include_subdirs no)
+
+(library
+ (name libjvmilia)
+ (foreign_archives jvm))
+
+(install
+ (files libjvm.so)
+ (section lib)
+ (package jvmilia))
+
+(rule
+ (deps
+  (source_tree libjvm))
+ (targets libjvm.a libjvm.so dlljvm.so)
+ (action
+  (no-infer
+   (progn
+    (chdir
+     libjvm
+     (run make))
+    (copy libjvm/build/libjvm.a libjvm.a)
+    (copy libjvm/build/libjvm.so libjvm.so)
+    (copy libjvm/build/libjvm.so dlljvm.so)))))
