@@ -52,6 +52,9 @@ jclass FindClass(JNIEnv* env, const char* name) {
   unimplemented("FindClass");
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+
 jint GetVersion(JNIEnv* env) { unimplemented("GetVersion"); }
 jclass DefineClass(JNIEnv* env, const char* name, jobject loader, const jbyte* buf, jsize len) {
   unimplemented("DefineClass");
@@ -518,4 +521,7 @@ jlong GetDirectBufferCapacity(JNIEnv* env, jobject buf) { unimplemented("GetDire
 jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj) { unimplemented("GetObjectRefType"); }
 jobject GetModule(JNIEnv* env, jclass clazz) { unimplemented("GetModule"); }
 jboolean IsVirtualThread(JNIEnv* env, jobject obj) { unimplemented("IsVirtualThread"); }
+
+#pragma clang diagnostic pop
+
 } // namespace jvmilia
