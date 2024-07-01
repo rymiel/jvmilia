@@ -475,6 +475,24 @@ jvalue evalue_conversion(value v) {
 
 enum struct vtype { Nil, Class, Void, Int };
 
+value reconstruct_evalue(jvalue j, vtype ty) {
+  CAMLparam0();
+  CAMLlocal1(result);
+
+  switch (ty) {
+  case vtype::Int: {
+    result = caml_alloc(1, 1);
+    Store_field(result, 0, Val_int(j.i));
+    CAMLreturn(result);
+  }
+  case vtype::Class:
+  case vtype::Void:
+  case vtype::Nil: std::puts("Unimplemented"); std::exit(7);
+  }
+
+  __builtin_unreachable();
+}
+
 auto vtype_string(vtype v) -> std::string_view {
   switch (v) {
   case vtype::Class: return "class";
@@ -643,64 +661,61 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   //   CAMLreturn(Val_unit);
   // }
 
-  {
-    auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
-    build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
-    auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
-    auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
-    auto os = std::ofstream(src_path.c_str());
-    build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), os);
-    os.flush();
+  auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
+  build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
+  auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
+  auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
+  auto os = std::ofstream(src_path.c_str());
+  build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), os);
+  os.flush();
 
-    auto child = fork();
-    std::printf("fork: %d\n", child);
-    if (child == 0) {
-      execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
-      std::exit(1);
-    } else {
-      int status;
-      do {
-        if (::waitpid(child, &status, 0) == -1) {
-          std::perror("waitpid");
-          break;
-        }
-      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-      std::puts("Exited");
-    }
-
-    void* library = dlopen(dst_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
-
-    const char* err = dlerror();
-    if (err != nullptr) {
-      printf("error: execute_native_auto_native: dlopen: %s: %s\n", dst_path.c_str(), err);
-      std::exit(1);
-    }
-
-    void* bridge_ptr = dlsym(library, bridge_name.c_str());
-    // TODO: cache
-    err = dlerror();
-    if (err != nullptr) {
-      printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
-      std::exit(1);
-    }
-
-    unlink(src_path.c_str());
-    unlink(dst_path.c_str());
-
-    auto* bridge = std::bit_cast<bridge_t>(bridge_ptr);
-    std::printf("bridge: %p\n", bridge);
-
-    auto result = bridge(value_to_handle<fn_t>(fn_ptr), &context->interface, arg_evalues);
-
-    std::printf("result: %lx\n", result.j);
-
-    if (ret_vtype == vtype::Void) {
-      CAMLreturn(Val_unit);
-    }
+  auto child = fork();
+  std::printf("fork: %d\n", child);
+  if (child == 0) {
+    execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
+    std::exit(1);
+  } else {
+    int status;
+    do {
+      if (::waitpid(child, &status, 0) == -1) {
+        std::perror("waitpid");
+        break;
+      }
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    std::puts("Exited");
   }
 
-  std::exit(1);
-  CAMLreturn(Val_unit);
+  void* library = dlopen(dst_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+
+  const char* err = dlerror();
+  if (err != nullptr) {
+    printf("error: execute_native_auto_native: dlopen: %s: %s\n", dst_path.c_str(), err);
+    std::exit(1);
+  }
+
+  void* bridge_ptr = dlsym(library, bridge_name.c_str());
+  // TODO: cache
+  err = dlerror();
+  if (err != nullptr) {
+    printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
+    std::exit(1);
+  }
+
+  unlink(src_path.c_str());
+  unlink(dst_path.c_str());
+
+  auto* bridge = std::bit_cast<bridge_t>(bridge_ptr);
+  std::printf("bridge: %p\n", bridge);
+
+  auto result = bridge(value_to_handle<fn_t>(fn_ptr), &context->interface, arg_evalues);
+
+  std::printf("result: %lx\n", result.j);
+
+  if (ret_vtype == vtype::Void) {
+    CAMLreturn(Val_unit);
+  }
+
+  CAMLreturn(reconstruct_evalue(result, ret_vtype));
 }
 
 CAMLprim value get_registered_fnptr_native(value interface_int, value class_name, value method, value signature) {
