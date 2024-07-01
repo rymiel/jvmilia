@@ -1,5 +1,5 @@
-#include "native.h"
-#include "jni.h"
+#include "native.hpp"
+#include "jni.hpp"
 #include <bit>
 #include <caml/alloc.h>
 #include <caml/fail.h>

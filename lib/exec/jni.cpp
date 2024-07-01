@@ -1,4 +1,4 @@
-#include "jni.h"
+#include "jni.hpp"
 #include <bit>
 #include <cstdio>
 #include <cstdlib>
