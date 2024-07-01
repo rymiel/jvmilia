@@ -266,9 +266,12 @@ class jvm libjava interface =
               let native_name =
                 "Java_" ^ String.map as_underscore cls.raw.name ^ "_" ^ mth.name
               in
+              let filtered_name =
+                Str.global_replace (Str.regexp "\\$") "_00024" native_name
+              in
               Printf.printf "Native method %s.%s -> %s\n" cls.raw.name mth.name
-                native_name;
-              Shim.load_method libjava native_name
+                filtered_name;
+              Shim.load_method libjava filtered_name
         in
         Printf.printf "%s %s %s -> %#x\n%!" cls.raw.name mth.name mth.desc
           method_handle;

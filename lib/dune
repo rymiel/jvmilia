@@ -6,4 +6,4 @@
   (language cxx)
   (names native jni)
   (flags -std=c++20 -fPIC -Wall -Wextra))
- (libraries ctypes ctypes-foreign))
+ (libraries str))
