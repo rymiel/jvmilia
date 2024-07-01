@@ -181,7 +181,7 @@ class jvm libjava interface =
           let fields = def_cls.raw.fields in
           List.iteri
             (fun i (field : jfield) ->
-              Printf.printf "%d %s %s" i field.name field.desc)
+              Printf.printf "%d %s %s\n" i field.name field.desc)
             fields;
           (* todo: declare fields *)
           self#push (Class { cls = def_cls; fields = StringMap.empty })
@@ -196,6 +196,12 @@ class jvm libjava interface =
           match self#pop () with
           | Null -> ()
           | _ -> self#curframe.nextpc <- target)
+      | If (cond, target) -> (
+          match (cond, self#pop ()) with
+          | Ne, Int 0 -> ()
+          | Ne, _ -> self#curframe.nextpc <- target
+          | _ -> failwith "unimplemented")
+      | Goto target -> self#curframe.nextpc <- target
       | Ldc x ->
           (* todo *)
           assert (match x with Shared.Class _ -> true | _ -> false);
