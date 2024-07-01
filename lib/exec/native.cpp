@@ -432,6 +432,30 @@ CAMLprim value make_native_interface_native(value unit) {
   // __builtin_dump_struct(context, printf);
   printf("interface: %p; data: %p; context: %p\n", interface, data, context);
 
+  const std::tuple<std::vector<vtype>, vtype> to_preload[] = {
+      {{}, vtype::Void}, {{vtype::Class}, vtype::Int}, {{}, vtype::Class}};
+
+  auto src_path = create_temporary_file(context->data->temp, "preload", "source.cpp");
+  auto dst_path = create_temporary_file(context->data->temp, "preload", "lib.so");
+  auto os = std::ofstream(src_path.c_str());
+  codegen::build_source_header(std::cout);
+  codegen::build_source_header(os);
+  int i = 0;
+  for (auto [args, ret] : to_preload) {
+    codegen::build_source_function(args, ret, std::cout, i);
+    codegen::build_source_function(args, ret, os, i++);
+  }
+
+  codegen::compile_shared_library(src_path, dst_path);
+  for (auto [args, ret] : to_preload) {
+    auto bridge_name = codegen::build_bridge_name(args, ret);
+    auto* bridge = codegen::load_and_cache_bridge_function(dst_path, bridge_name, context->data->cachedBridges);
+    printf("%s: %p\n", bridge_name.c_str(), bridge);
+  }
+
+  unlink(src_path.c_str());
+  unlink(dst_path.c_str());
+
   return handle_to_value(context);
 }
 
