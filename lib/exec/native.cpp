@@ -455,7 +455,7 @@ jvalue evalue_conversion(value v) {
   }
 }
 
-enum struct vtype { Nil, Class, Void, Int };
+enum struct vtype { Nil, Class, Void, Int, Array };
 
 value reconstruct_evalue(jvalue j, vtype ty) {
   CAMLparam0();
@@ -469,7 +469,8 @@ value reconstruct_evalue(jvalue j, vtype ty) {
   }
   case vtype::Class:
   case vtype::Void:
-  case vtype::Nil: std::puts("Unimplemented"); std::exit(7);
+  case vtype::Nil:
+  case vtype::Array: std::puts("Unimplemented"); std::exit(7);
   }
 
   __builtin_unreachable();
@@ -481,13 +482,15 @@ auto vtype_string(vtype v) -> std::string_view {
   case vtype::Void: return "void";
   case vtype::Nil: return "nil";
   case vtype::Int: return "int";
+  case vtype::Array: return "array";
   }
   __builtin_unreachable();
 }
 
 void vtype_c_type(vtype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Class: os << "void*"; return;
+  case vtype::Class:
+  case vtype::Array: os << "void*"; return;
   case vtype::Void: os << "void"; return;
   case vtype::Nil: os << "nil"; return;
   case vtype::Int: os << "int"; return;
@@ -497,7 +500,8 @@ void vtype_c_type(vtype ty, std::ostream& os) {
 
 void vtype_c_active_union(vtype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Class: os << "l"; return;
+  case vtype::Class:
+  case vtype::Array: os << "l"; return;
   case vtype::Void: os << "void"; return;
   case vtype::Nil: os << "nil"; return;
   case vtype::Int: os << "i"; return;
@@ -518,7 +522,8 @@ auto vtype_conversion(value v) -> vtype {
       }
       caml_failwith("Unimplemented class vtype");
     }
-    default: caml_failwith("Unimplemented block vtype");
+    case 2: CAMLreturnT(vtype, vtype::Array);
+    default: caml_failwith("Invalid block vtype");
     }
   } else {
     switch (Long_val(v)) {
@@ -665,7 +670,6 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
     }
 
     bridge_ptr = dlsym(library, bridge_name.c_str());
-    // TODO: cache
     err = dlerror();
     if (err != nullptr) {
       printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
