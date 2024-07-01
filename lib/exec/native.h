@@ -3,6 +3,8 @@
 
 extern "C" {
 
+namespace jvmilia {
+
 // external load_library : string -> int64 = "load_library_native"
 CAMLprim value load_library_native(value name);
 
@@ -22,4 +24,6 @@ CAMLprim value get_registered_fnptr_native(value interface, value class_name, va
 // = "execute_native_auto_native"
 CAMLprim value execute_native_auto_native(value interface, value params, value param_types, value ret_type,
                                           value fn_ptr);
+
+} // namespace jvmilia
 }

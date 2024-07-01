@@ -1,4 +1,5 @@
-#include "jni.hpp"
+#include "jni.h"
+#include "jvm.h"
 #include <bit>
 #include <cstdio>
 #include <cstdlib>

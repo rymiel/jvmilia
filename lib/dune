@@ -4,6 +4,6 @@
  (name jvmilia)
  (foreign_stubs
   (language cxx)
-  (names native jni)
+  (names native jni caml_interface)
   (flags -std=c++20 -fPIC -Wall -Wextra))
  (libraries str))
