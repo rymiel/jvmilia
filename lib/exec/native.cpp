@@ -327,24 +327,6 @@ CAMLprim value free_native_interface_native(value handle) {
   return Val_unit;
 }
 
-using noargs_void = void(JNIEnv*, jclass);
-CAMLprim value execute_native_noargs_void_native(value interface_int, value cls_value, value fn_int) {
-  CAMLparam3(interface_int, cls_value, fn_int);
-  auto* context = value_to_handle<Context>(interface_int);
-  const char* cls_string = String_val(cls_value);
-  auto* cls = std::bit_cast<jclass>(cls_string);
-  auto* function = value_to_handle<noargs_void>(fn_int);
-
-  if (function == nullptr) {
-    std::puts("Function handle is null!");
-    std::exit(1);
-  }
-
-  function(&context->interface, cls);
-
-  CAMLreturn(Val_unit);
-}
-
 bool value_is_cons(value v) {
   CAMLparam1(v);
 
@@ -642,24 +624,6 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   auto ret_vtype = vtype_conversion(ret_type);
   std::printf("-> %s\n", vtype_string(ret_vtype).data());
-
-  // compat
-  // if (param_types == Val_emptylist && params != Val_emptylist && value_is_cons(params) &&
-  //     evalue_is_class(Field(params, 0)) && Field(params, 1) == Val_emptylist && ret_vtype == vtype::Void) {
-  //   const char* cls_string = evalue_class_name(Field(params, 0));
-
-  //   std::printf("cls_string %s\n", cls_string);
-
-  //   auto* cls = std::bit_cast<jclass>(cls_string);
-  //   auto* function = value_to_handle<noargs_void>(fn_ptr);
-
-  //   if (function == nullptr) {
-  //     std::puts("Function handle is null!");
-  //     std::exit(1);
-  //   }
-  //   function(&context->interface, cls);
-  //   CAMLreturn(Val_unit);
-  // }
 
   auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
   build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
