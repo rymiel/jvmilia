@@ -23,18 +23,39 @@ jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, 
     data->registeredNatives.insert_or_assign(key, method.fnPtr);
   }
 
-  for (auto [k, v] : data->registeredNatives) {
-    printf("%s -> %p\n", k.data(), v);
-  }
+  // for (auto [k, v] : data->registeredNatives) {
+  //   printf("%s -> %p\n", k.data(), v);
+  // }
 
   return 0;
+}
+
+jboolean ExceptionCheck(JNIEnv* env) {
+  // TODO: exceptions
+  (void)env;
+  puts("jni: ExceptionCheck");
+
+  return 0;
+}
+
+jint EnsureLocalCapacity(JNIEnv* env, jint capacity) {
+  // TODO: not sure what i'm even meant to check here
+  (void)env;
+  (void)capacity;
+  printf("jni: EnsureLocalCapacity %d\n", capacity);
+
+  return 0;
+}
+
+jclass FindClass(JNIEnv* env, const char* name) {
+  printf("jni: FindClass %s\n", name);
+  unimplemented("FindClass");
 }
 
 jint GetVersion(JNIEnv* env) { unimplemented("GetVersion"); }
 jclass DefineClass(JNIEnv* env, const char* name, jobject loader, const jbyte* buf, jsize len) {
   unimplemented("DefineClass");
 }
-jclass FindClass(JNIEnv* env, const char* name) { unimplemented("FindClass"); }
 jmethodID FromReflectedMethod(JNIEnv* env, jobject method) { unimplemented("FromReflectedMethod"); }
 jfieldID FromReflectedField(JNIEnv* env, jobject field) { unimplemented("FromReflectedField"); }
 jobject ToReflectedMethod(JNIEnv* env, jclass cls, jmethodID methodID, jboolean isStatic) {
@@ -58,7 +79,6 @@ void DeleteGlobalRef(JNIEnv* env, jobject gref) { unimplemented("DeleteGlobalRef
 void DeleteLocalRef(JNIEnv* env, jobject obj) { unimplemented("DeleteLocalRef"); }
 jboolean IsSameObject(JNIEnv* env, jobject obj1, jobject obj2) { unimplemented("IsSameObject"); }
 jobject NewLocalRef(JNIEnv* env, jobject ref) { unimplemented("NewLocalRef"); }
-jint EnsureLocalCapacity(JNIEnv* env, jint capacity) { unimplemented("EnsureLocalCapacity"); }
 jobject AllocObject(JNIEnv* env, jclass clazz) { unimplemented("AllocObject"); }
 jobject NewObject(JNIEnv* env, jclass clazz, jmethodID methodID, ...) { unimplemented("NewObject"); }
 jobject NewObjectV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) { unimplemented("NewObjectV"); }
@@ -492,7 +512,6 @@ void ReleaseStringCritical(JNIEnv* env, jstring string, const jchar* cstring) {
 }
 jweak NewWeakGlobalRef(JNIEnv* env, jobject obj) { unimplemented("NewWeakGlobalRef"); }
 void DeleteWeakGlobalRef(JNIEnv* env, jweak ref) { unimplemented("DeleteWeakGlobalRef"); }
-jboolean ExceptionCheck(JNIEnv* env) { unimplemented("ExceptionCheck"); }
 jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) { unimplemented("NewDirectByteBuffer"); }
 void* GetDirectBufferAddress(JNIEnv* env, jobject buf) { unimplemented("GetDirectBufferAddress"); }
 jlong GetDirectBufferCapacity(JNIEnv* env, jobject buf) { unimplemented("GetDirectBufferCapacity"); }
