@@ -173,6 +173,9 @@ class jvm libjava interface =
             field_desc.name field_desc.desc (string_of_evalue value)
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
+      | Ireturn ->
+          let value = self#pop () in
+          self#curframe.retval <- Some value
       | New class_desc ->
           let def_cls = self#load_class class_desc.name in
           let fields = def_cls.raw.fields in
@@ -237,10 +240,7 @@ class jvm libjava interface =
         self#exec_instr cls mth code m.body;
         frame.pc <- frame.nextpc
       done;
-      (match self#pop_frame () with
-      | Void -> ()
-      | x ->
-          failwith (Printf.sprintf "unhandled return %s" (string_of_evalue x)));
+      (match self#pop_frame () with Void -> () | x -> self#push x);
       Debug.pop ()
 
     method private exec (cls : eclass) (mth : jmethod) (args : evalue list)
@@ -289,7 +289,8 @@ class jvm libjava interface =
           Shim.execute_native_auto interface args_real param_types ret_type
             method_handle
         in
-        Printf.printf "Return value: %s\n%!" (string_of_evalue result))
+        Printf.printf "Return value: %s\n%!" (string_of_evalue result);
+        match ret_type with Void -> () | _ -> self#push result)
       else
         match List.find_map find_code mth.attributes with
         | Some code_attr -> self#exec_code cls mth code_attr args
