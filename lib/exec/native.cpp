@@ -615,7 +615,6 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   // std::printf("ret_type: ");
   // dump_value(ret_type, 4);
 
-  auto arg_evalues = list_vector_map(params, &evalue_conversion);
   auto param_vtypes = list_vector_map(param_types, &vtype_conversion);
   for (auto v : param_vtypes) {
     std::printf("<- %s\n", vtype_string(v).data());
@@ -625,51 +624,63 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   std::printf("-> %s\n", vtype_string(ret_vtype).data());
 
   auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
-  build_source(param_vtypes, ret_vtype, std::cout);
-  auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
-  auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
-  auto os = std::ofstream(src_path.c_str());
-  build_source(param_vtypes, ret_vtype, os);
-  os.flush();
+  void* bridge_ptr;
 
-  auto child = fork();
-  std::printf("fork: %d\n", child);
-  if (child == 0) {
-    execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
-    std::exit(1);
+  auto& map = context->data->cachedBridges;
+  auto iter = map.find(bridge_name);
+  if (iter != map.end()) {
+    printf("found cached bridge for %s: %p\n", bridge_name.c_str(), iter->second);
+    bridge_ptr = iter->second;
   } else {
-    int status;
-    do {
-      if (::waitpid(child, &status, 0) == -1) {
-        std::perror("waitpid");
-        break;
-      }
-    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    std::puts("Exited");
+
+    build_source(param_vtypes, ret_vtype, std::cout);
+    auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
+    auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
+    auto os = std::ofstream(src_path.c_str());
+    build_source(param_vtypes, ret_vtype, os);
+    os.flush();
+
+    auto child = fork();
+    std::printf("fork: %d\n", child);
+    if (child == 0) {
+      execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
+      std::exit(1);
+    } else {
+      int status;
+      do {
+        if (::waitpid(child, &status, 0) == -1) {
+          std::perror("waitpid");
+          break;
+        }
+      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+      std::puts("Exited");
+    }
+
+    void* library = dlopen(dst_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+
+    const char* err = dlerror();
+    if (err != nullptr) {
+      printf("error: execute_native_auto_native: dlopen: %s: %s\n", dst_path.c_str(), err);
+      std::exit(1);
+    }
+
+    bridge_ptr = dlsym(library, bridge_name.c_str());
+    // TODO: cache
+    err = dlerror();
+    if (err != nullptr) {
+      printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
+      std::exit(1);
+    }
+
+    unlink(src_path.c_str());
+    unlink(dst_path.c_str());
+    context->data->cachedBridges.insert_or_assign(bridge_name, bridge_ptr);
   }
-
-  void* library = dlopen(dst_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
-
-  const char* err = dlerror();
-  if (err != nullptr) {
-    printf("error: execute_native_auto_native: dlopen: %s: %s\n", dst_path.c_str(), err);
-    std::exit(1);
-  }
-
-  void* bridge_ptr = dlsym(library, bridge_name.c_str());
-  // TODO: cache
-  err = dlerror();
-  if (err != nullptr) {
-    printf("error: execute_native_auto_native: dlsym: %s: %s\n", dst_path.c_str(), err);
-    std::exit(1);
-  }
-
-  unlink(src_path.c_str());
-  unlink(dst_path.c_str());
 
   auto* bridge = std::bit_cast<bridge_t>(bridge_ptr);
   std::printf("bridge: %p\n", bridge);
 
+  auto arg_evalues = list_vector_map(params, &evalue_conversion);
   auto result = bridge(value_to_handle<fn_t>(fn_ptr), &context->interface, arg_evalues);
 
   std::printf("result: %lx\n", result.j);

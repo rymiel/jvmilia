@@ -398,6 +398,7 @@ struct JNINativeInterface {
 namespace jvmilia {
 struct JVMData {
   std::unordered_map<std::string, void*> registeredNatives;
+  std::unordered_map<std::string, void*> cachedBridges;
   std::filesystem::path temp;
 };
 
