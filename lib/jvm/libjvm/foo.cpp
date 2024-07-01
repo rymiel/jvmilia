@@ -5,7 +5,7 @@
 
 extern "C" {
 
-jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
+jboolean JVM_DesiredAssertionStatus(JNIEnv*, jclass unused, jclass cls) {
   auto* unused_name = std::bit_cast<const char*>(unused);
   auto* cls_name = std::bit_cast<const char*>(cls);
   std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);

@@ -409,7 +409,7 @@ void dump_value(value input, int max_depth = 100, std::vector<int> depth = {}) {
         CAMLreturn0;
       } else {
         std::puts("");
-        for (int i = 0; i < wosize; i++) {
+        for (mlsize_t i = 0; i < wosize; i++) {
           auto d = depth;
           d.push_back(i);
           dump_value(Field(input, i), max_depth - 1, d);
@@ -514,7 +514,7 @@ auto vtype_conversion(value v) -> vtype {
     case 1: {
       const char* name = String_val(Field(v, 0));
       if (strcmp(name, "java/lang/Class") == 0) {
-        return vtype::Class;
+        CAMLreturnT(vtype, vtype::Class);
       }
       caml_failwith("Unimplemented class vtype");
     }
@@ -541,7 +541,7 @@ std::string build_bridge_name(std::vector<vtype>& args, vtype ret) {
   return bridge_os.str();
 }
 
-void build_source(std::vector<vtype>& args, vtype ret, void* target, std::ostream& os) {
+void build_source(std::vector<vtype>& args, vtype ret, std::ostream& os) {
   bool not_void = ret != vtype::Void;
   os << "#include <vector>\n#include <bit>\n\n";
   os << "union jvalue { unsigned char z; signed char b; unsigned short c; short s; int i; long j; float f; double d; "
@@ -597,9 +597,8 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   CAMLparam5(interface, params, param_types, ret_type, fn_ptr);
   auto* context = value_to_handle<Context>(interface);
 
-  auto foo = Val_emptylist;
-  std::printf("params: %p\nparam_types: %p\nret_type: %p\n", std::bit_cast<void*>(params),
-              std::bit_cast<void*>(param_types), std::bit_cast<void*>(ret_type));
+  // std::printf("params: %p\nparam_types: %p\nret_type: %p\n", std::bit_cast<void*>(params),
+  //             std::bit_cast<void*>(param_types), std::bit_cast<void*>(ret_type));
 
   // std::puts("params:");
   // int i = 0;
@@ -626,11 +625,11 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   std::printf("-> %s\n", vtype_string(ret_vtype).data());
 
   auto bridge_name = build_bridge_name(param_vtypes, ret_vtype);
-  build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), std::cout);
+  build_source(param_vtypes, ret_vtype, std::cout);
   auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
   auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
   auto os = std::ofstream(src_path.c_str());
-  build_source(param_vtypes, ret_vtype, std::bit_cast<void*>(fn_ptr), os);
+  build_source(param_vtypes, ret_vtype, os);
   os.flush();
 
   auto child = fork();
