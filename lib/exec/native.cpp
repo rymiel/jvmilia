@@ -179,8 +179,7 @@ auto load_and_cache_bridge_function(std::filesystem::path& lib_path, std::string
 }
 } // namespace codegen
 
-CAMLprim value make_native_interface_native(value unit) {
-  (void)unit;
+CAMLprim value make_native_interface_native(value interface_data) {
 
   JNINativeInterface* interface = new JNINativeInterface;
   *interface = {
@@ -424,6 +423,12 @@ CAMLprim value make_native_interface_native(value unit) {
   JVMData* data = new JVMData;
 
   data->temp = create_temporary_directory();
+  printf("interface_data: %lx\ninterface_data is_block: %d\ninterface_data tag: %d\n", interface_data,
+         Is_block(interface_data), Tag_val(interface_data));
+  dump_value(interface_data);
+  data->find_class_callback = Field(interface_data, 0);
+  caml_register_global_root(&data->find_class_callback);
+  printf("find_class_callback: %lx\n", data->find_class_callback);
 
   Context* context = new Context;
   context->interface = interface;
@@ -461,6 +466,8 @@ CAMLprim value make_native_interface_native(value unit) {
 
 CAMLprim value free_native_interface_native(value handle) {
   auto* context = value_to_handle<Context>(handle);
+
+  caml_remove_global_root(&context->data->find_class_callback);
 
   std::filesystem::remove_all(context->data->temp);
 

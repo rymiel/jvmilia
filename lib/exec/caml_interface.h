@@ -55,6 +55,8 @@ auto evalue_is_class(value evalue) -> bool;
 
 auto evalue_class_name(value evalue) -> const char*;
 
+auto eclass_name(value evalue) -> const char*;
+
 auto evalue_conversion(value v) -> jvalue;
 
 auto reconstruct_evalue(jvalue j, vtype ty) -> value;

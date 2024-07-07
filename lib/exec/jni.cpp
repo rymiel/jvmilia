@@ -1,4 +1,8 @@
 #include "jni.h"
+#include "caml/alloc.h"
+#include "caml/callback.h"
+#include "caml/memory.h"
+#include "caml_interface.h"
 #include "jvm.h"
 #include <bit>
 #include <cstdio>
@@ -16,7 +20,7 @@ JVMData* getData(JNIEnv* env) {
 }
 
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
-  auto* data = getData(env);
+  JVMData* data = getData(env);
   const char* className = std::bit_cast<const char*>(clazz);
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
@@ -49,8 +53,26 @@ jint EnsureLocalCapacity(JNIEnv* env, jint capacity) {
 }
 
 jclass FindClass(JNIEnv* env, const char* name) {
-  printf("jni: FindClass %s\n", name);
-  unimplemented("FindClass");
+  CAMLparam0();
+  CAMLlocal2(caml_name, result);
+  JVMData* data = getData(env);
+  // printf("jni: FindClass %s\n", name);
+
+  caml_name = caml_copy_string(name);
+  dump_value(data->find_class_callback);
+  result = caml_callback(data->find_class_callback, caml_name);
+  // printf("jni: FindClass %s -> %lx\n", name, result);
+  printf("jni: FindClass %s -> %lx (%s)\n", name, result, eclass_name(result));
+
+  CAMLreturnT(jclass, std::bit_cast<jclass>(eclass_name(result)));
+}
+
+jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
+  // TODO: i dont have a heap yet
+  (void)env;
+  printf("jni: NewGlobalRef %p\n", lobj);
+
+  return lobj;
 }
 
 #pragma clang diagnostic push
@@ -78,7 +100,6 @@ void ExceptionClear(JNIEnv* env) { unimplemented("ExceptionClear"); }
 void FatalError(JNIEnv* env, const char* msg) { unimplemented("FatalError"); }
 jint PushLocalFrame(JNIEnv* env, jint capacity) { unimplemented("PushLocalFrame"); }
 jobject PopLocalFrame(JNIEnv* env, jobject result) { unimplemented("PopLocalFrame"); }
-jobject NewGlobalRef(JNIEnv* env, jobject lobj) { unimplemented("NewGlobalRef"); }
 void DeleteGlobalRef(JNIEnv* env, jobject gref) { unimplemented("DeleteGlobalRef"); }
 void DeleteLocalRef(JNIEnv* env, jobject obj) { unimplemented("DeleteLocalRef"); }
 jboolean IsSameObject(JNIEnv* env, jobject obj1, jobject obj2) { unimplemented("IsSameObject"); }

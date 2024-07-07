@@ -1,5 +1,6 @@
 #pragma once
 
+#include "caml/mlvalues.h"
 #include "jni.h"
 #include <filesystem>
 #include <string>
@@ -14,6 +15,7 @@ struct JVMData {
   std::unordered_map<std::string, void*> registeredNatives;
   std::unordered_map<std::string, bridge_t*> cachedBridges;
   std::filesystem::path temp;
+  value find_class_callback;
 };
 
 struct Context {

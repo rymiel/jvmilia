@@ -1,6 +1,11 @@
 external load_library : string -> int = "load_library_native"
 external load_method : int -> string -> int = "load_method_native"
-external make_native_interface : unit -> int = "make_native_interface_native"
+
+type native_interface = { find_class : string -> Basic.eclass; dummy : int }
+
+external make_native_interface : native_interface -> int
+  = "make_native_interface_native"
+
 external free_native_interface : int -> unit = "free_native_interface_native"
 
 external execute_native_auto :

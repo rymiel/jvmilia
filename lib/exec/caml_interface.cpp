@@ -1,6 +1,7 @@
 #include "caml_interface.h"
 #include "caml/alloc.h"
 #include "caml/fail.h"
+#include "caml/mlvalues.h"
 #include <cstring>
 #include <iostream>
 
@@ -45,7 +46,10 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
 
   if (Is_block(input)) {
     auto tag = Tag_val(input);
-    if (tag < No_scan_tag) {
+    if (tag == Closure_tag) {
+      std::printf("closure (wosize=%lu, p=%p, code=%p)\n", Wosize_val(input), std::bit_cast<void*>(input),
+                  Code_val(input));
+    } else if (tag < No_scan_tag) {
       auto wosize = Wosize_val(input);
       std::printf("block (tag=%d, wosize=%lu, p=%p)", tag, wosize, std::bit_cast<void*>(input));
       if (max_depth == 0) {
@@ -86,6 +90,13 @@ const char* evalue_class_name(value evalue) {
   const char* name = String_val(Field(Field(Field(Field(evalue, 0), 0), 0), 0));
 
   CAMLreturnT(const char*, name);
+}
+
+const char* eclass_name(value evalue) {
+  CAMLparam1(evalue);
+
+  // eclass.raw(0).name(0)
+  CAMLreturnT(const char*, String_val(Field(Field(evalue, 0), 0)));
 }
 
 jvalue evalue_conversion(value v) {

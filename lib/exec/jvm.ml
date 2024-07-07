@@ -15,12 +15,21 @@ let rec split (list : 'a list) (n : int) : 'a list * 'a list =
         let a, b = split xs (n - 1) in
         (x :: a, b)
 
-class jvm libjava interface =
+class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
     val mutable loaded : eclass StringMap.t = StringMap.empty
     val libjava : int = libjava
-    val interface : int = interface
+    val mutable interface : int = 0
+    val mutable interface_data : Shim.native_interface option = None
+
+    method init : unit =
+      interface_data <- Some { Shim.find_class = self#load_class; dummy = 0 };
+      interface <- Shim.make_native_interface (Option.get interface_data);
+      Printf.printf "interface: %#x\nd: %#x\nfind_calss: %#x\n" interface
+        (Obj.magic (Option.get interface_data))
+        (Obj.magic (Option.get interface_data).find_class)
+
     method free = Shim.free_native_interface interface
     method private curframe = List.hd frames
 
@@ -321,6 +330,7 @@ let create_jvm (loader : string -> jclass) : jvm =
   (* TODO: maybe this should be stored in jvm *)
   Loader.initialize_bootstrap_loader loader;
   let libjava = Shim.load_library "./class/extern-lib/libjava.so" in
-  let interface = Shim.make_native_interface () in
   Printf.printf "libjava: %#x\n" libjava;
-  new jvm libjava interface
+  let jvm = new jvm libjava in
+  jvm#init;
+  jvm
