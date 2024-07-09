@@ -56,13 +56,13 @@ jclass FindClass(JNIEnv* env, const char* name) {
   CAMLparam0();
   CAMLlocal2(caml_name, result);
   JVMData* data = getData(env);
-  // printf("jni: FindClass %s\n", name);
+  printf("jni: FindClass %s\n", name);
 
   caml_name = caml_copy_string(name);
   dump_value(data->find_class_callback);
   result = caml_callback(data->find_class_callback, caml_name);
   // printf("jni: FindClass %s -> %lx\n", name, result);
-  printf("jni: FindClass %s -> %lx (%s)\n", name, result, eclass_name(result));
+  printf("jni: FindClass %s -> %lx (%p/%s)\n", name, result, eclass_name(result), eclass_name(result));
 
   CAMLreturnT(jclass, std::bit_cast<jclass>(eclass_name(result)));
 }
@@ -73,6 +73,20 @@ jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
   printf("jni: NewGlobalRef %p\n", lobj);
 
   return lobj;
+}
+
+void DeleteLocalRef(JNIEnv* env, jobject obj) {
+  // TODO: i dont have a heap yet
+  (void)env;
+  printf("jni: DeleteLocalRef %p\n", obj);
+}
+
+jstring NewStringUTF(JNIEnv* env, const char* utf) {
+  (void)env;
+  printf("jni: NewStringUTF %s\n", utf);
+
+  return std::bit_cast<jstring>(utf);
+  // unimplemented("NewStringUTF");
 }
 
 #pragma clang diagnostic push
@@ -101,7 +115,6 @@ void FatalError(JNIEnv* env, const char* msg) { unimplemented("FatalError"); }
 jint PushLocalFrame(JNIEnv* env, jint capacity) { unimplemented("PushLocalFrame"); }
 jobject PopLocalFrame(JNIEnv* env, jobject result) { unimplemented("PopLocalFrame"); }
 void DeleteGlobalRef(JNIEnv* env, jobject gref) { unimplemented("DeleteGlobalRef"); }
-void DeleteLocalRef(JNIEnv* env, jobject obj) { unimplemented("DeleteLocalRef"); }
 jboolean IsSameObject(JNIEnv* env, jobject obj1, jobject obj2) { unimplemented("IsSameObject"); }
 jobject NewLocalRef(JNIEnv* env, jobject ref) { unimplemented("NewLocalRef"); }
 jobject AllocObject(JNIEnv* env, jclass clazz) { unimplemented("AllocObject"); }
@@ -410,7 +423,6 @@ jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) { unimplemented(
 jsize GetStringLength(JNIEnv* env, jstring str) { unimplemented("GetStringLength"); }
 const jchar* GetStringChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringChars"); }
 void ReleaseStringChars(JNIEnv* env, jstring str, const jchar* chars) { unimplemented("ReleaseStringChars"); }
-jstring NewStringUTF(JNIEnv* env, const char* utf) { unimplemented("NewStringUTF"); }
 jsize GetStringUTFLength(JNIEnv* env, jstring str) { unimplemented("GetStringUTFLength"); }
 const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringUTFChars"); }
 void ReleaseStringUTFChars(JNIEnv* env, jstring str, const char* chars) { unimplemented("ReleaseStringUTFChars"); }
