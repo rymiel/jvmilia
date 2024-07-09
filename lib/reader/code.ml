@@ -38,8 +38,8 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   | 0x0d -> Fconst 2.0
   | 0x0e -> Dconst 0.0
   | 0x0f -> Dconst 1.0
-  | 0x10 -> Bipush (Io.read_u1 r)
-  | 0x11 -> Sipush (Io.read_u2 r)
+  | 0x10 -> Bipush (Io.read_i1 r)
+  | 0x11 -> Sipush (Io.read_i2 r)
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const

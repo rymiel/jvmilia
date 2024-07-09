@@ -46,6 +46,7 @@ let read_u2 (r : reader) : int = read_bytes r 2 Bytes.get_uint16_be
 let read_i2 (r : reader) : int = read_bytes r 2 Bytes.get_int16_be
 let hex_u2 (num : int) = Printf.sprintf "0x%04X" num
 let read_u1 (r : reader) : int = read_bytes r 1 Bytes.get_uint8
+let read_i1 (r : reader) : int = read_bytes r 1 Bytes.get_int8
 let read_u1_opt (r : reader) : int option = read_bytes_opt r 1 Bytes.get_uint8
 let hex_u1 (num : int) = Printf.sprintf "0x%02X" num
 
