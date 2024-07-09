@@ -19,6 +19,7 @@ class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
     val mutable loaded : eclass StringMap.t = StringMap.empty
+    val mutable string_pool : evalue StringMap.t = StringMap.empty
     val libjava : int = libjava
     val mutable interface : int = 0
     val mutable interface_data : Shim.native_interface option = None
@@ -211,13 +212,26 @@ class jvm libjava =
           | Ne, _ -> self#curframe.nextpc <- target
           | _ -> failwith "unimplemented")
       | Goto target -> self#curframe.nextpc <- target
-      | Ldc x ->
-          (* todo *)
-          assert (match x with Shared.Class _ -> true | _ -> false);
-          let fields = StringMap.add "classLoader" Null StringMap.empty in
-          self#push (Class { cls = self#load_class "java/lang/Class"; fields })
-          (* todo extract *)
-      | Iconst v -> self#push (Int v)
+      | Ldc x -> (
+          match x with
+          | Shared.Class _ ->
+              (* todo extract *)
+              let fields = StringMap.add "classLoader" Null StringMap.empty in
+              self#push
+                (Class { cls = self#load_class "java/lang/Class"; fields })
+          | Shared.String s -> (
+              match StringMap.find_opt s string_pool with
+              | Some existing -> self#push existing
+              | None ->
+                  (* todo *)
+                  let fields = StringMap.empty in
+                  let v =
+                    Class { cls = self#load_class "java/lang/String"; fields }
+                  in
+                  string_pool <- StringMap.add s v string_pool;
+                  self#push v)
+          | _ -> assert false (* todo *))
+      | Iconst v | Bipush v -> self#push (Int v)
       | Anewarray c ->
           let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
           let size =
@@ -228,6 +242,15 @@ class jvm libjava =
           in
           let arr = Array.make size Null in
           self#push (Array { ty; arr })
+      | Aastore ->
+          let v = self#pop () in
+          let i =
+            match self#pop () with Int x -> x | _ -> failwith "Not an int"
+          in
+          let a =
+            match self#pop () with Array x -> x | _ -> failwith "Not an array"
+          in
+          a.arr.(i) <- v
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
