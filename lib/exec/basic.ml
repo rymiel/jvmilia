@@ -34,6 +34,22 @@ let string_of_evalue (value : evalue) : string =
   in
   Printf.sprintf "%x:%s" (Obj.magic value) base
 
+let rec string_of_evalue_detailed (value : evalue) : string =
+  let base =
+    match value with
+    | Void -> "void"
+    | Null -> "null"
+    | Class v -> v.cls.raw.name
+    | Int v -> Printf.sprintf "int %d" v
+    | Array v ->
+        Printf.sprintf "array %s[%d] {%s}"
+          (Vtype.string_of_arraytype v.ty)
+          (Array.length v.arr)
+          (String.concat ", "
+             (Array.to_list (Array.map string_of_evalue_detailed v.arr)))
+  in
+  Printf.sprintf "%x:%s" (Obj.magic value) base
+
 let string_of_frame (f : exec_frame) : string =
   let locals_s =
     List.mapi

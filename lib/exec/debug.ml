@@ -40,3 +40,18 @@ let frame (f : Basic.exec_frame) : unit =
   print_string "::";
   print_string (Basic.string_of_frame f);
   print_newline ()
+
+let frame_detailed (f : Basic.exec_frame) : unit =
+  incr depth;
+  let print_indent () = print_string (String.make (!depth * indent) ' ') in
+  Array.iteri
+    (fun i (v : Basic.evalue) ->
+      print_indent ();
+      Printf.printf "↓↓local(%d) %s\n%!" i (Basic.string_of_evalue_detailed v))
+    f.locals;
+  List.iteri
+    (fun i (v : Basic.evalue) ->
+      print_indent ();
+      Printf.printf "↑↑stack(%d) %s\n%!" i (Basic.string_of_evalue_detailed v))
+    f.stack;
+  decr depth

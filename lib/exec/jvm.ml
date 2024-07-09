@@ -104,6 +104,7 @@ class jvm libjava =
     method private exec_instr (_cls : eclass) (_mth : jmethod)
         (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
+      Debug.frame_detailed self#curframe;
       Debug.instr instr self#curframe.pc;
       match instr with
       | Invokestatic method_desc ->
