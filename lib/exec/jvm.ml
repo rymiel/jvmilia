@@ -149,7 +149,7 @@ class jvm libjava =
         StringMap.empty
         |> StringMap.add "value" (ByteArray (Bytes.of_string str))
       in
-      Class { cls = self#load_class "java/lang/String"; fields }
+      Object { cls = self#load_class "java/lang/String"; fields }
 
     method private make_class_instance (class_name : string) : evalue =
       let fields =
@@ -157,7 +157,7 @@ class jvm libjava =
         |> StringMap.add "classLoader" Null
         |> StringMap.add "__jvmilia_name" (self#make_string_instance class_name)
       in
-      Class { cls = self#load_class "java/lang/Class"; fields }
+      Object { cls = self#load_class "java/lang/Class"; fields }
 
     (* bad method*)
     (* todo: remove*)
@@ -221,7 +221,7 @@ class jvm libjava =
           (* todo remove this constraint *)
           assert (
             match objectref with
-            | Class x -> self#is_indirect_superclass x.cls method_desc.cls
+            | Object x -> self#is_indirect_superclass x.cls method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
           self#exec def_mth (objectref :: args)
@@ -242,7 +242,7 @@ class jvm libjava =
           (* todo remove this constraint *)
           assert (
             match objectref with
-            | Class x -> x.cls.raw.name = method_desc.cls
+            | Object x -> x.cls.raw.name = method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
           self#exec def_mth [ objectref ]
@@ -251,7 +251,7 @@ class jvm libjava =
           StringMap.find field_desc.name def_cls.static |> self#push
       | Getfield field_desc -> (
           match self#pop () with
-          | Class x -> StringMap.find field_desc.name x.fields |> self#push
+          | Object x -> StringMap.find field_desc.name x.fields |> self#push
           | _ -> failwith "Can't get field of non-object type")
       | Putstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
@@ -272,7 +272,7 @@ class jvm libjava =
               Printf.printf "%d %s %s\n" i field.name field.desc)
             fields;
           (* todo: declare fields *)
-          self#push (Class { cls = def_cls; fields = StringMap.empty })
+          self#push (Object { cls = def_cls; fields = StringMap.empty })
       | Dup ->
           (* todo: longs/doubles stuff*)
           let v = self#pop () in

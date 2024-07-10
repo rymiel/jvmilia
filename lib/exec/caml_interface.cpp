@@ -75,34 +75,16 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
   CAMLreturn0;
 }
 
-bool evalue_is_class(value evalue) {
+bool evalue_is_object(value evalue) {
   CAMLparam1(evalue);
 
   CAMLreturnT(bool, Is_block(evalue) && Tag_val(evalue) == 0 && Wosize_val(evalue) == 1);
 }
 
-const char* evalue_class_name(value evalue) {
-  CAMLparam1(evalue);
-
-  assert(evalue_is_class(evalue));
-
-  // Class.eclassvalue(0).cls(0).raw(0).name(0)
-  const char* name = String_val(Field(Field(Field(Field(evalue, 0), 0), 0), 0));
-
-  CAMLreturnT(const char*, name);
-}
-
-const char* eclass_name(value evalue) {
-  CAMLparam1(evalue);
-
-  // eclass.raw(0).name(0)
-  CAMLreturnT(const char*, String_val(Field(Field(evalue, 0), 0)));
-}
-
 jvalue evalue_conversion(value v) {
   jvalue j = {};
-  if (evalue_is_class(v)) {
-    j.l = std::bit_cast<jclass>(v);
+  if (evalue_is_object(v)) {
+    j.l = std::bit_cast<jobject>(v);
     return j;
   } else {
     std::puts("unimplement evalue");

@@ -51,11 +51,7 @@ auto list_vector_map(value list, Fn fn) -> std::vector<std::invoke_result_t<Fn, 
 
 void dump_value(value input, int max_depth = 100, std::vector<int> depth = {});
 
-auto evalue_is_class(value evalue) -> bool;
-
-auto evalue_class_name(value evalue) -> const char*;
-
-auto eclass_name(value evalue) -> const char*;
+auto evalue_is_object(value evalue) -> bool;
 
 auto evalue_conversion(value v) -> jvalue;
 

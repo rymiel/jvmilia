@@ -5,7 +5,7 @@ module StringMap = Map.Make (String)
 type evalue =
   | Void
   | Null
-  | Class of eclassvalue
+  | Object of eclassvalue
   | Int of int
   | Array of earrayvalue
   | Long of int64
@@ -27,7 +27,7 @@ let string_of_evalue (value : evalue) : string =
   match value with
   | Void -> "void"
   | Null -> "null"
-  | Class v -> Printf.sprintf "%x:%s" (Obj.magic value) v.cls.raw.name
+  | Object v -> Printf.sprintf "%x:%s" (Obj.magic value) v.cls.raw.name
   | Int v -> Printf.sprintf "int %d" v
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
@@ -41,7 +41,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
   match value with
   | Void -> "void"
   | Null -> "null"
-  | Class v ->
+  | Object v ->
       Printf.sprintf "%x:%s {%s}" (Obj.magic value) v.cls.raw.name
         (String.concat ", "
            (List.map
