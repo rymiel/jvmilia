@@ -1,6 +1,7 @@
 open Java
 module StringMap = Map.Make (String)
 
+(* WARNING: most types here should not be reordered because native code relies on the order of things *)
 type evalue =
   | Void
   | Null

@@ -485,6 +485,8 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   CAMLparam5(interface, params, param_types, ret_type, fn_ptr);
   auto* context = value_to_handle<Context>(interface);
 
+  context->data->frames.emplace_back();
+
   auto param_vtypes = list_vector_map(param_types, &vtype_conversion);
   for (auto v : param_vtypes) {
     std::printf("<- %s\n", vtype_string(v).data());
@@ -521,6 +523,8 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   auto result = bridge(value_to_handle(fn_ptr), &context->interface, arg_evalues);
 
   std::printf("result: %lx\n", result.j);
+
+  context->data->frames.pop_back();
 
   if (ret_vtype == vtype::Void) {
     CAMLreturn(Val_unit);

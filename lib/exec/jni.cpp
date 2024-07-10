@@ -44,10 +44,10 @@ jboolean ExceptionCheck(JNIEnv* env) {
 }
 
 jint EnsureLocalCapacity(JNIEnv* env, jint capacity) {
-  // TODO: not sure what i'm even meant to check here
-  (void)env;
-  (void)capacity;
+  JVMData* data = getData(env);
   printf("jni: EnsureLocalCapacity %d\n", capacity);
+
+  data->frames.back().localReferences.reserve(capacity);
 
   return 0;
 }
@@ -61,10 +61,10 @@ jclass FindClass(JNIEnv* env, const char* name) {
   caml_name = caml_copy_string(name);
   dump_value(data->find_class_callback);
   result = caml_callback(data->find_class_callback, caml_name);
-  // printf("jni: FindClass %s -> %lx\n", name, result);
-  printf("jni: FindClass %s -> %lx (%p/%s)\n", name, result, eclass_name(result), eclass_name(result));
+  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
 
-  CAMLreturnT(jclass, std::bit_cast<jclass>(eclass_name(result)));
+  CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
 jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
@@ -82,11 +82,16 @@ void DeleteLocalRef(JNIEnv* env, jobject obj) {
 }
 
 jstring NewStringUTF(JNIEnv* env, const char* utf) {
-  (void)env;
+  CAMLparam0();
+  CAMLlocal1(str);
+  JVMData* data = getData(env);
   printf("jni: NewStringUTF %s\n", utf);
 
-  return std::bit_cast<jstring>(utf);
-  // unimplemented("NewStringUTF");
+  str = caml_copy_string(utf);
+  auto ref = data->frames.back().localReferences.emplace_back(make_reference(str));
+  printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, str, ref.get());
+
+  CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
 }
 
 jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
@@ -124,7 +129,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
 
   printf("jni: CallStaticObjectMethodV %s\n", std::bit_cast<const char*>(clazz));
   dump_value(*std::bit_cast<value*>(methodID), 4);
-  puts(std::bit_cast<const char*>(va_arg(args, jstring)));
+  puts(String_val(*std::bit_cast<value*>(va_arg(args, jstring))));
 
   unimplemented("CallStaticObjectMethodV");
 }
