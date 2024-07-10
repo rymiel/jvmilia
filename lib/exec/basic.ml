@@ -9,6 +9,7 @@ type evalue =
   | Int of int
   | Array of earrayvalue
   | Long of int64
+  | ByteArray of bytes
 
 and eclassvalue = { cls : eclass; mutable fields : evalue StringMap.t }
 and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
@@ -23,36 +24,41 @@ type exec_frame = {
 }
 
 let string_of_evalue (value : evalue) : string =
-  let base =
-    match value with
-    | Void -> "void"
-    | Null -> "null"
-    | Class v -> v.cls.raw.name
-    | Int v -> Printf.sprintf "int %d" v
-    | Long v -> Printf.sprintf "long %Ld" v
-    | Array v ->
-        Printf.sprintf "array %s[%d]"
-          (Vtype.string_of_arraytype v.ty)
-          (Array.length v.arr)
-  in
-  Printf.sprintf "%x:%s" (Obj.magic value) base
+  match value with
+  | Void -> "void"
+  | Null -> "null"
+  | Class v -> Printf.sprintf "%x:%s" (Obj.magic value) v.cls.raw.name
+  | Int v -> Printf.sprintf "int %d" v
+  | Long v -> Printf.sprintf "long %Ld" v
+  | Array v ->
+      Printf.sprintf "%x:array %s[%d]" (Obj.magic value)
+        (Vtype.string_of_arraytype v.ty)
+        (Array.length v.arr)
+  | ByteArray v ->
+      Printf.sprintf "%x:array byte[%d]" (Obj.magic value) (Bytes.length v)
 
 let rec string_of_evalue_detailed (value : evalue) : string =
-  let base =
-    match value with
-    | Void -> "void"
-    | Null -> "null"
-    | Class v -> v.cls.raw.name
-    | Int v -> Printf.sprintf "int %d" v
-    | Long v -> Printf.sprintf "long %Ld" v
-    | Array v ->
-        Printf.sprintf "array %s[%d] {%s}"
-          (Vtype.string_of_arraytype v.ty)
-          (Array.length v.arr)
-          (String.concat ", "
-             (Array.to_list (Array.map string_of_evalue_detailed v.arr)))
-  in
-  Printf.sprintf "%x:%s" (Obj.magic value) base
+  match value with
+  | Void -> "void"
+  | Null -> "null"
+  | Class v ->
+      Printf.sprintf "%x:%s {%s}" (Obj.magic value) v.cls.raw.name
+        (String.concat ", "
+           (List.map
+              (fun (k, v) ->
+                Printf.sprintf "%s=%s" k (string_of_evalue_detailed v))
+              (StringMap.to_list v.fields)))
+  | Int v -> Printf.sprintf "int %d" v
+  | Long v -> Printf.sprintf "long %Ld" v
+  | Array v ->
+      Printf.sprintf "%x:array %s[%d] {%s}" (Obj.magic value)
+        (Vtype.string_of_arraytype v.ty)
+        (Array.length v.arr)
+        (String.concat ", "
+           (Array.to_list (Array.map string_of_evalue_detailed v.arr)))
+  | ByteArray v ->
+      Printf.sprintf "%x:array byte[%d] {%s}" (Obj.magic value) (Bytes.length v)
+        (Bytes.escaped v |> Bytes.to_string)
 
 let string_of_frame (f : exec_frame) : string =
   let locals_s =

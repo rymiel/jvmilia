@@ -25,6 +25,7 @@ jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, 
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
     auto key = registerKey(className, method.name, method.signature);
+    printf("jni: RegisterNatives %s -> %p\n", key.data(), method.fnPtr);
     data->registeredNatives.insert_or_assign(key, method.fnPtr);
   }
 

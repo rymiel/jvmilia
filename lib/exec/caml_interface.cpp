@@ -102,7 +102,7 @@ const char* eclass_name(value evalue) {
 jvalue evalue_conversion(value v) {
   jvalue j = {};
   if (evalue_is_class(v)) {
-    j.l = std::bit_cast<jclass>(evalue_class_name(v));
+    j.l = std::bit_cast<jclass>(v);
     return j;
   } else {
     std::puts("unimplement evalue");

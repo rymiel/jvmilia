@@ -51,7 +51,9 @@ class jvm libjava =
     method init : unit =
       let interface_data =
         {
-          Shim.find_class = self#load_class;
+          Shim.find_class =
+            (fun name ->
+              self#make_class_instance (self#load_class name).raw.name);
           get_static_method = self#find_static_method;
         }
       in
@@ -140,6 +142,22 @@ class jvm libjava =
          | None -> ());
       (* todo other verification/linking stuff idk *)
       ecls
+
+    (* todo: interning? *)
+    method private make_string_instance (str : string) : evalue =
+      let fields =
+        StringMap.empty
+        |> StringMap.add "value" (ByteArray (Bytes.of_string str))
+      in
+      Class { cls = self#load_class "java/lang/String"; fields }
+
+    method private make_class_instance (class_name : string) : evalue =
+      let fields =
+        StringMap.empty
+        |> StringMap.add "classLoader" Null
+        |> StringMap.add "__jvmilia_name" (self#make_string_instance class_name)
+      in
+      Class { cls = self#load_class "java/lang/Class"; fields }
 
     (* bad method*)
     (* todo: remove*)
@@ -296,20 +314,12 @@ class jvm libjava =
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
           match x with
-          | Shared.Class _ ->
-              (* todo extract *)
-              let fields = StringMap.add "classLoader" Null StringMap.empty in
-              self#push
-                (Class { cls = self#load_class "java/lang/Class"; fields })
+          | Shared.Class c -> self#make_class_instance c |> self#push
           | Shared.String s -> (
               match StringMap.find_opt s string_pool with
               | Some existing -> self#push existing
               | None ->
-                  (* todo *)
-                  let fields = StringMap.empty in
-                  let v =
-                    Class { cls = self#load_class "java/lang/String"; fields }
-                  in
+                  let v = self#make_string_instance s in
                   string_pool <- StringMap.add s v string_pool;
                   self#push v)
           | _ -> assert false (* todo *))
@@ -385,14 +395,7 @@ class jvm libjava =
         let param_types, ret_type = Vtype.parse_method_descriptor mth.desc in
         let args_real =
           if mth.access_flags.is_static then
-            (* todo extract *)
-            let receiver =
-              Class
-                {
-                  cls = self#load_class "java/lang/Class";
-                  fields = StringMap.empty;
-                }
-            in
+            let receiver = self#make_class_instance mth.cls in
             receiver :: args
           else args
         in

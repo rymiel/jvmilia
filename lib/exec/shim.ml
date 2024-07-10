@@ -2,7 +2,7 @@ external load_library : string -> int = "load_library_native"
 external load_method : int -> string -> int = "load_method_native"
 
 type native_interface = {
-  find_class : string -> Basic.eclass;
+  find_class : string -> Basic.evalue;
   get_static_method : string -> string -> string -> Java.jmethod;
 }
 
