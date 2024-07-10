@@ -140,6 +140,17 @@ class jvm libjava =
       (* todo other verification/linking stuff idk *)
       ecls
 
+    (* bad method*)
+    (* todo: remove*)
+    method private is_indirect_superclass (cls : eclass) (target : string)
+        : bool =
+      if cls.raw.name = target then true
+      else
+        match cls.raw.superclass with
+        | Some super ->
+            self#is_indirect_superclass (self#load_class super) target
+        | None -> false
+
     method private exec_instr (_cls : eclass) (_mth : jmethod)
         (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
@@ -163,6 +174,7 @@ class jvm libjava =
           let args = self#pop_list def_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
+          assert (def_mth.nargs <= 1);
           self#exec def_cls def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
@@ -176,18 +188,18 @@ class jvm libjava =
                   "Cannot find method to invokespecial (TODO add more info)"
           in
           (* todo arguments *)
-          assert (def_mth.nargs = 0);
+          let args = self#pop_list def_mth.nargs in
+          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
+            (String.concat ", " (List.map string_of_evalue args));
+          assert (def_mth.nargs <= 1);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
             match objectref with
-            | Class x ->
-                x.cls.raw.name = method_desc.cls
-                || method_desc.cls
-                   = Option.value x.cls.raw.superclass ~default:""
+            | Class x -> self#is_indirect_superclass x.cls method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          self#exec def_cls def_mth [ objectref ]
+          self#exec def_cls def_mth (objectref :: args)
       | Invokevirtual method_desc ->
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
@@ -199,6 +211,8 @@ class jvm libjava =
                 failwith
                   "Cannot find method to invokevirtual (TODO add more info)"
           in
+          (* todo arguments *)
+          assert (def_mth.nargs = 0);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
@@ -206,8 +220,6 @@ class jvm libjava =
             | Class x -> x.cls.raw.name = method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          (* todo arguments *)
-          assert (def_mth.nargs = 0);
           self#exec def_cls def_mth [ objectref ]
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
