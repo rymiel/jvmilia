@@ -89,6 +89,13 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
   // unimplemented("NewStringUTF");
 }
 
+jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+  (void)env;
+  printf("jni: GetStaticMethodID %s %s %s\n", std::bit_cast<const char*>(clazz), name, sig);
+
+  unimplemented("GetStaticMethodID");
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -293,9 +300,6 @@ void SetIntField(JNIEnv* env, jobject obj, jfieldID fieldID, jint val) { unimple
 void SetLongField(JNIEnv* env, jobject obj, jfieldID fieldID, jlong val) { unimplemented("SetLongField"); }
 void SetFloatField(JNIEnv* env, jobject obj, jfieldID fieldID, jfloat val) { unimplemented("SetFloatField"); }
 void SetDoubleField(JNIEnv* env, jobject obj, jfieldID fieldID, jdouble val) { unimplemented("SetDoubleField"); }
-jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  unimplemented("GetStaticMethodID");
-}
 jobject CallStaticObjectMethod(JNIEnv* env, jclass clazz, jmethodID methodID, ...) {
   unimplemented("CallStaticObjectMethod");
 }

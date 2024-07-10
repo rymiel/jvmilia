@@ -1,7 +1,11 @@
 external load_library : string -> int = "load_library_native"
 external load_method : int -> string -> int = "load_method_native"
 
-type native_interface = { find_class : string -> Basic.eclass; dummy : int }
+type native_interface = {
+  find_class : string -> Basic.eclass;
+  dummy : int;
+      (* get_static_method : string -> string -> string -> Java.jclass * Java.jmethod; *)
+}
 
 external make_native_interface : native_interface -> int
   = "make_native_interface_native"
