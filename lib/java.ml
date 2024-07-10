@@ -7,6 +7,7 @@ type jmethod = {
   desc : string;
   attributes : attribute list;
   nargs : int;
+  cls : string;
 }
 
 type jfield = {
@@ -14,6 +15,7 @@ type jfield = {
   access_flags : field_access_flags;
   desc : string;
   attributes : attribute list;
+  cls : string;
 }
 
 type jclass = {

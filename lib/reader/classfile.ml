@@ -100,20 +100,22 @@ and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
       StackMapTable table
   | _ -> Unknown (name, bytes)
 
-let read_field_info (pool : const_pool) (r : Io.reader) : jfield =
+let read_field_info (pool : const_pool) (cls : string) (r : Io.reader) : jfield
+    =
   let access_flags = field_access_flags_of_int (Io.read_u2 r) in
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  { access_flags; name; desc; attributes }
+  { access_flags; name; desc; attributes; cls }
 
-let read_method_info (pool : const_pool) (r : Io.reader) : jmethod =
+let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
+    jmethod =
   let access_flags = method_access_flags_of_int (Io.read_u2 r) in
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
   let nargs = Vtype.parse_method_nargs desc in
-  { access_flags; name; desc; attributes; nargs }
+  { access_flags; name; desc; attributes; nargs; cls }
 
 type class_file = {
   major_version : int;
@@ -159,8 +161,8 @@ let read_class_file (ch : in_channel) : class_file =
   let interfaces =
     List.map (fun x -> (const_pool_class const_pool x).name) interfaces_indices
   in
-  let fields = Io.read_list r (read_field_info const_pool) in
-  let methods = Io.read_list r (read_method_info const_pool) in
+  let fields = Io.read_list r (read_field_info const_pool this_class) in
+  let methods = Io.read_list r (read_method_info const_pool this_class) in
   let attributes = Io.read_list r (read_attribute const_pool) in
   let () = Io.assert_end_of_file r in
   {
