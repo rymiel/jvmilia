@@ -12,16 +12,19 @@ let instance_fields (cls : jclass) : jfield list =
 let static_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
 
+(* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
+   that can then be converted to vtype in the verifier whenever needed? *)
 let default_value (ty : Vtype.vtype) : evalue =
-  match ty with
-  | Vtype.Top | Vtype.OneWord | Vtype.TwoWord | Vtype.Void | Vtype.Uninitialized
-  | Vtype.UninitializedThis | Vtype.UninitializedOffset _ ->
-      failwith "Not a valid type"
-  | Vtype.Int -> Int 0
-  | Vtype.Float -> failwith "unimplemented float"
-  | Vtype.Long -> Long 0L
-  | Vtype.Double -> failwith "unimplemented double"
-  | Vtype.Class (_, _) | Vtype.Array _ | Vtype.Reference | Vtype.Null -> Null
+  Vtype.(
+    match ty with
+    | Top | OneWord | TwoWord | Void | Uninitialized | UninitializedThis
+    | UninitializedOffset _ ->
+        failwith "Not a valid type"
+    | Int -> Int 0
+    | Float -> failwith "unimplemented float"
+    | Long -> Long 0L
+    | Double -> failwith "unimplemented double"
+    | Class (_, _) | Array _ | Reference | Null -> Null)
 
 let rec split (list : 'a list) (n : int) : 'a list * 'a list =
   if n = 0 then ([], list)
