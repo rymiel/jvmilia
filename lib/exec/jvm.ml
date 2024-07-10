@@ -12,6 +12,11 @@ let instance_fields (cls : jclass) : jfield list =
 let static_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
 
+let as_int (v : evalue) : int =
+  match v with
+  | Int v -> v
+  | x -> failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
+
 (* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
    that can then be converted to vtype in the verifier whenever needed? *)
 let default_value (ty : Vtype.vtype) : evalue =
@@ -170,6 +175,8 @@ class jvm libjava =
                 failwith
                   "Cannot find method to invokespecial (TODO add more info)"
           in
+          (* todo arguments *)
+          assert (def_mth.nargs = 0);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
@@ -180,8 +187,6 @@ class jvm libjava =
                    = Option.value x.cls.raw.superclass ~default:""
             | _ -> false);
           (* todo frame stuff *)
-          (* todo arguments *)
-          assert (def_mth.nargs = 0);
           self#exec def_cls def_mth [ objectref ]
       | Invokevirtual method_desc ->
           let def_cls = self#load_class method_desc.cls in
@@ -219,7 +224,7 @@ class jvm libjava =
             field_desc.name field_desc.desc (string_of_evalue value)
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
-      | Ireturn ->
+      | Ireturn | Areturn ->
           let value = self#pop () in
           self#curframe.retval <- Some value
       | New class_desc ->
@@ -242,11 +247,33 @@ class jvm libjava =
           match self#pop () with
           | Null -> ()
           | _ -> self#curframe.nextpc <- target)
-      | If (cond, target) -> (
-          match (cond, self#pop ()) with
-          | Ne, Int 0 -> ()
-          | Ne, _ -> self#curframe.nextpc <- target
-          | _ -> failwith "unimplemented")
+      | Ifnull target -> (
+          match self#pop () with
+          | Null -> self#curframe.nextpc <- target
+          | _ -> ())
+      | If (cond, target) ->
+          let v = self#pop () |> as_int in
+          if
+            match cond with
+            | Instr.Eq -> v = 0
+            | Instr.Ne -> v <> 0
+            | Instr.Lt -> v < 0
+            | Instr.Ge -> v >= 0
+            | Instr.Gt -> v > 0
+            | Instr.Le -> v <= 0
+          then self#curframe.nextpc <- target
+      | If_icmp (cond, target) ->
+          let a = self#pop () |> as_int in
+          let b = self#pop () |> as_int in
+          if
+            match cond with
+            | Instr.Eq -> a = b
+            | Instr.Ne -> a <> b
+            | Instr.Lt -> a < b
+            | Instr.Ge -> a >= b
+            | Instr.Gt -> a > b
+            | Instr.Le -> a <= b
+          then self#curframe.nextpc <- target
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
           match x with
@@ -270,19 +297,12 @@ class jvm libjava =
       | Iconst v | Bipush v -> self#push (Int v)
       | Anewarray c ->
           let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
-          let size =
-            match self#pop () with
-            | Int v -> v
-            | x ->
-                failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
-          in
+          let size = self#pop () |> as_int in
           let arr = Array.make size Null in
           self#push (Array { ty; arr })
       | Aastore ->
           let v = self#pop () in
-          let i =
-            match self#pop () with Int x -> x | _ -> failwith "Not an int"
-          in
+          let i = self#pop () |> as_int in
           let a =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
