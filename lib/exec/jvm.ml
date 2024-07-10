@@ -127,14 +127,14 @@ class jvm libjava =
       (* mark as loaded before clinit, otherwise we recurse *)
       (match find_method ecls "<clinit>" "()V" with
       | Some clinit ->
-          self#exec ecls clinit [];
+          self#exec clinit [];
           ()
       | None -> ());
       (* openjdk is special *)
       (if cls.name = "java/lang/System" then
          match find_method ecls "initPhase1" "()V" with
          | Some init ->
-             self#exec ecls init [];
+             self#exec init [];
              ()
          | None -> ());
       (* todo other verification/linking stuff idk *)
@@ -151,8 +151,8 @@ class jvm libjava =
             self#is_indirect_superclass (self#load_class super) target
         | None -> false
 
-    method private exec_instr (_cls : eclass) (_mth : jmethod)
-        (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
+    method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
+        (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
       Debug.frame_detailed self#curframe;
       Debug.instr instr self#curframe.pc;
@@ -175,7 +175,7 @@ class jvm libjava =
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
           assert (def_mth.nargs <= 1);
-          self#exec def_cls def_mth args
+          self#exec def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
@@ -199,7 +199,7 @@ class jvm libjava =
             | Class x -> self#is_indirect_superclass x.cls method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          self#exec def_cls def_mth (objectref :: args)
+          self#exec def_mth (objectref :: args)
       | Invokevirtual method_desc ->
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
@@ -220,7 +220,7 @@ class jvm libjava =
             | Class x -> x.cls.raw.name = method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          self#exec def_cls def_mth [ objectref ]
+          self#exec def_mth [ objectref ]
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> self#push
@@ -324,10 +324,10 @@ class jvm libjava =
             (Printf.sprintf "Unimplemented instruction excecution %s"
                (Instr.string_of_instr x))
 
-    method private exec_code (cls : eclass) (mth : jmethod)
-        (code : Attr.code_attribute) (args : evalue list) : unit =
+    method private exec_code (mth : jmethod) (code : Attr.code_attribute)
+        (args : evalue list) : unit =
       Debug.push "jvm_exec_code"
-        (Printf.sprintf "%s.%s %s" cls.raw.name mth.name mth.desc);
+        (Printf.sprintf "%s.%s %s" mth.cls mth.name mth.desc);
       self#add_frame code.frame_size;
       (* todo longs and stuff *)
       Debug.frame self#curframe;
@@ -343,20 +343,19 @@ class jvm libjava =
       while frame.pc <> -1 && Option.is_none frame.retval do
         let m = Instr.IntMap.find frame.pc map in
         frame.nextpc <- m.next;
-        self#exec_instr cls mth code m.body;
+        self#exec_instr mth code m.body;
         frame.pc <- frame.nextpc
       done;
       (match self#pop_frame () with Void -> () | x -> self#push x);
       Debug.pop ()
 
-    method private exec (cls : eclass) (mth : jmethod) (args : evalue list)
-        : unit =
+    method private exec (mth : jmethod) (args : evalue list) : unit =
       let find_code (attr : Attr.attribute) : Attr.code_attribute option =
         match attr with Code x -> Some x | _ -> None
       in
       if mth.access_flags.is_native then (
         let registered =
-          Shim.get_registered_fnptr interface cls.raw.name mth.name mth.desc
+          Shim.get_registered_fnptr interface mth.cls mth.name mth.desc
         in
         let method_handle =
           match registered with
@@ -364,16 +363,16 @@ class jvm libjava =
           | None ->
               let as_underscore c = if c = '/' then '_' else c in
               let native_name =
-                "Java_" ^ String.map as_underscore cls.raw.name ^ "_" ^ mth.name
+                "Java_" ^ String.map as_underscore mth.cls ^ "_" ^ mth.name
               in
               let filtered_name =
                 Str.global_replace (Str.regexp "\\$") "_00024" native_name
               in
-              Printf.printf "Native method %s.%s -> %s\n" cls.raw.name mth.name
+              Printf.printf "Native method %s.%s -> %s\n" mth.cls mth.name
                 filtered_name;
               Shim.load_method libjava filtered_name
         in
-        Printf.printf "%s %s %s -> %#x\n%!" cls.raw.name mth.name mth.desc
+        Printf.printf "%s %s %s -> %#x\n%!" mth.cls mth.name mth.desc
           method_handle;
         if method_handle = 0 then failwith "Method handle is null";
         let param_types, ret_type = Vtype.parse_method_descriptor mth.desc in
@@ -402,7 +401,7 @@ class jvm libjava =
         match ret_type with Void -> () | _ -> self#push result)
       else
         match List.find_map find_code mth.attributes with
-        | Some code_attr -> self#exec_code cls mth code_attr args
+        | Some code_attr -> self#exec_code mth code_attr args
         | None -> failwith "Can't execute non-code method"
 
     method exec_main (main_class_name : string) : unit =
@@ -413,7 +412,7 @@ class jvm libjava =
           if not flags.is_static then failwith "Main method is not static";
           if not flags.is_public then failwith "Main method is not public";
           (* todo: the String[] argument *)
-          self#exec main_class main_method []
+          self#exec main_method []
       | None -> failwith "This class does not have a main method"
   end
 
