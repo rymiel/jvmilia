@@ -7,6 +7,7 @@ type evalue =
   | Class of eclassvalue
   | Int of int
   | Array of earrayvalue
+  | Long of int64
 
 and eclassvalue = { cls : eclass; mutable fields : evalue StringMap.t }
 and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
@@ -27,6 +28,7 @@ let string_of_evalue (value : evalue) : string =
     | Null -> "null"
     | Class v -> v.cls.raw.name
     | Int v -> Printf.sprintf "int %d" v
+    | Long v -> Printf.sprintf "long %Ld" v
     | Array v ->
         Printf.sprintf "array %s[%d]"
           (Vtype.string_of_arraytype v.ty)
@@ -41,6 +43,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
     | Null -> "null"
     | Class v -> v.cls.raw.name
     | Int v -> Printf.sprintf "int %d" v
+    | Long v -> Printf.sprintf "long %Ld" v
     | Array v ->
         Printf.sprintf "array %s[%d] {%s}"
           (Vtype.string_of_arraytype v.ty)

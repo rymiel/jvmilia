@@ -6,6 +6,23 @@ let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
   let matches (m : jmethod) = m.desc = desc && m.name = name in
   List.find_opt matches cls.raw.methods
 
+let instance_fields (cls : jclass) : jfield list =
+  List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
+
+let static_fields (cls : jclass) : jfield list =
+  List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
+
+let default_value (ty : Vtype.vtype) : evalue =
+  match ty with
+  | Vtype.Top | Vtype.OneWord | Vtype.TwoWord | Vtype.Void | Vtype.Uninitialized
+  | Vtype.UninitializedThis | Vtype.UninitializedOffset _ ->
+      failwith "Not a valid type"
+  | Vtype.Int -> Int 0
+  | Vtype.Float -> failwith "unimplemented float"
+  | Vtype.Long -> Long 0L
+  | Vtype.Double -> failwith "unimplemented double"
+  | Vtype.Class (_, _) | Vtype.Array _ | Vtype.Reference | Vtype.Null -> Null
+
 let rec split (list : 'a list) (n : int) : 'a list * 'a list =
   if n = 0 then ([], list)
   else
@@ -83,7 +100,21 @@ class jvm libjava =
       let safe = Verify.Main.classIsTypeSafe cls in
       if not safe then
         failwith (Printf.sprintf "Class %S failed verification" class_name);
-      let ecls = { raw = cls; static = StringMap.empty } in
+      let fields =
+        static_fields cls
+        |> List.fold_left
+             (fun m (f : jfield) ->
+               StringMap.add f.name
+                 (default_value (Vtype.parse_field_descriptor f.desc))
+                 m)
+             StringMap.empty
+      in
+      Printf.printf "%s %s\n" class_name
+        (String.concat ", "
+           (List.map
+              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue v))
+              (StringMap.to_list fields)));
+      let ecls = { raw = cls; static = fields } in
       self#mark_loaded ecls;
       (* mark as loaded before clinit, otherwise we recurse *)
       (match find_method ecls "<clinit>" "()V" with
@@ -142,7 +173,8 @@ class jvm libjava =
             match objectref with
             | Class x ->
                 x.cls.raw.name = method_desc.cls
-                || method_desc.cls = "java/lang/Object"
+                || method_desc.cls
+                   = Option.value x.cls.raw.superclass ~default:""
             | _ -> false);
           (* todo frame stuff *)
           (* todo arguments *)
@@ -171,7 +203,7 @@ class jvm libjava =
           self#exec def_cls def_mth [ objectref ]
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
-          failwith (Printf.sprintf "getstatic %s" def_cls.raw.name)
+          StringMap.find field_desc.name def_cls.static |> self#push
       | Getfield field_desc -> (
           match self#pop () with
           | Class x -> StringMap.find field_desc.name x.fields |> self#push
@@ -189,7 +221,7 @@ class jvm libjava =
           self#curframe.retval <- Some value
       | New class_desc ->
           let def_cls = self#load_class class_desc.name in
-          let fields = def_cls.raw.fields in
+          let fields = instance_fields def_cls.raw in
           List.iteri
             (fun i (field : jfield) ->
               Printf.printf "%d %s %s\n" i field.name field.desc)
