@@ -14,8 +14,10 @@ using bridge_t = jvalue(void*, JNIEnv*, std::vector<jvalue>);
 struct JVMData {
   std::unordered_map<std::string, void*> registeredNatives;
   std::unordered_map<std::string, bridge_t*> cachedBridges;
+  std::unordered_map<std::string, value*> cachedJMethods;
   std::filesystem::path temp;
   value find_class_callback;
+  value get_static_method_callback;
 };
 
 struct Context {

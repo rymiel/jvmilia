@@ -90,10 +90,43 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
 }
 
 jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  (void)env;
+  CAMLparam0();
+  CAMLlocal4(caml_cls, caml_name, caml_desc, result);
+  JVMData* data = getData(env);
   printf("jni: GetStaticMethodID %s %s %s\n", std::bit_cast<const char*>(clazz), name, sig);
 
-  unimplemented("GetStaticMethodID");
+  auto key = jvmilia::registerKey(std::bit_cast<const char*>(clazz), name, sig);
+  auto iter = data->cachedJMethods.find(key);
+  if (iter == data->cachedJMethods.end()) {
+    caml_cls = caml_copy_string(std::bit_cast<const char*>(clazz));
+    caml_name = caml_copy_string(name);
+    caml_desc = caml_copy_string(sig);
+    result = caml_callback3(data->get_static_method_callback, caml_cls, caml_name, caml_desc);
+
+    auto* ptr = new value;
+    *ptr = result;
+    data->cachedJMethods.insert_or_assign(key, ptr);
+    caml_register_global_root(ptr);
+
+    printf("jni: GetStaticMethodID %s %s %s -> %lx (new)\n", std::bit_cast<const char*>(clazz), name, sig, result);
+
+    CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(ptr));
+  }
+
+  printf("jni: GetStaticMethodID %s %s %s -> %lx (cached)\n", std::bit_cast<const char*>(clazz), name, sig,
+         *iter->second);
+
+  CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(iter->second));
+}
+
+jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
+  (void)env;
+
+  printf("jni: CallStaticObjectMethodV %s\n", std::bit_cast<const char*>(clazz));
+  dump_value(*std::bit_cast<value*>(methodID), 4);
+  puts(std::bit_cast<const char*>(va_arg(args, jstring)));
+
+  unimplemented("CallStaticObjectMethodV");
 }
 
 #pragma clang diagnostic push
@@ -302,9 +335,6 @@ void SetFloatField(JNIEnv* env, jobject obj, jfieldID fieldID, jfloat val) { uni
 void SetDoubleField(JNIEnv* env, jobject obj, jfieldID fieldID, jdouble val) { unimplemented("SetDoubleField"); }
 jobject CallStaticObjectMethod(JNIEnv* env, jclass clazz, jmethodID methodID, ...) {
   unimplemented("CallStaticObjectMethod");
-}
-jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
-  unimplemented("CallStaticObjectMethodV");
 }
 jobject CallStaticObjectMethodA(JNIEnv* env, jclass clazz, jmethodID methodID, const jvalue* args) {
   unimplemented("CallStaticObjectMethodA");

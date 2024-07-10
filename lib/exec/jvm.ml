@@ -47,14 +47,15 @@ class jvm libjava =
     val mutable string_pool : evalue StringMap.t = StringMap.empty
     val libjava : int = libjava
     val mutable interface : int = 0
-    val mutable interface_data : Shim.native_interface option = None
 
     method init : unit =
-      interface_data <- Some { Shim.find_class = self#load_class; dummy = 0 };
-      interface <- Shim.make_native_interface (Option.get interface_data);
-      Printf.printf "interface: %#x\nd: %#x\nfind_calss: %#x\n" interface
-        (Obj.magic (Option.get interface_data))
-        (Obj.magic (Option.get interface_data).find_class)
+      let interface_data =
+        {
+          Shim.find_class = self#load_class;
+          get_static_method = self#find_static_method;
+        }
+      in
+      interface <- Shim.make_native_interface interface_data
 
     method free = Shim.free_native_interface interface
     method private curframe = List.hd frames
@@ -151,6 +152,19 @@ class jvm libjava =
             self#is_indirect_superclass (self#load_class super) target
         | None -> false
 
+    method private find_static_method (cls : string) (name : string)
+        (desc : string) : jmethod =
+      let def_cls = self#load_class cls in
+      let def_mth =
+        match find_method def_cls name desc with
+        | Some m -> m
+        | None ->
+            failwith "Cannot find method to invokestatic (TODO add more info)"
+      in
+      assert (
+        def_mth.access_flags.is_static && not def_mth.access_flags.is_abstract);
+      def_mth
+
     method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
         (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
@@ -158,17 +172,10 @@ class jvm libjava =
       Debug.instr instr self#curframe.pc;
       match instr with
       | Invokestatic method_desc ->
-          let def_cls = self#load_class method_desc.cls in
           let def_mth =
-            match find_method def_cls method_desc.name method_desc.desc with
-            | Some m -> m
-            | None ->
-                failwith
-                  "Cannot find method to invokestatic (TODO add more info)"
+            self#find_static_method method_desc.cls method_desc.name
+              method_desc.desc
           in
-          assert (
-            def_mth.access_flags.is_static
-            && not def_mth.access_flags.is_abstract);
           (* todo frame stuff *)
           (* todo arguments *)
           let args = self#pop_list def_mth.nargs in
