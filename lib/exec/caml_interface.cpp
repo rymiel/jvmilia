@@ -78,16 +78,20 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
 bool evalue_is_object(value evalue) {
   CAMLparam1(evalue);
 
-  CAMLreturnT(bool, Is_block(evalue) && Tag_val(evalue) == 0 && Wosize_val(evalue) == 1);
+  CAMLreturnT(bool,
+              Is_block(evalue)               // has parameter
+                  && Tag_val(evalue) == 0    // index 0
+                  && Wosize_val(evalue) == 1 // one field (eobjectvalue)
+  );
 }
 
-jvalue evalue_conversion(value v) {
+jvalue evalue_conversion(value* v) {
   jvalue j = {};
-  if (evalue_is_object(v)) {
+  if (evalue_is_object(*v)) {
     j.l = std::bit_cast<jobject>(v);
     return j;
   } else {
-    std::puts("unimplement evalue");
+    std::puts("unimplemented evalue");
     std::exit(4);
   }
 }

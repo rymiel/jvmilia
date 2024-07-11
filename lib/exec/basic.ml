@@ -5,13 +5,13 @@ module StringMap = Map.Make (String)
 type evalue =
   | Void
   | Null
-  | Object of eclassvalue
+  | Object of eobjectvalue
   | Int of int
   | Array of earrayvalue
   | Long of int64
   | ByteArray of bytes
 
-and eclassvalue = { cls : eclass; mutable fields : evalue StringMap.t }
+and eobjectvalue = { cls : eclass; mutable fields : evalue StringMap.t }
 and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
 and eclass = { raw : jclass; mutable static : evalue StringMap.t }
 

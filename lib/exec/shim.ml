@@ -4,6 +4,7 @@ external load_method : int -> string -> int = "load_method_native"
 type native_interface = {
   find_class : string -> Basic.evalue;
   get_static_method : string -> string -> string -> Java.jmethod;
+  class_name : Basic.evalue -> string;
 }
 
 external make_native_interface : native_interface -> int

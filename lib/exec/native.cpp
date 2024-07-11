@@ -427,6 +427,8 @@ CAMLprim value make_native_interface_native(value interface_data) {
   caml_register_global_root(&data->find_class_callback);
   data->get_static_method_callback = Field(interface_data, 1);
   caml_register_global_root(&data->get_static_method_callback);
+  data->class_name_callback = Field(interface_data, 2);
+  caml_register_global_root(&data->class_name_callback);
 
   Context* context = new Context;
   context->interface = interface;
@@ -467,6 +469,7 @@ CAMLprim value free_native_interface_native(value handle) {
 
   caml_remove_global_root(&context->data->find_class_callback);
   caml_remove_global_root(&context->data->get_static_method_callback);
+  caml_remove_global_root(&context->data->class_name_callback);
 
   for (auto [k, v] : context->data->cachedJMethods) {
     caml_remove_global_root(v);
@@ -519,7 +522,10 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   std::printf("bridge: %p\n", bridge);
 
-  auto arg_evalues = list_vector_map(params, &evalue_conversion);
+  auto arg_evalues = list_vector_map(params, [&context](value v) {
+    auto ref = context->data->frames.back().localReferences.emplace_back(make_reference(v));
+    return evalue_conversion(ref.get());
+  });
   auto result = bridge(value_to_handle(fn_ptr), &context->interface, arg_evalues);
 
   std::printf("result: %lx\n", result.j);

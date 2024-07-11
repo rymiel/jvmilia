@@ -53,7 +53,7 @@ void dump_value(value input, int max_depth = 100, std::vector<int> depth = {});
 
 auto evalue_is_object(value evalue) -> bool;
 
-auto evalue_conversion(value v) -> jvalue;
+auto evalue_conversion(value* v) -> jvalue;
 
 auto reconstruct_evalue(jvalue j, vtype ty) -> value;
 

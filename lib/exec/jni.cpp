@@ -19,9 +19,19 @@ JVMData* getData(JNIEnv* env) {
   std::exit(1);
 }
 
+auto class_name(JNIEnv* env, jclass clazz) -> const char* {
+  CAMLparam0();
+  CAMLlocal1(result);
+  JVMData* data = getData(env);
+
+  result = caml_callback(data->class_name_callback, *std::bit_cast<value*>(clazz));
+
+  CAMLreturnT(const char*, String_val(result));
+}
+
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   JVMData* data = getData(env);
-  const char* className = std::bit_cast<const char*>(clazz);
+  const char* className = class_name(env, clazz);
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
     auto key = registerKey(className, method.name, method.signature);
@@ -99,12 +109,13 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
   CAMLparam0();
   CAMLlocal4(caml_cls, caml_name, caml_desc, result);
   JVMData* data = getData(env);
-  printf("jni: GetStaticMethodID %s %s %s\n", std::bit_cast<const char*>(clazz), name, sig);
+  const char* className = class_name(env, clazz);
+  printf("jni: GetStaticMethodID %s %s %s\n", className, name, sig);
 
-  auto key = jvmilia::registerKey(std::bit_cast<const char*>(clazz), name, sig);
+  auto key = jvmilia::registerKey(className, name, sig);
   auto iter = data->cachedJMethods.find(key);
   if (iter == data->cachedJMethods.end()) {
-    caml_cls = caml_copy_string(std::bit_cast<const char*>(clazz));
+    caml_cls = caml_copy_string(className);
     caml_name = caml_copy_string(name);
     caml_desc = caml_copy_string(sig);
     result = caml_callback3(data->get_static_method_callback, caml_cls, caml_name, caml_desc);
@@ -114,13 +125,12 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
     data->cachedJMethods.insert_or_assign(key, ptr);
     caml_register_global_root(ptr);
 
-    printf("jni: GetStaticMethodID %s %s %s -> %lx (new)\n", std::bit_cast<const char*>(clazz), name, sig, result);
+    printf("jni: GetStaticMethodID %s %s %s -> %lx (new)\n", className, name, sig, result);
 
     CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(ptr));
   }
 
-  printf("jni: GetStaticMethodID %s %s %s -> %lx (cached)\n", std::bit_cast<const char*>(clazz), name, sig,
-         *iter->second);
+  printf("jni: GetStaticMethodID %s %s %s -> %lx (cached)\n", className, name, sig, *iter->second);
 
   CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(iter->second));
 }
@@ -128,7 +138,7 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
 jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
   (void)env;
 
-  printf("jni: CallStaticObjectMethodV %s\n", std::bit_cast<const char*>(clazz));
+  printf("jni: CallStaticObjectMethodV %s\n", class_name(env, clazz));
   dump_value(*std::bit_cast<value*>(methodID), 4);
   puts(String_val(*std::bit_cast<value*>(va_arg(args, jstring))));
 

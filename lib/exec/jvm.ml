@@ -17,6 +17,15 @@ let as_int (v : evalue) : int =
   | Int v -> v
   | x -> failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
 
+let java_lang_Class_name (v : evalue) : string =
+  match v with
+  | Object o -> (
+      assert (o.cls.raw.name = "java/lang/Class");
+      match StringMap.find "__jvmilia_name" o.fields with
+      | ByteArray a -> Bytes.to_string a
+      | _ -> failwith "Nope")
+  | _ -> failwith "Nope"
+
 (* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
    that can then be converted to vtype in the verifier whenever needed? *)
 let default_value (ty : Vtype.vtype) : evalue =
@@ -55,6 +64,7 @@ class jvm libjava =
             (fun name ->
               self#make_class_instance (self#load_class name).raw.name);
           get_static_method = self#find_static_method;
+          class_name = java_lang_Class_name;
         }
       in
       interface <- Shim.make_native_interface interface_data
@@ -155,7 +165,8 @@ class jvm libjava =
       let fields =
         StringMap.empty
         |> StringMap.add "classLoader" Null
-        |> StringMap.add "__jvmilia_name" (self#make_string_instance class_name)
+        |> StringMap.add "__jvmilia_name"
+             (ByteArray (Bytes.of_string class_name))
       in
       Object { cls = self#load_class "java/lang/Class"; fields }
 
@@ -402,7 +413,7 @@ class jvm libjava =
         Printf.printf "%#x ((%s) -> %s) [%s]\n%!" method_handle
           (String.concat ", " (List.map Vtype.string_of_vtype param_types))
           (Vtype.string_of_vtype ret_type)
-          (String.concat ", " (List.map string_of_evalue args_real));
+          (String.concat ", " (List.map string_of_evalue_detailed args_real));
         let result =
           Shim.execute_native_auto interface args_real param_types ret_type
             method_handle
