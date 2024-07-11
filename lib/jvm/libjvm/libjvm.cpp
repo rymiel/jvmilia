@@ -3,658 +3,179 @@
 #include <cstdio>
 #include <cstdlib>
 
-extern "C" {
+[[noreturn]] void unimplemented(const char* methodName) {
+  printf("Unimplemented libjvm method %s\n", methodName);
+  std::exit(1);
+}
 
+extern "C" {
 jboolean JVM_DesiredAssertionStatus(JNIEnv*, jclass unused, jclass cls) {
   auto* unused_name = std::bit_cast<const char*>(unused);
   auto* cls_name = std::bit_cast<const char*>(cls);
   std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
-  //   std::exit(1);
 
   return 0;
 }
 
-void JVM_ActiveProcessorCount() {
-  std::puts("libjvm: JVM_ActiveProcessorCount");
-  std::exit(1);
-}
-void JVM_AddModuleExports() {
-  std::puts("libjvm: JVM_AddModuleExports");
-  std::exit(1);
-}
-void JVM_AddModuleExportsToAll() {
-  std::puts("libjvm: JVM_AddModuleExportsToAll");
-  std::exit(1);
-}
-void JVM_AddModuleExportsToAllUnnamed() {
-  std::puts("libjvm: JVM_AddModuleExportsToAllUnnamed");
-  std::exit(1);
-}
-void JVM_AddReadsModule() {
-  std::puts("libjvm: JVM_AddReadsModule");
-  std::exit(1);
-}
-void JVM_AreNestMates() {
-  std::puts("libjvm: JVM_AreNestMates");
-  std::exit(1);
-}
-void JVM_ArrayCopy() {
-  std::puts("libjvm: JVM_ArrayCopy");
-  std::exit(1);
-}
-void JVM_AssertionStatusDirectives() {
-  std::puts("libjvm: JVM_AssertionStatusDirectives");
-  std::exit(1);
-}
-void JVM_BeforeHalt() {
-  std::puts("libjvm: JVM_BeforeHalt");
-  std::exit(1);
-}
-void JVM_CallStackWalk() {
-  std::puts("libjvm: JVM_CallStackWalk");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetClassAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetClassAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetClassAtIfLoaded() {
-  std::puts("libjvm: JVM_ConstantPoolGetClassAtIfLoaded");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetClassRefIndexAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetClassRefIndexAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetDoubleAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetDoubleAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetFieldAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetFieldAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetFieldAtIfLoaded() {
-  std::puts("libjvm: JVM_ConstantPoolGetFieldAtIfLoaded");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetFloatAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetFloatAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetIntAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetIntAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetLongAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetLongAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetMemberRefInfoAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetMemberRefInfoAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetMethodAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetMethodAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetMethodAtIfLoaded() {
-  std::puts("libjvm: JVM_ConstantPoolGetMethodAtIfLoaded");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetNameAndTypeRefIndexAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetNameAndTypeRefIndexAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetNameAndTypeRefInfoAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetNameAndTypeRefInfoAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetSize() {
-  std::puts("libjvm: JVM_ConstantPoolGetSize");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetStringAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetStringAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetTagAt() {
-  std::puts("libjvm: JVM_ConstantPoolGetTagAt");
-  std::exit(1);
-}
-void JVM_ConstantPoolGetUTF8At() {
-  std::puts("libjvm: JVM_ConstantPoolGetUTF8At");
-  std::exit(1);
-}
-void JVM_CurrentCarrierThread() {
-  std::puts("libjvm: JVM_CurrentCarrierThread");
-  std::exit(1);
-}
-void JVM_CurrentThread() {
-  std::puts("libjvm: JVM_CurrentThread");
-  std::exit(1);
-}
-void JVM_CurrentTimeMillis() {
-  std::puts("libjvm: JVM_CurrentTimeMillis");
-  std::exit(1);
-}
-void JVM_DefineArchivedModules() {
-  std::puts("libjvm: JVM_DefineArchivedModules");
-  std::exit(1);
-}
-void JVM_DefineClassWithSource() {
-  std::puts("libjvm: JVM_DefineClassWithSource");
-  std::exit(1);
-}
-void JVM_DefineModule() {
-  std::puts("libjvm: JVM_DefineModule");
-  std::exit(1);
-}
-void JVM_DumpClassListToFile() {
-  std::puts("libjvm: JVM_DumpClassListToFile");
-  std::exit(1);
-}
-void JVM_DumpDynamicArchive() {
-  std::puts("libjvm: JVM_DumpDynamicArchive");
-  std::exit(1);
-}
-void JVM_DumpThreads() {
-  std::puts("libjvm: JVM_DumpThreads");
-  std::exit(1);
-}
-void JVM_EnsureMaterializedForStackWalk_func() {
-  std::puts("libjvm: JVM_EnsureMaterializedForStackWalk_func");
-  std::exit(1);
-}
-void JVM_ExpandStackFrameInfo() {
-  std::puts("libjvm: JVM_ExpandStackFrameInfo");
-  std::exit(1);
-}
-void JVM_FillInStackTrace() {
-  std::puts("libjvm: JVM_FillInStackTrace");
-  std::exit(1);
-}
-void JVM_FindClassFromBootLoader() {
-  std::puts("libjvm: JVM_FindClassFromBootLoader");
-  std::exit(1);
-}
-void JVM_FindClassFromCaller() {
-  std::puts("libjvm: JVM_FindClassFromCaller");
-  std::exit(1);
-}
-void JVM_FindLibraryEntry() {
-  std::puts("libjvm: JVM_FindLibraryEntry");
-  std::exit(1);
-}
-void JVM_FindLoadedClass() {
-  std::puts("libjvm: JVM_FindLoadedClass");
-  std::exit(1);
-}
-void JVM_FindPrimitiveClass() {
-  std::puts("libjvm: JVM_FindPrimitiveClass");
-  std::exit(1);
-}
-void JVM_FindScopedValueBindings() {
-  std::puts("libjvm: JVM_FindScopedValueBindings");
-  std::exit(1);
-}
-void JVM_FindSignal() {
-  std::puts("libjvm: JVM_FindSignal");
-  std::exit(1);
-}
-void JVM_FreeMemory() {
-  std::puts("libjvm: JVM_FreeMemory");
-  std::exit(1);
-}
-void JVM_GC() {
-  std::puts("libjvm: JVM_GC");
-  std::exit(1);
-}
-void JVM_GetAllThreads() {
-  std::puts("libjvm: JVM_GetAllThreads");
-  std::exit(1);
-}
-void JVM_GetAndClearReferencePendingList() {
-  std::puts("libjvm: JVM_GetAndClearReferencePendingList");
-  std::exit(1);
-}
-void JVM_GetArrayElement() {
-  std::puts("libjvm: JVM_GetArrayElement");
-  std::exit(1);
-}
-void JVM_GetArrayLength() {
-  std::puts("libjvm: JVM_GetArrayLength");
-  std::exit(1);
-}
-void JVM_GetCallerClass() {
-  std::puts("libjvm: JVM_GetCallerClass");
-  std::exit(1);
-}
-void JVM_GetClassAccessFlags() {
-  std::puts("libjvm: JVM_GetClassAccessFlags");
-  std::exit(1);
-}
-void JVM_GetClassAnnotations() {
-  std::puts("libjvm: JVM_GetClassAnnotations");
-  std::exit(1);
-}
-void JVM_GetClassConstantPool() {
-  std::puts("libjvm: JVM_GetClassConstantPool");
-  std::exit(1);
-}
-void JVM_GetClassContext() {
-  std::puts("libjvm: JVM_GetClassContext");
-  std::exit(1);
-}
-void JVM_GetClassDeclaredConstructors() {
-  std::puts("libjvm: JVM_GetClassDeclaredConstructors");
-  std::exit(1);
-}
-void JVM_GetClassDeclaredFields() {
-  std::puts("libjvm: JVM_GetClassDeclaredFields");
-  std::exit(1);
-}
-void JVM_GetClassDeclaredMethods() {
-  std::puts("libjvm: JVM_GetClassDeclaredMethods");
-  std::exit(1);
-}
-void JVM_GetClassFileVersion() {
-  std::puts("libjvm: JVM_GetClassFileVersion");
-  std::exit(1);
-}
-void JVM_GetClassInterfaces() {
-  std::puts("libjvm: JVM_GetClassInterfaces");
-  std::exit(1);
-}
-void JVM_GetClassModifiers() {
-  std::puts("libjvm: JVM_GetClassModifiers");
-  std::exit(1);
-}
-void JVM_GetClassSignature() {
-  std::puts("libjvm: JVM_GetClassSignature");
-  std::exit(1);
-}
-void JVM_GetClassSigners() {
-  std::puts("libjvm: JVM_GetClassSigners");
-  std::exit(1);
-}
-void JVM_GetClassTypeAnnotations() {
-  std::puts("libjvm: JVM_GetClassTypeAnnotations");
-  std::exit(1);
-}
-void JVM_GetDeclaredClasses() {
-  std::puts("libjvm: JVM_GetDeclaredClasses");
-  std::exit(1);
-}
-void JVM_GetDeclaringClass() {
-  std::puts("libjvm: JVM_GetDeclaringClass");
-  std::exit(1);
-}
-void JVM_GetEnclosingMethodInfo() {
-  std::puts("libjvm: JVM_GetEnclosingMethodInfo");
-  std::exit(1);
-}
-void JVM_GetExtendedNPEMessage() {
-  std::puts("libjvm: JVM_GetExtendedNPEMessage");
-  std::exit(1);
-}
-void JVM_GetFieldTypeAnnotations() {
-  std::puts("libjvm: JVM_GetFieldTypeAnnotations");
-  std::exit(1);
-}
-void JVM_GetInheritedAccessControlContext() {
-  std::puts("libjvm: JVM_GetInheritedAccessControlContext");
-  std::exit(1);
-}
-void JVM_GetMethodParameters() {
-  std::puts("libjvm: JVM_GetMethodParameters");
-  std::exit(1);
-}
-void JVM_GetMethodTypeAnnotations() {
-  std::puts("libjvm: JVM_GetMethodTypeAnnotations");
-  std::exit(1);
-}
-void JVM_GetNanoTimeAdjustment() {
-  std::puts("libjvm: JVM_GetNanoTimeAdjustment");
-  std::exit(1);
-}
-void JVM_GetNestHost() {
-  std::puts("libjvm: JVM_GetNestHost");
-  std::exit(1);
-}
-void JVM_GetNestMembers() {
-  std::puts("libjvm: JVM_GetNestMembers");
-  std::exit(1);
-}
-void JVM_GetNextThreadIdOffset() {
-  std::puts("libjvm: JVM_GetNextThreadIdOffset");
-  std::exit(1);
-}
-void JVM_GetPermittedSubclasses() {
-  std::puts("libjvm: JVM_GetPermittedSubclasses");
-  std::exit(1);
-}
-void JVM_GetPrimitiveArrayElement() {
-  std::puts("libjvm: JVM_GetPrimitiveArrayElement");
-  std::exit(1);
-}
-void JVM_GetProperties() {
-  std::puts("libjvm: JVM_GetProperties");
-  std::exit(1);
-}
-void JVM_GetProtectionDomain() {
-  std::puts("libjvm: JVM_GetProtectionDomain");
-  std::exit(1);
-}
-void JVM_GetRandomSeedForDumping() {
-  std::puts("libjvm: JVM_GetRandomSeedForDumping");
-  std::exit(1);
-}
-void JVM_GetRecordComponents() {
-  std::puts("libjvm: JVM_GetRecordComponents");
-  std::exit(1);
-}
-void JVM_GetSimpleBinaryName() {
-  std::puts("libjvm: JVM_GetSimpleBinaryName");
-  std::exit(1);
-}
-void JVM_GetStackAccessControlContext() {
-  std::puts("libjvm: JVM_GetStackAccessControlContext");
-  std::exit(1);
-}
-void JVM_GetStackTrace() {
-  std::puts("libjvm: JVM_GetStackTrace");
-  std::exit(1);
-}
-void JVM_GetSystemPackage() {
-  std::puts("libjvm: JVM_GetSystemPackage");
-  std::exit(1);
-}
-void JVM_GetSystemPackages() {
-  std::puts("libjvm: JVM_GetSystemPackages");
-  std::exit(1);
-}
-void JVM_GetTemporaryDirectory() {
-  std::puts("libjvm: JVM_GetTemporaryDirectory");
-  std::exit(1);
-}
-void JVM_GetVmArguments() {
-  std::puts("libjvm: JVM_GetVmArguments");
-  std::exit(1);
-}
-void JVM_Halt() {
-  std::puts("libjvm: JVM_Halt");
-  std::exit(1);
-}
-void JVM_HasReferencePendingList() {
-  std::puts("libjvm: JVM_HasReferencePendingList");
-  std::exit(1);
-}
-void JVM_HoldsLock() {
-  std::puts("libjvm: JVM_HoldsLock");
-  std::exit(1);
-}
-void JVM_IHashCode() {
-  std::puts("libjvm: JVM_IHashCode");
-  std::exit(1);
-}
-void JVM_InitAgentProperties() {
-  std::puts("libjvm: JVM_InitAgentProperties");
-  std::exit(1);
-}
-void JVM_InitClassName() {
-  std::puts("libjvm: JVM_InitClassName");
-  std::exit(1);
-}
-void JVM_InitializeFromArchive() {
-  std::puts("libjvm: JVM_InitializeFromArchive");
-  std::exit(1);
-}
-void JVM_InitStackTraceElement() {
-  std::puts("libjvm: JVM_InitStackTraceElement");
-  std::exit(1);
-}
-void JVM_InitStackTraceElementArray() {
-  std::puts("libjvm: JVM_InitStackTraceElementArray");
-  std::exit(1);
-}
-void JVM_InternString() {
-  std::puts("libjvm: JVM_InternString");
-  std::exit(1);
-}
-void JVM_Interrupt() {
-  std::puts("libjvm: JVM_Interrupt");
-  std::exit(1);
-}
-void JVM_InvokeMethod() {
-  std::puts("libjvm: JVM_InvokeMethod");
-  std::exit(1);
-}
-void JVM_IsArrayClass() {
-  std::puts("libjvm: JVM_IsArrayClass");
-  std::exit(1);
-}
-void JVM_IsCDSDumpingEnabled() {
-  std::puts("libjvm: JVM_IsCDSDumpingEnabled");
-  std::exit(1);
-}
-void JVM_IsContinuationsSupported() {
-  std::puts("libjvm: JVM_IsContinuationsSupported");
-  std::exit(1);
-}
-void JVM_IsDumpingClassList() {
-  std::puts("libjvm: JVM_IsDumpingClassList");
-  std::exit(1);
-}
-void JVM_IsFinalizationEnabled() {
-  std::puts("libjvm: JVM_IsFinalizationEnabled");
-  std::exit(1);
-}
-void JVM_IsForeignLinkerSupported() {
-  std::puts("libjvm: JVM_IsForeignLinkerSupported");
-  std::exit(1);
-}
-void JVM_IsHiddenClass() {
-  std::puts("libjvm: JVM_IsHiddenClass");
-  std::exit(1);
-}
-void JVM_IsInterface() {
-  std::puts("libjvm: JVM_IsInterface");
-  std::exit(1);
-}
-void JVM_IsPreviewEnabled() {
-  std::puts("libjvm: JVM_IsPreviewEnabled");
-  std::exit(1);
-}
-void JVM_IsPrimitiveClass() {
-  std::puts("libjvm: JVM_IsPrimitiveClass");
-  std::exit(1);
-}
-void JVM_IsRecord() {
-  std::puts("libjvm: JVM_IsRecord");
-  std::exit(1);
-}
-void JVM_IsSharingEnabled() {
-  std::puts("libjvm: JVM_IsSharingEnabled");
-  std::exit(1);
-}
-void JVM_IsSupportedJNIVersion() {
-  std::puts("libjvm: JVM_IsSupportedJNIVersion");
-  std::exit(1);
-}
-void JVM_IsUseContainerSupport() {
-  std::puts("libjvm: JVM_IsUseContainerSupport");
-  std::exit(1);
-}
-void JVM_LatestUserDefinedLoader() {
-  std::puts("libjvm: JVM_LatestUserDefinedLoader");
-  std::exit(1);
-}
-void JVM_LoadLibrary() {
-  std::puts("libjvm: JVM_LoadLibrary");
-  std::exit(1);
-}
-void JVM_LogLambdaFormInvoker() {
-  std::puts("libjvm: JVM_LogLambdaFormInvoker");
-  std::exit(1);
-}
-void JVM_LookupDefineClass() {
-  std::puts("libjvm: JVM_LookupDefineClass");
-  std::exit(1);
-}
-void JVM_LookupLambdaProxyClassFromArchive() {
-  std::puts("libjvm: JVM_LookupLambdaProxyClassFromArchive");
-  std::exit(1);
-}
-void JVM_MaxMemory() {
-  std::puts("libjvm: JVM_MaxMemory");
-  std::exit(1);
-}
-void JVM_MoreStackWalk() {
-  std::puts("libjvm: JVM_MoreStackWalk");
-  std::exit(1);
-}
-void JVM_NanoTime() {
-  std::puts("libjvm: JVM_NanoTime");
-  std::exit(1);
-}
-void JVM_NewArray() {
-  std::puts("libjvm: JVM_NewArray");
-  std::exit(1);
-}
-void JVM_NewInstanceFromConstructor() {
-  std::puts("libjvm: JVM_NewInstanceFromConstructor");
-  std::exit(1);
-}
-void JVM_NewMultiArray() {
-  std::puts("libjvm: JVM_NewMultiArray");
-  std::exit(1);
-}
-void JVM_PhantomReferenceRefersTo() {
-  std::puts("libjvm: JVM_PhantomReferenceRefersTo");
-  std::exit(1);
-}
-void JVM_RaiseSignal() {
-  std::puts("libjvm: JVM_RaiseSignal");
-  std::exit(1);
-}
-void JVM_ReferenceClear() {
-  std::puts("libjvm: JVM_ReferenceClear");
-  std::exit(1);
-}
-void JVM_ReferenceRefersTo() {
-  std::puts("libjvm: JVM_ReferenceRefersTo");
-  std::exit(1);
-}
-void JVM_RegisterContinuationMethods() {
-  std::puts("libjvm: JVM_RegisterContinuationMethods");
-  std::exit(1);
-}
-void JVM_RegisterLambdaProxyClassForArchiving() {
-  std::puts("libjvm: JVM_RegisterLambdaProxyClassForArchiving");
-  std::exit(1);
-}
-void JVM_RegisterSignal() {
-  std::puts("libjvm: JVM_RegisterSignal");
-  std::exit(1);
-}
-void JVM_ReportFinalizationComplete() {
-  std::puts("libjvm: JVM_ReportFinalizationComplete");
-  std::exit(1);
-}
-void JVM_ScopedValueCache() {
-  std::puts("libjvm: JVM_ScopedValueCache");
-  std::exit(1);
-}
-void JVM_SetArrayElement() {
-  std::puts("libjvm: JVM_SetArrayElement");
-  std::exit(1);
-}
-void JVM_SetBootLoaderUnnamedModule() {
-  std::puts("libjvm: JVM_SetBootLoaderUnnamedModule");
-  std::exit(1);
-}
-void JVM_SetClassSigners() {
-  std::puts("libjvm: JVM_SetClassSigners");
-  std::exit(1);
-}
-void JVM_SetCurrentThread() {
-  std::puts("libjvm: JVM_SetCurrentThread");
-  std::exit(1);
-}
-void JVM_SetNativeThreadName() {
-  std::puts("libjvm: JVM_SetNativeThreadName");
-  std::exit(1);
-}
-void JVM_SetPrimitiveArrayElement() {
-  std::puts("libjvm: JVM_SetPrimitiveArrayElement");
-  std::exit(1);
-}
-void JVM_SetScopedValueCache() {
-  std::puts("libjvm: JVM_SetScopedValueCache");
-  std::exit(1);
-}
-void JVM_SetStackWalkContinuation() {
-  std::puts("libjvm: JVM_SetStackWalkContinuation");
-  std::exit(1);
-}
-void JVM_SetThreadPriority() {
-  std::puts("libjvm: JVM_SetThreadPriority");
-  std::exit(1);
-}
-void JVM_SleepNanos() {
-  std::puts("libjvm: JVM_SleepNanos");
-  std::exit(1);
-}
-void JVM_StartThread() {
-  std::puts("libjvm: JVM_StartThread");
-  std::exit(1);
-}
-void JVM_TotalMemory() {
-  std::puts("libjvm: JVM_TotalMemory");
-  std::exit(1);
-}
-void JVM_UnloadLibrary() {
-  std::puts("libjvm: JVM_UnloadLibrary");
-  std::exit(1);
-}
-void JVM_VirtualThreadEnd() {
-  std::puts("libjvm: JVM_VirtualThreadEnd");
-  std::exit(1);
-}
-void JVM_VirtualThreadHideFrames() {
-  std::puts("libjvm: JVM_VirtualThreadHideFrames");
-  std::exit(1);
-}
-void JVM_VirtualThreadMount() {
-  std::puts("libjvm: JVM_VirtualThreadMount");
-  std::exit(1);
-}
-void JVM_VirtualThreadStart() {
-  std::puts("libjvm: JVM_VirtualThreadStart");
-  std::exit(1);
-}
-void JVM_VirtualThreadUnmount() {
-  std::puts("libjvm: JVM_VirtualThreadUnmount");
-  std::exit(1);
-}
-void JVM_WaitForReferencePendingList() {
-  std::puts("libjvm: JVM_WaitForReferencePendingList");
-  std::exit(1);
-}
+void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
+void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
+void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
+void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
+void JVM_AddReadsModule() { unimplemented("JVM_AddReadsModule"); }
+void JVM_AreNestMates() { unimplemented("JVM_AreNestMates"); }
+void JVM_ArrayCopy() { unimplemented("JVM_ArrayCopy"); }
+void JVM_AssertionStatusDirectives() { unimplemented("JVM_AssertionStatusDirectives"); }
+void JVM_BeforeHalt() { unimplemented("JVM_BeforeHalt"); }
+void JVM_CallStackWalk() { unimplemented("JVM_CallStackWalk"); }
+void JVM_ConstantPoolGetClassAt() { unimplemented("JVM_ConstantPoolGetClassAt"); }
+void JVM_ConstantPoolGetClassAtIfLoaded() { unimplemented("JVM_ConstantPoolGetClassAtIfLoaded"); }
+void JVM_ConstantPoolGetClassRefIndexAt() { unimplemented("JVM_ConstantPoolGetClassRefIndexAt"); }
+void JVM_ConstantPoolGetDoubleAt() { unimplemented("JVM_ConstantPoolGetDoubleAt"); }
+void JVM_ConstantPoolGetFieldAt() { unimplemented("JVM_ConstantPoolGetFieldAt"); }
+void JVM_ConstantPoolGetFieldAtIfLoaded() { unimplemented("JVM_ConstantPoolGetFieldAtIfLoaded"); }
+void JVM_ConstantPoolGetFloatAt() { unimplemented("JVM_ConstantPoolGetFloatAt"); }
+void JVM_ConstantPoolGetIntAt() { unimplemented("JVM_ConstantPoolGetIntAt"); }
+void JVM_ConstantPoolGetLongAt() { unimplemented("JVM_ConstantPoolGetLongAt"); }
+void JVM_ConstantPoolGetMemberRefInfoAt() { unimplemented("JVM_ConstantPoolGetMemberRefInfoAt"); }
+void JVM_ConstantPoolGetMethodAt() { unimplemented("JVM_ConstantPoolGetMethodAt"); }
+void JVM_ConstantPoolGetMethodAtIfLoaded() { unimplemented("JVM_ConstantPoolGetMethodAtIfLoaded"); }
+void JVM_ConstantPoolGetNameAndTypeRefIndexAt() { unimplemented("JVM_ConstantPoolGetNameAndTypeRefIndexAt"); }
+void JVM_ConstantPoolGetNameAndTypeRefInfoAt() { unimplemented("JVM_ConstantPoolGetNameAndTypeRefInfoAt"); }
+void JVM_ConstantPoolGetSize() { unimplemented("JVM_ConstantPoolGetSize"); }
+void JVM_ConstantPoolGetStringAt() { unimplemented("JVM_ConstantPoolGetStringAt"); }
+void JVM_ConstantPoolGetTagAt() { unimplemented("JVM_ConstantPoolGetTagAt"); }
+void JVM_ConstantPoolGetUTF8At() { unimplemented("JVM_ConstantPoolGetUTF8At"); }
+void JVM_CurrentCarrierThread() { unimplemented("JVM_CurrentCarrierThread"); }
+void JVM_CurrentThread() { unimplemented("JVM_CurrentThread"); }
+void JVM_CurrentTimeMillis() { unimplemented("JVM_CurrentTimeMillis"); }
+void JVM_DefineArchivedModules() { unimplemented("JVM_DefineArchivedModules"); }
+void JVM_DefineClassWithSource() { unimplemented("JVM_DefineClassWithSource"); }
+void JVM_DefineModule() { unimplemented("JVM_DefineModule"); }
+void JVM_DumpClassListToFile() { unimplemented("JVM_DumpClassListToFile"); }
+void JVM_DumpDynamicArchive() { unimplemented("JVM_DumpDynamicArchive"); }
+void JVM_DumpThreads() { unimplemented("JVM_DumpThreads"); }
+void JVM_EnsureMaterializedForStackWalk_func() { unimplemented("JVM_EnsureMaterializedForStackWalk_func"); }
+void JVM_ExpandStackFrameInfo() { unimplemented("JVM_ExpandStackFrameInfo"); }
+void JVM_FillInStackTrace() { unimplemented("JVM_FillInStackTrace"); }
+void JVM_FindClassFromBootLoader() { unimplemented("JVM_FindClassFromBootLoader"); }
+void JVM_FindClassFromCaller() { unimplemented("JVM_FindClassFromCaller"); }
+void JVM_FindLibraryEntry() { unimplemented("JVM_FindLibraryEntry"); }
+void JVM_FindLoadedClass() { unimplemented("JVM_FindLoadedClass"); }
+void JVM_FindPrimitiveClass() { unimplemented("JVM_FindPrimitiveClass"); }
+void JVM_FindScopedValueBindings() { unimplemented("JVM_FindScopedValueBindings"); }
+void JVM_FindSignal() { unimplemented("JVM_FindSignal"); }
+void JVM_FreeMemory() { unimplemented("JVM_FreeMemory"); }
+void JVM_GC() { unimplemented("JVM_GC"); }
+void JVM_GetAllThreads() { unimplemented("JVM_GetAllThreads"); }
+void JVM_GetAndClearReferencePendingList() { unimplemented("JVM_GetAndClearReferencePendingList"); }
+void JVM_GetArrayElement() { unimplemented("JVM_GetArrayElement"); }
+void JVM_GetArrayLength() { unimplemented("JVM_GetArrayLength"); }
+void JVM_GetCallerClass() { unimplemented("JVM_GetCallerClass"); }
+void JVM_GetClassAccessFlags() { unimplemented("JVM_GetClassAccessFlags"); }
+void JVM_GetClassAnnotations() { unimplemented("JVM_GetClassAnnotations"); }
+void JVM_GetClassConstantPool() { unimplemented("JVM_GetClassConstantPool"); }
+void JVM_GetClassContext() { unimplemented("JVM_GetClassContext"); }
+void JVM_GetClassDeclaredConstructors() { unimplemented("JVM_GetClassDeclaredConstructors"); }
+void JVM_GetClassDeclaredFields() { unimplemented("JVM_GetClassDeclaredFields"); }
+void JVM_GetClassDeclaredMethods() { unimplemented("JVM_GetClassDeclaredMethods"); }
+void JVM_GetClassFileVersion() { unimplemented("JVM_GetClassFileVersion"); }
+void JVM_GetClassInterfaces() { unimplemented("JVM_GetClassInterfaces"); }
+void JVM_GetClassModifiers() { unimplemented("JVM_GetClassModifiers"); }
+void JVM_GetClassSignature() { unimplemented("JVM_GetClassSignature"); }
+void JVM_GetClassSigners() { unimplemented("JVM_GetClassSigners"); }
+void JVM_GetClassTypeAnnotations() { unimplemented("JVM_GetClassTypeAnnotations"); }
+void JVM_GetDeclaredClasses() { unimplemented("JVM_GetDeclaredClasses"); }
+void JVM_GetDeclaringClass() { unimplemented("JVM_GetDeclaringClass"); }
+void JVM_GetEnclosingMethodInfo() { unimplemented("JVM_GetEnclosingMethodInfo"); }
+void JVM_GetExtendedNPEMessage() { unimplemented("JVM_GetExtendedNPEMessage"); }
+void JVM_GetFieldTypeAnnotations() { unimplemented("JVM_GetFieldTypeAnnotations"); }
+void JVM_GetInheritedAccessControlContext() { unimplemented("JVM_GetInheritedAccessControlContext"); }
+void JVM_GetMethodParameters() { unimplemented("JVM_GetMethodParameters"); }
+void JVM_GetMethodTypeAnnotations() { unimplemented("JVM_GetMethodTypeAnnotations"); }
+void JVM_GetNanoTimeAdjustment() { unimplemented("JVM_GetNanoTimeAdjustment"); }
+void JVM_GetNestHost() { unimplemented("JVM_GetNestHost"); }
+void JVM_GetNestMembers() { unimplemented("JVM_GetNestMembers"); }
+void JVM_GetNextThreadIdOffset() { unimplemented("JVM_GetNextThreadIdOffset"); }
+void JVM_GetPermittedSubclasses() { unimplemented("JVM_GetPermittedSubclasses"); }
+void JVM_GetPrimitiveArrayElement() { unimplemented("JVM_GetPrimitiveArrayElement"); }
+void JVM_GetProperties() { unimplemented("JVM_GetProperties"); }
+void JVM_GetProtectionDomain() { unimplemented("JVM_GetProtectionDomain"); }
+void JVM_GetRandomSeedForDumping() { unimplemented("JVM_GetRandomSeedForDumping"); }
+void JVM_GetRecordComponents() { unimplemented("JVM_GetRecordComponents"); }
+void JVM_GetSimpleBinaryName() { unimplemented("JVM_GetSimpleBinaryName"); }
+void JVM_GetStackAccessControlContext() { unimplemented("JVM_GetStackAccessControlContext"); }
+void JVM_GetStackTrace() { unimplemented("JVM_GetStackTrace"); }
+void JVM_GetSystemPackage() { unimplemented("JVM_GetSystemPackage"); }
+void JVM_GetSystemPackages() { unimplemented("JVM_GetSystemPackages"); }
+void JVM_GetTemporaryDirectory() { unimplemented("JVM_GetTemporaryDirectory"); }
+void JVM_GetVmArguments() { unimplemented("JVM_GetVmArguments"); }
+void JVM_Halt() { unimplemented("JVM_Halt"); }
+void JVM_HasReferencePendingList() { unimplemented("JVM_HasReferencePendingList"); }
+void JVM_HoldsLock() { unimplemented("JVM_HoldsLock"); }
+void JVM_IHashCode() { unimplemented("JVM_IHashCode"); }
+void JVM_InitAgentProperties() { unimplemented("JVM_InitAgentProperties"); }
+void JVM_InitClassName() { unimplemented("JVM_InitClassName"); }
+void JVM_InitializeFromArchive() { unimplemented("JVM_InitializeFromArchive"); }
+void JVM_InitStackTraceElement() { unimplemented("JVM_InitStackTraceElement"); }
+void JVM_InitStackTraceElementArray() { unimplemented("JVM_InitStackTraceElementArray"); }
+void JVM_InternString() { unimplemented("JVM_InternString"); }
+void JVM_Interrupt() { unimplemented("JVM_Interrupt"); }
+void JVM_InvokeMethod() { unimplemented("JVM_InvokeMethod"); }
+void JVM_IsArrayClass() { unimplemented("JVM_IsArrayClass"); }
+void JVM_IsCDSDumpingEnabled() { unimplemented("JVM_IsCDSDumpingEnabled"); }
+void JVM_IsContinuationsSupported() { unimplemented("JVM_IsContinuationsSupported"); }
+void JVM_IsDumpingClassList() { unimplemented("JVM_IsDumpingClassList"); }
+void JVM_IsFinalizationEnabled() { unimplemented("JVM_IsFinalizationEnabled"); }
+void JVM_IsForeignLinkerSupported() { unimplemented("JVM_IsForeignLinkerSupported"); }
+void JVM_IsHiddenClass() { unimplemented("JVM_IsHiddenClass"); }
+void JVM_IsInterface() { unimplemented("JVM_IsInterface"); }
+void JVM_IsPreviewEnabled() { unimplemented("JVM_IsPreviewEnabled"); }
+void JVM_IsPrimitiveClass() { unimplemented("JVM_IsPrimitiveClass"); }
+void JVM_IsRecord() { unimplemented("JVM_IsRecord"); }
+void JVM_IsSharingEnabled() { unimplemented("JVM_IsSharingEnabled"); }
+void JVM_IsSupportedJNIVersion() { unimplemented("JVM_IsSupportedJNIVersion"); }
+void JVM_IsUseContainerSupport() { unimplemented("JVM_IsUseContainerSupport"); }
+void JVM_LatestUserDefinedLoader() { unimplemented("JVM_LatestUserDefinedLoader"); }
+void JVM_LoadLibrary() { unimplemented("JVM_LoadLibrary"); }
+void JVM_LogLambdaFormInvoker() { unimplemented("JVM_LogLambdaFormInvoker"); }
+void JVM_LookupDefineClass() { unimplemented("JVM_LookupDefineClass"); }
+void JVM_LookupLambdaProxyClassFromArchive() { unimplemented("JVM_LookupLambdaProxyClassFromArchive"); }
+void JVM_MaxMemory() { unimplemented("JVM_MaxMemory"); }
+void JVM_MoreStackWalk() { unimplemented("JVM_MoreStackWalk"); }
+void JVM_NanoTime() { unimplemented("JVM_NanoTime"); }
+void JVM_NewArray() { unimplemented("JVM_NewArray"); }
+void JVM_NewInstanceFromConstructor() { unimplemented("JVM_NewInstanceFromConstructor"); }
+void JVM_NewMultiArray() { unimplemented("JVM_NewMultiArray"); }
+void JVM_PhantomReferenceRefersTo() { unimplemented("JVM_PhantomReferenceRefersTo"); }
+void JVM_RaiseSignal() { unimplemented("JVM_RaiseSignal"); }
+void JVM_ReferenceClear() { unimplemented("JVM_ReferenceClear"); }
+void JVM_ReferenceRefersTo() { unimplemented("JVM_ReferenceRefersTo"); }
+void JVM_RegisterContinuationMethods() { unimplemented("JVM_RegisterContinuationMethods"); }
+void JVM_RegisterLambdaProxyClassForArchiving() { unimplemented("JVM_RegisterLambdaProxyClassForArchiving"); }
+void JVM_RegisterSignal() { unimplemented("JVM_RegisterSignal"); }
+void JVM_ReportFinalizationComplete() { unimplemented("JVM_ReportFinalizationComplete"); }
+void JVM_ScopedValueCache() { unimplemented("JVM_ScopedValueCache"); }
+void JVM_SetArrayElement() { unimplemented("JVM_SetArrayElement"); }
+void JVM_SetBootLoaderUnnamedModule() { unimplemented("JVM_SetBootLoaderUnnamedModule"); }
+void JVM_SetClassSigners() { unimplemented("JVM_SetClassSigners"); }
+void JVM_SetCurrentThread() { unimplemented("JVM_SetCurrentThread"); }
+void JVM_SetNativeThreadName() { unimplemented("JVM_SetNativeThreadName"); }
+void JVM_SetPrimitiveArrayElement() { unimplemented("JVM_SetPrimitiveArrayElement"); }
+void JVM_SetScopedValueCache() { unimplemented("JVM_SetScopedValueCache"); }
+void JVM_SetStackWalkContinuation() { unimplemented("JVM_SetStackWalkContinuation"); }
+void JVM_SetThreadPriority() { unimplemented("JVM_SetThreadPriority"); }
+void JVM_SleepNanos() { unimplemented("JVM_SleepNanos"); }
+void JVM_StartThread() { unimplemented("JVM_StartThread"); }
+void JVM_TotalMemory() { unimplemented("JVM_TotalMemory"); }
+void JVM_UnloadLibrary() { unimplemented("JVM_UnloadLibrary"); }
+void JVM_VirtualThreadEnd() { unimplemented("JVM_VirtualThreadEnd"); }
+void JVM_VirtualThreadHideFrames() { unimplemented("JVM_VirtualThreadHideFrames"); }
+void JVM_VirtualThreadMount() { unimplemented("JVM_VirtualThreadMount"); }
+void JVM_VirtualThreadStart() { unimplemented("JVM_VirtualThreadStart"); }
+void JVM_VirtualThreadUnmount() { unimplemented("JVM_VirtualThreadUnmount"); }
+void JVM_WaitForReferencePendingList() { unimplemented("JVM_WaitForReferencePendingList"); }
+void JVM_Yield() { unimplemented("JVM_Yield"); }
 
-void jio_vfprintf() {
-  std::puts("libjvm: jio_vfprintf");
-  std::exit(1);
-}
-
-void jio_vsnprintf() {
-  std::puts("libjvm: jio_vsnprintf");
-  std::exit(1);
-}
-
-void JVM_Yield() {
-  std::puts("libjvm: JVM_Yield");
-  std::exit(1);
-}
+void jio_vfprintf() { unimplemented("jio_vfprintf"); }
+void jio_vsnprintf() { unimplemented("jio_vsnprintf"); }
 }
