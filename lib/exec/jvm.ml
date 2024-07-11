@@ -335,8 +335,8 @@ class jvm libjava =
             | Instr.Le -> v <= 0
           then self#curframe.nextpc <- target
       | If_icmp (cond, target) ->
-          let a = self#pop () |> as_int in
           let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
           if
             match cond with
             | Instr.Eq -> a = b
@@ -347,8 +347,8 @@ class jvm libjava =
             | Instr.Le -> a <= b
           then self#curframe.nextpc <- target
       | If_acmpne target ->
-          let a = self#pop () in
           let b = self#pop () in
+          let a = self#pop () in
           if a != b then self#curframe.nextpc <- target
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
