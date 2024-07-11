@@ -313,8 +313,10 @@ class jvm libjava =
           let v = self#pop () in
           self#push v;
           self#push v
-      | Aload i -> self#load i |> self#push
-      | Astore i -> self#pop () |> self#store i
+      | Aload i | Iload i -> self#load i |> self#push
+      | Astore i | Istore i -> self#pop () |> self#store i
+      | Iinc (i, v) ->
+          self#load i |> as_int |> ( + ) v |> (fun x -> Int x) |> self#store i
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -375,13 +377,19 @@ class jvm libjava =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
           a.arr.(i) <- v
-      (* | Iastore ->
-          let v = self#pop () in
+      | Baload ->
           let i = self#pop () |> as_int in
-          let a =
-            match self#pop () with Array x -> x | _ -> failwith "Not an array"
-          in
-          a.arr.(i) <- v *)
+          (match self#pop () with
+          | ByteArray x -> Int (Char.code (Bytes.get x i))
+          | _ -> failwith "Not an array")
+          |> self#push
+      | Arraylength ->
+          self#push
+            (Int
+               (match self#pop () with
+               | Array x -> Array.length x.arr
+               | ByteArray x -> Bytes.length x
+               | _ -> failwith "Not an array"))
       | Instanceof desc -> (
           match self#pop () with
           | Object o ->
