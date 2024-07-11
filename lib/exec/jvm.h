@@ -1,5 +1,6 @@
 #pragma once
 
+#include "caml/callback.h"
 #include "caml/memory.h"
 #include "caml/mlvalues.h"
 #include "jni.h"
@@ -50,6 +51,21 @@ struct Context {
   const JNINativeInterface* interface;
   JVMData* data;
 };
+
+inline JVMData* getData(JNIEnv* env) {
+  Context* context = std::bit_cast<Context*>(env);
+  //   __builtin_dump_struct(context->data, printf);
+  return context->data;
+}
+
+inline auto class_name(JVMData* data, jclass clazz) -> const char* {
+  CAMLparam0();
+  CAMLlocal1(result);
+
+  result = caml_callback(data->class_name_callback, *std::bit_cast<value*>(clazz));
+
+  CAMLreturnT(const char*, String_val(result));
+}
 
 inline std::string registerKey(const char* className, const char* methodName, const char* signature) {
   return std::string(className) + ";" + methodName + ";" + signature;

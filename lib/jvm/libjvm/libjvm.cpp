@@ -1,5 +1,5 @@
 #include "../../exec/jni.h"
-#include <bit>
+#include "../../exec/jvm.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -9,9 +9,10 @@
 }
 
 extern "C" {
-jboolean JVM_DesiredAssertionStatus(JNIEnv*, jclass unused, jclass cls) {
-  auto* unused_name = std::bit_cast<const char*>(unused);
-  auto* cls_name = std::bit_cast<const char*>(cls);
+jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  auto* unused_name = jvmilia::class_name(data, unused);
+  auto* cls_name = jvmilia::class_name(data, cls);
   std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
 
   return 0;

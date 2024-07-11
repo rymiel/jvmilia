@@ -9,29 +9,14 @@
 #include <cstdlib>
 
 namespace jvmilia {
-JVMData* getData(JNIEnv* env) {
-  Context* context = std::bit_cast<Context*>(env);
-  //   __builtin_dump_struct(context->data, printf);
-  return context->data;
-}
 [[noreturn]] void unimplemented(const char* methodName) {
   printf("Unimplemented JNI method %s\n", methodName);
   std::exit(1);
 }
 
-auto class_name(JNIEnv* env, jclass clazz) -> const char* {
-  CAMLparam0();
-  CAMLlocal1(result);
-  JVMData* data = getData(env);
-
-  result = caml_callback(data->class_name_callback, *std::bit_cast<value*>(clazz));
-
-  CAMLreturnT(const char*, String_val(result));
-}
-
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   JVMData* data = getData(env);
-  const char* className = class_name(env, clazz);
+  const char* className = class_name(data, clazz);
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
     auto key = registerKey(className, method.name, method.signature);
@@ -124,7 +109,7 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
   CAMLparam0();
   CAMLlocal4(caml_cls, caml_name, caml_desc, result);
   JVMData* data = getData(env);
-  const char* className = class_name(env, clazz);
+  const char* className = class_name(data, clazz);
   printf("jni: GetStaticMethodID %s %s %s\n", className, name, sig);
 
   auto key = jvmilia::registerKey(className, name, sig);
@@ -155,7 +140,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   CAMLlocal4(list, r, result, method);
   JVMData* data = getData(env);
 
-  printf("jni: CallStaticObjectMethodV %s\n", class_name(env, clazz));
+  printf("jni: CallStaticObjectMethodV %s\n", class_name(data, clazz));
   method = *std::bit_cast<value*>(methodID);
   dump_value(method, 4);
   long nargs = Long_val(Field(method, 4));

@@ -1,4 +1,4 @@
-CXXFLAGS	:= -O0 -g -std=c++20
+CXXFLAGS	:= -O0 -g -std=c++20 -I /usr/lib/ocaml
 
 CXX_SOURCES := $(wildcard ./*.cpp)
 CXX_OBJECTS := $(patsubst ./%.cpp,./build/%.o,$(CXX_SOURCES))
