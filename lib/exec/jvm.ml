@@ -178,6 +178,7 @@ class jvm libjava =
       let fields =
         StringMap.empty
         |> StringMap.add "value" (ByteArray (Bytes.of_string str))
+        |> StringMap.add "coder" (Int 0)
       in
       Object { cls = self#load_class "java/lang/String"; fields }
 
@@ -351,6 +352,10 @@ class jvm libjava =
             | Instr.Gt -> a > b
             | Instr.Le -> a <= b
           then self#curframe.nextpc <- target
+      | If_acmpne target ->
+          let a = self#pop () in
+          let b = self#pop () in
+          if a != b then self#curframe.nextpc <- target
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
           match x with
@@ -376,6 +381,28 @@ class jvm libjava =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
           a.arr.(i) <- v
+      (* | Iastore ->
+          let v = self#pop () in
+          let i = self#pop () |> as_int in
+          let a =
+            match self#pop () with Array x -> x | _ -> failwith "Not an array"
+          in
+          a.arr.(i) <- v *)
+      | Instanceof desc -> (
+          match self#pop () with
+          | Object o ->
+              self#push (Int (if o.cls.raw.name = desc.name then 1 else 0))
+          | _ -> failwith "not an object")
+      | Checkcast desc ->
+          let v = self#pop () in
+          (match v with
+          | Object o -> assert (self#is_indirect_superclass o.cls desc.name)
+          | _ -> failwith "not an object");
+          self#push v
+      (* TODO monitor stuff? *)
+      | Monitorenter | Monitorexit ->
+          let _ignore = self#pop () in
+          ()
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
