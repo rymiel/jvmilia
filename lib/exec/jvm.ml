@@ -72,7 +72,7 @@ class jvm libjava =
         {
           Shim.find_class =
             (fun name ->
-              self#make_class_instance (self#load_class name).raw.name);
+              (self#load_class name).raw.name |> self#make_class_instance);
           get_static_method =
             (fun a b c ->
               let m = self#find_method a b c in
