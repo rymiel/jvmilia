@@ -65,6 +65,7 @@ class jvm libjava =
               self#make_class_instance (self#load_class name).raw.name);
           get_static_method = self#find_static_method;
           class_name = java_lang_Class_name;
+          make_string = self#make_string_instance;
         }
       in
       interface <- Shim.make_native_interface interface_data

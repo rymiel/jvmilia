@@ -70,7 +70,6 @@ jclass FindClass(JNIEnv* env, const char* name) {
   printf("jni: FindClass %s\n", name);
 
   caml_name = caml_copy_string(name);
-  dump_value(data->find_class_callback);
   result = caml_callback(data->find_class_callback, caml_name);
   auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
   printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
@@ -78,29 +77,45 @@ jclass FindClass(JNIEnv* env, const char* name) {
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
+auto local_reference_iterator(std::vector<std::shared_ptr<value>>& localRefs,
+                              value* find) -> std::vector<std::shared_ptr<value>>::const_iterator {
+  return std::ranges::find(localRefs, std::bit_cast<value*>(find), [](std::shared_ptr<value>& a) { return a.get(); });
+}
+
 jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
-  // TODO: i dont have a heap yet
-  (void)env;
+  JVMData* data = getData(env);
   printf("jni: NewGlobalRef %p\n", lobj);
+
+  auto& localRefs = data->frames.back().localReferences;
+  auto it = local_reference_iterator(localRefs, std::bit_cast<value*>(lobj));
+  if (it != localRefs.end()) {
+    data->globalReferences.push_back(*it);
+  }
 
   return lobj;
 }
 
 void DeleteLocalRef(JNIEnv* env, jobject obj) {
-  // TODO: i dont have a heap yet
-  (void)env;
+  JVMData* data = getData(env);
+
   printf("jni: DeleteLocalRef %p\n", obj);
+
+  auto& refs = data->frames.back().localReferences;
+  auto it = local_reference_iterator(refs, std::bit_cast<value*>(obj));
+  if (it != refs.end()) {
+    refs.erase(it);
+  }
 }
 
 jstring NewStringUTF(JNIEnv* env, const char* utf) {
   CAMLparam0();
-  CAMLlocal1(str);
+  CAMLlocal1(result);
   JVMData* data = getData(env);
   printf("jni: NewStringUTF %s\n", utf);
 
-  str = caml_copy_string(utf);
-  auto ref = data->frames.back().localReferences.emplace_back(make_reference(str));
-  printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, str, ref.get());
+  result = caml_callback(data->make_string_callback, caml_copy_string(utf));
+  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, result, ref.get());
 
   CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
 }
@@ -140,7 +155,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
 
   printf("jni: CallStaticObjectMethodV %s\n", class_name(env, clazz));
   dump_value(*std::bit_cast<value*>(methodID), 4);
-  puts(String_val(*std::bit_cast<value*>(va_arg(args, jstring))));
+  dump_value(*std::bit_cast<value*>(va_arg(args, jobject)), 4);
 
   unimplemented("CallStaticObjectMethodV");
 }
