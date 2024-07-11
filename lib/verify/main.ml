@@ -731,6 +731,8 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       canPop frame [ obj; Int; Array (T obj) ] |> next
   | Caload -> validTypeTransition env [ Int; Array Char ] Int frame |> next
   | Castore -> canPop frame [ Int; Int; Array Char ] |> next
+  | Iaload -> validTypeTransition env [ Int; Array (T Int) ] Int frame |> next
+  | Iastore -> canPop frame [ Int; Int; Array (T Int) ] |> next
   | Lookupswitch (default, pairs) ->
       let sorted =
         List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) pairs
