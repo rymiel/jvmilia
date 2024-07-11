@@ -492,6 +492,7 @@ CAMLprim value free_native_interface_native(value handle) {
 CAMLprim value execute_native_auto_native(value interface, value params, value param_types, value ret_type,
                                           value fn_ptr) {
   CAMLparam5(interface, params, param_types, ret_type, fn_ptr);
+  CAMLlocal1(result_value);
   auto* context = value_to_handle<Context>(interface);
 
   context->data->frames.emplace_back();
@@ -536,13 +537,14 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   std::printf("result: %lx\n", result.j);
 
-  context->data->frames.pop_back();
-
   if (ret_vtype == vtype::Void) {
+    context->data->frames.pop_back();
     CAMLreturn(Val_unit);
   }
 
-  CAMLreturn(reconstruct_evalue(result, ret_vtype));
+  result_value = reconstruct_evalue(result, ret_vtype);
+  context->data->frames.pop_back();
+  CAMLreturn(result_value);
 }
 
 CAMLprim value get_registered_fnptr_native(value interface_int, value class_name, value method, value signature) {
