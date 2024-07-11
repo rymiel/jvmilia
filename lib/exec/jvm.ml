@@ -52,7 +52,7 @@ let rec split (list : 'a list) (n : int) : 'a list * 'a list =
     | [] -> failwith "Ran out of list to split"
     | x :: xs ->
         let a, b = split xs (n - 1) in
-        (x :: a, b)
+        (a @ [ x ], b)
 
 let is_static (mth : jmethod) : bool =
   mth.access_flags.is_static && not mth.access_flags.is_abstract
@@ -235,11 +235,9 @@ class jvm libjava =
           let def_mth = self#find_method desc.cls desc.name desc.desc in
           assert (is_static def_mth);
           (* todo frame stuff *)
-          (* todo arguments *)
           let args = self#pop_list def_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
-          assert (def_mth.nargs <= 1);
           self#exec def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
@@ -252,11 +250,9 @@ class jvm libjava =
                 failwith
                   "Cannot find method to invokespecial (TODO add more info)"
           in
-          (* todo arguments *)
           let args = self#pop_list def_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
-          assert (def_mth.nargs <= 1);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
@@ -268,11 +264,9 @@ class jvm libjava =
       | Invokevirtual desc ->
           let base_mth = self#find_method desc.cls desc.name desc.desc in
           assert (not_static base_mth);
-          (* todo arguments *)
           let args = self#pop_list base_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
-          assert (base_mth.nargs <= 1);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           let clsref =
