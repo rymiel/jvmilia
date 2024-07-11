@@ -1,10 +1,15 @@
 open Java
 open Basic
 
-let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
+let find_methodj (cls : jclass) (name : string) (desc : string) : jmethod option
     =
   let matches (m : jmethod) = m.desc = desc && m.name = name in
-  List.find_opt matches cls.raw.methods
+  List.find_opt matches cls.methods
+
+(* todo: collapse with method above *)
+let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
+    =
+  find_methodj cls.raw name desc
 
 let instance_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
@@ -49,6 +54,11 @@ let rec split (list : 'a list) (n : int) : 'a list * 'a list =
         let a, b = split xs (n - 1) in
         (x :: a, b)
 
+let is_static (mth : jmethod) : bool =
+  mth.access_flags.is_static && not mth.access_flags.is_abstract
+
+let not_static (mth : jmethod) : bool = not mth.access_flags.is_static
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -63,7 +73,11 @@ class jvm libjava =
           Shim.find_class =
             (fun name ->
               self#make_class_instance (self#load_class name).raw.name);
-          get_static_method = self#find_static_method;
+          get_static_method =
+            (fun a b c ->
+              let m = self#find_method a b c in
+              assert (is_static m);
+              m);
           class_name = java_lang_Class_name;
           make_string = self#make_string_instance;
           invoke_method = self#exec_with_return;
@@ -118,8 +132,12 @@ class jvm libjava =
       | Some existing -> existing
       | None -> self#perform_class_load class_name
 
+    (* note: doesn't need to be a method, but if we move the loader inside the class, then maybe*)
+    method private load_class_definition (class_name : string) : jclass =
+      Loader.load_class class_name Loader.bootstrap_loader
+
     method private perform_class_load (class_name : string) : eclass =
-      let cls = Loader.load_class class_name Loader.bootstrap_loader in
+      let cls = self#load_class_definition class_name in
       let safe = Verify.Main.classIsTypeSafe cls in
       if not safe then
         failwith (Printf.sprintf "Class %S failed verification" class_name);
@@ -183,18 +201,28 @@ class jvm libjava =
             self#is_indirect_superclass (self#load_class super) target
         | None -> false
 
-    method private find_static_method (cls : string) (name : string)
-        (desc : string) : jmethod =
+    method private find_method (cls : string) (name : string) (desc : string)
+        : jmethod =
       let def_cls = self#load_class cls in
       let def_mth =
         match find_method def_cls name desc with
         | Some m -> m
-        | None ->
-            failwith "Cannot find method to invokestatic (TODO add more info)"
+        | None -> failwith "Cannot find static method (TODO add more info)"
       in
-      assert (
-        def_mth.access_flags.is_static && not def_mth.access_flags.is_abstract);
       def_mth
+
+    (* note: only a method because load_class_definition is,
+       but load_class_definition doesn't have to be *)
+    method private find_virtual_method (cls : jclass) (name : string)
+        (desc : string) : jmethod =
+      match find_methodj cls name desc with
+      | Some m -> m
+      | None -> (
+          match cls.superclass with
+          | Some super ->
+              let super_cls = self#load_class_definition super in
+              self#find_virtual_method super_cls name desc
+          | None -> failwith "Virtual dispatch failed (TODO add more info)")
 
     method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
         (instr : Instr.instrbody) : unit =
@@ -202,11 +230,9 @@ class jvm libjava =
       Debug.frame_detailed self#curframe;
       Debug.instr instr self#curframe.pc;
       match instr with
-      | Invokestatic method_desc ->
-          let def_mth =
-            self#find_static_method method_desc.cls method_desc.name
-              method_desc.desc
-          in
+      | Invokestatic desc ->
+          let def_mth = self#find_method desc.cls desc.name desc.desc in
+          assert (is_static def_mth);
           (* todo frame stuff *)
           (* todo arguments *)
           let args = self#pop_list def_mth.nargs in
@@ -238,33 +264,28 @@ class jvm libjava =
             | _ -> false);
           (* todo frame stuff *)
           self#exec def_mth (objectref :: args)
-      | Invokevirtual method_desc ->
-          let def_cls = self#load_class method_desc.cls in
-          (* todo proper method resolution *)
-          (* todo find actual method, looking up superclasses if necessary *)
-          (* todo virtual dispatch *)
-          let def_mth =
-            match find_method def_cls method_desc.name method_desc.desc with
-            | Some m -> m
-            | None ->
-                failwith
-                  "Cannot find method to invokevirtual (TODO add more info)"
-          in
+      | Invokevirtual desc ->
+          let base_mth = self#find_method desc.cls desc.name desc.desc in
+          assert (not_static base_mth);
           (* todo arguments *)
-          let args = self#pop_list def_mth.nargs in
+          let args = self#pop_list base_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
-          assert (def_mth.nargs <= 1);
+          assert (base_mth.nargs <= 1);
           let objectref = self#pop () in
           (* todo remove this constraint *)
-          assert (
+          let clsref =
             match objectref with
             | Object x ->
-                x.cls.raw.name = method_desc.cls
-                || self#is_indirect_superclass x.cls method_desc.cls
-            | _ -> false);
+                assert (self#is_indirect_superclass x.cls desc.cls);
+                x.cls.raw
+            | _ -> failwith "not an object"
+          in
+          let resolved_mth =
+            self#find_virtual_method clsref desc.name desc.desc
+          in
           (* todo frame stuff *)
-          self#exec def_mth (objectref :: args)
+          self#exec resolved_mth (objectref :: args)
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> self#push
