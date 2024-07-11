@@ -28,6 +28,7 @@ struct JVMData {
   value get_static_method_callback;
   value class_name_callback;
   value make_string_callback;
+  value invoke_method_callback;
 };
 
 inline auto make_reference(value v) -> std::shared_ptr<value> {

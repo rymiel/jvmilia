@@ -66,6 +66,7 @@ class jvm libjava =
           get_static_method = self#find_static_method;
           class_name = java_lang_Class_name;
           make_string = self#make_string_instance;
+          invoke_method = self#exec_with_return;
         }
       in
       interface <- Shim.make_native_interface interface_data
@@ -241,6 +242,7 @@ class jvm libjava =
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
           (* todo find actual method, looking up superclasses if necessary *)
+          (* todo virtual dispatch *)
           let def_mth =
             match find_method def_cls method_desc.name method_desc.desc with
             | Some m -> m
@@ -249,15 +251,20 @@ class jvm libjava =
                   "Cannot find method to invokevirtual (TODO add more info)"
           in
           (* todo arguments *)
-          assert (def_mth.nargs = 0);
+          let args = self#pop_list def_mth.nargs in
+          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
+            (String.concat ", " (List.map string_of_evalue args));
+          assert (def_mth.nargs <= 1);
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
             match objectref with
-            | Object x -> x.cls.raw.name = method_desc.cls
+            | Object x ->
+                x.cls.raw.name = method_desc.cls
+                || self#is_indirect_superclass x.cls method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          self#exec def_mth [ objectref ]
+          self#exec def_mth (objectref :: args)
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> self#push
@@ -354,7 +361,7 @@ class jvm libjava =
                (Instr.string_of_instr x))
 
     method private exec_code (mth : jmethod) (code : Attr.code_attribute)
-        (args : evalue list) : unit =
+        (args : evalue list) : evalue =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" mth.cls mth.name mth.desc);
       self#add_frame code.frame_size;
@@ -375,10 +382,11 @@ class jvm libjava =
         self#exec_instr mth code m.body;
         frame.pc <- frame.nextpc
       done;
-      (match self#pop_frame () with Void -> () | x -> self#push x);
-      Debug.pop ()
+      Debug.pop ();
+      self#pop_frame ()
 
-    method private exec (mth : jmethod) (args : evalue list) : unit =
+    method private exec_with_return (mth : jmethod) (args : evalue list)
+        : evalue =
       let find_code (attr : Attr.attribute) : Attr.code_attribute option =
         match attr with Code x -> Some x | _ -> None
       in
@@ -420,11 +428,23 @@ class jvm libjava =
             method_handle
         in
         Printf.printf "Return value: %s\n%!" (string_of_evalue result);
-        match ret_type with Void -> () | _ -> self#push result)
+        result)
+      else if mth.access_flags.is_abstract then
+        failwith
+          (Printf.sprintf "Can't execute abstract method %s %s %s" mth.cls
+             mth.name mth.desc)
       else
         match List.find_map find_code mth.attributes with
         | Some code_attr -> self#exec_code mth code_attr args
-        | None -> failwith "Can't execute non-code method"
+        | None ->
+            failwith
+              (Printf.sprintf "Can't execute non-code method %s %s %s" mth.cls
+                 mth.name mth.desc)
+
+    method private exec (mth : jmethod) (args : evalue list) : unit =
+      match self#exec_with_return mth args with
+      | Void -> ()
+      | result -> self#push result
 
     method exec_main (main_class_name : string) : unit =
       let main_class = self#load_class main_class_name in

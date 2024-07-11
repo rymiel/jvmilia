@@ -151,13 +151,32 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
 }
 
 jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
-  (void)env;
+  CAMLparam0();
+  CAMLlocal4(list, r, result, method);
+  JVMData* data = getData(env);
 
   printf("jni: CallStaticObjectMethodV %s\n", class_name(env, clazz));
-  dump_value(*std::bit_cast<value*>(methodID), 4);
-  dump_value(*std::bit_cast<value*>(va_arg(args, jobject)), 4);
+  method = *std::bit_cast<value*>(methodID);
+  dump_value(method, 4);
+  long nargs = Long_val(Field(method, 4));
+  printf("nargs %ld\n", nargs);
+
+  list = Val_emptylist;
+  for (int i = 0; i < nargs; i++) {
+    // todo: types
+    value arg = *std::bit_cast<value*>(va_arg(args, jobject));
+    dump_value(arg, 4);
+    r = caml_alloc(2, 0);
+    Store_field(r, 0, arg);
+    Store_field(r, 1, list);
+    list = r;
+  }
+
+  result = caml_callback2(data->invoke_method_callback, method, list);
+  dump_value(result, 4);
 
   unimplemented("CallStaticObjectMethodV");
+  CAMLreturnT(jobject, nullptr);
 }
 
 #pragma clang diagnostic push
