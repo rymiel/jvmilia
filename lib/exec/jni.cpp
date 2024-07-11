@@ -164,6 +164,22 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   CAMLreturnT(jobject, nullptr);
 }
 
+jclass GetObjectClass(JNIEnv* env, jobject obj) {
+  CAMLparam0();
+  CAMLlocal3(obj_value, name, result);
+  JVMData* data = getData(env);
+
+  obj_value = *std::bit_cast<value*>(obj);
+  assert(evalue_is_object(obj_value));
+  name = Field(Field(Field(Field(obj_value, 0), 0), 0), 0);
+  dump_value(name, 4);
+  result = caml_callback(data->find_class_callback, name);
+  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  printf("jni: GetObjectClass %s -> %lx (%p)\n", String_val(name), result, ref.get());
+
+  CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -196,7 +212,6 @@ jobject AllocObject(JNIEnv* env, jclass clazz) { unimplemented("AllocObject"); }
 jobject NewObject(JNIEnv* env, jclass clazz, jmethodID methodID, ...) { unimplemented("NewObject"); }
 jobject NewObjectV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) { unimplemented("NewObjectV"); }
 jobject NewObjectA(JNIEnv* env, jclass clazz, jmethodID methodID, const jvalue* args) { unimplemented("NewObjectA"); }
-jclass GetObjectClass(JNIEnv* env, jobject obj) { unimplemented("GetObjectClass"); }
 jboolean IsInstanceOf(JNIEnv* env, jobject obj, jclass clazz) { unimplemented("IsInstanceOf"); }
 jmethodID GetMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) { unimplemented("GetMethodID"); }
 jobject CallObjectMethod(JNIEnv* env, jobject obj, jmethodID methodID, ...) { unimplemented("CallObjectMethod"); }
