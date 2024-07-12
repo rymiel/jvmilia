@@ -190,6 +190,18 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
+// note: currently my fields are just stored in a hashmap so.. name is all that is needed, so that is all i store
+jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+  JVMData* data = getData(env);
+  (void)clazz;
+  (void)sig;
+
+  auto ref = data->make_local_reference(caml_copy_string(name));
+  printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", class_name(data, clazz), name, sig, *ref, ref.get());
+
+  return std::bit_cast<jfieldID>(ref.get());
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -373,7 +385,6 @@ void CallNonvirtualVoidMethodV(JNIEnv* env, jobject obj, jclass clazz, jmethodID
 void CallNonvirtualVoidMethodA(JNIEnv* env, jobject obj, jclass clazz, jmethodID methodID, const jvalue* args) {
   unimplemented("CallNonvirtualVoidMethodA");
 }
-jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) { unimplemented("GetFieldID"); }
 jobject GetObjectField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetObjectField"); }
 jboolean GetBooleanField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetBooleanField"); }
 jbyte GetByteField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetByteField"); }
