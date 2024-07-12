@@ -45,15 +45,6 @@ let default_value (ty : Vtype.vtype) : evalue =
     | Double -> failwith "unimplemented double"
     | Class (_, _) | Array _ | Reference | Null -> Null)
 
-let rec split (list : 'a list) (n : int) : 'a list * 'a list =
-  if n = 0 then ([], list)
-  else
-    match list with
-    | [] -> failwith "Ran out of list to split"
-    | x :: xs ->
-        let a, b = split xs (n - 1) in
-        (a @ [ x ], b)
-
 let is_static (mth : jmethod) : bool =
   mth.access_flags.is_static && not mth.access_flags.is_abstract
 
@@ -90,19 +81,23 @@ class jvm libjava =
 
     method private push (value : evalue) =
       let frame = self#curframe in
-      frame.stack <- value :: frame.stack
+      match value with
+      | Long _ -> frame.stack <- value :: Void :: frame.stack
+      | _ -> frame.stack <- value :: frame.stack
 
     method private pop () : evalue =
       let frame = self#curframe in
       let value = List.hd frame.stack in
-      frame.stack <- List.tl frame.stack;
+      (match value with
+      | Long _ -> (
+          match List.tl frame.stack with
+          | Void :: xs -> frame.stack <- xs
+          | _ -> failwith "invalid stack state")
+      | _ -> frame.stack <- List.tl frame.stack);
       value
 
     method private pop_list n : evalue list =
-      let frame = self#curframe in
-      let popped, remaining = split frame.stack n in
-      frame.stack <- remaining;
-      popped
+      List.init n (fun _ -> self#pop ()) |> List.rev
 
     method private load n : evalue = self#curframe.locals.(n)
     method private store n v : unit = self#curframe.locals.(n) <- v
@@ -313,8 +308,8 @@ class jvm libjava =
           let v = self#pop () in
           self#push v;
           self#push v
-      | Aload i | Iload i -> self#load i |> self#push
-      | Astore i | Istore i -> self#pop () |> self#store i
+      | Aload i | Iload i | Lload i -> self#load i |> self#push
+      | Astore i | Istore i | Lstore i -> self#pop () |> self#store i
       | Iinc (i, v) ->
           self#load i |> as_int |> ( + ) v |> (fun x -> Int x) |> self#store i
       | Ifnonnull target -> (
@@ -364,6 +359,10 @@ class jvm libjava =
                   string_pool <- StringMap.add s v string_pool;
                   self#push v)
           | _ -> assert false (* todo *))
+      | Ldc2_w x -> (
+          match x with
+          | Shared.Long l -> self#push (Long l)
+          | _ -> assert false (* todo *))
       | Iconst v | Bipush v -> self#push (Int v)
       | Anewarray c ->
           let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
@@ -410,6 +409,14 @@ class jvm libjava =
             (Printf.sprintf "Unimplemented instruction excecution %s"
                (Instr.string_of_instr x))
 
+    method private initialize_locals (args : evalue list) =
+      let i = ref 0 in
+      List.iter
+        (fun v ->
+          self#curframe.locals.(!i) <- v;
+          i := !i + match v with Long _ -> 2 | _ -> 1)
+        args
+
     method private exec_code (mth : jmethod) (code : Attr.code_attribute)
         (args : evalue list) : evalue =
       Debug.push "jvm_exec_code"
@@ -417,7 +424,7 @@ class jvm libjava =
       self#add_frame code.frame_size;
       (* todo longs and stuff *)
       Debug.frame self#curframe;
-      List.iteri (fun i v -> self#curframe.locals.(i) <- v) args;
+      self#initialize_locals args;
       let frame = self#curframe in
       let map = Instr.map_instrs code.code in
       (* Instr.IntMap.iter
