@@ -621,6 +621,20 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       let t2, s2 = popCategory1 s1 in
       let next_stack = canSafelyPushList env s2 [ t1; t2; t1 ] in
       { frame with stack = next_stack } |> next
+  | Dup_x2 ->
+      let t1, s1 = popCategory1 frame.stack in
+      let next_stack =
+        match List.hd s1 |> size with
+        | 1 ->
+            let t2, s2 = popCategory1 s1 in
+            let t3, rest = popCategory1 s2 in
+            canSafelyPushList env rest [ t1; t3; t2; t1 ]
+        | 2 ->
+            let t2, rest = popCategory2 s1 in
+            canSafelyPushList env rest [ t1; t2; t1 ]
+        | _ -> failwith "invalid"
+      in
+      { frame with stack = next_stack } |> next
   | Dup2 ->
       let next_stack =
         match frame.stack with
