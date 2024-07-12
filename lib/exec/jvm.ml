@@ -289,6 +289,15 @@ class jvm libjava =
           def_cls.static <- StringMap.add field_desc.name value def_cls.static;
           Printf.printf "putstatic %s %s %s %s\n" def_cls.raw.name
             field_desc.name field_desc.desc (string_of_evalue value)
+      | Putfield field_desc -> (
+          let value = self#pop () in
+          match self#pop () with
+          | Object x ->
+              x.fields <- StringMap.add field_desc.name value x.fields;
+              Printf.printf "putfield %s %s %s %s\n"
+                (string_of_evalue (Object x))
+                field_desc.name field_desc.desc (string_of_evalue value)
+          | _ -> failwith "Can't put field of non-object type")
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
       | Ireturn | Areturn ->
@@ -343,9 +352,13 @@ class jvm libjava =
             | Instr.Gt -> a > b
             | Instr.Le -> a <= b
           then self#curframe.nextpc <- target
-      | If_acmpne target ->
-          let b = self#pop () in
+      | If_acmpeq target ->
           let a = self#pop () in
+          let b = self#pop () in
+          if a == b then self#curframe.nextpc <- target
+      | If_acmpne target ->
+          let a = self#pop () in
+          let b = self#pop () in
           if a != b then self#curframe.nextpc <- target
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
