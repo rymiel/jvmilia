@@ -18,6 +18,12 @@ jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
   return 0;
 }
 
+jobjectArray JVM_GetProperties(JNIEnv* env) {
+  std::printf("libjvm: JVM_GetProperties\n");
+  jclass string = jvmilia::FindClass(env, "java/lang/String");
+  return jvmilia::NewObjectArray(env, 1, string, nullptr);
+}
+
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
@@ -99,7 +105,6 @@ void JVM_GetNestMembers() { unimplemented("JVM_GetNestMembers"); }
 void JVM_GetNextThreadIdOffset() { unimplemented("JVM_GetNextThreadIdOffset"); }
 void JVM_GetPermittedSubclasses() { unimplemented("JVM_GetPermittedSubclasses"); }
 void JVM_GetPrimitiveArrayElement() { unimplemented("JVM_GetPrimitiveArrayElement"); }
-void JVM_GetProperties() { unimplemented("JVM_GetProperties"); }
 void JVM_GetProtectionDomain() { unimplemented("JVM_GetProtectionDomain"); }
 void JVM_GetRandomSeedForDumping() { unimplemented("JVM_GetRandomSeedForDumping"); }
 void JVM_GetRecordComponents() { unimplemented("JVM_GetRecordComponents"); }
