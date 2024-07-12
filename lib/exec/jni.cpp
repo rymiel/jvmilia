@@ -2,17 +2,23 @@
 #include "caml/alloc.h"
 #include "caml/callback.h"
 #include "caml/memory.h"
+#include "caml/mlvalues.h"
 #include "caml_interface.h"
 #include "jvm.h"
 #include <bit>
+#include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <cwchar>
 
 namespace jvmilia {
 [[noreturn]] void unimplemented(const char* methodName) {
   printf("Unimplemented JNI method %s\n", methodName);
   std::exit(1);
 }
+
+auto coerce_null(jobject v) -> value { return v == nullptr ? Val_int(1) : *std::bit_cast<value*>(v); }
 
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   JVMData* data = getData(env);
@@ -193,13 +199,35 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
 // note: currently my fields are just stored in a hashmap so.. name is all that is needed, so that is all i store
 jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
   JVMData* data = getData(env);
-  (void)clazz;
-  (void)sig;
 
   auto ref = data->make_local_reference(caml_copy_string(name));
   printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", class_name(data, clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
+}
+
+jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) {
+  CAMLparam0();
+  CAMLlocal1(result);
+  JVMData* data = getData(env);
+  printf("jni: NewObjectArray %d %s %p\n", len, class_name(data, clazz), init);
+
+  result = caml_callback3(data->make_object_array_callback, Val_int(len), caml_copy_string(class_name(data, clazz)),
+                          coerce_null(init));
+  auto ref = data->make_local_reference(result);
+
+  CAMLreturnT(jobjectArray, std::bit_cast<jobjectArray>(ref.get()));
+}
+
+void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject val) {
+  CAMLparam0();
+  JVMData* data = getData(env);
+  printf("jni: SetObjectArrayElement %p %d %p\n", array, index, val);
+
+  caml_callback3(data->set_object_array_callback, *std::bit_cast<value*>(array), Val_int(index),
+                 *std::bit_cast<value*>(val));
+
+  CAMLreturn0;
 }
 
 #pragma clang diagnostic push
@@ -531,11 +559,7 @@ jsize GetStringUTFLength(JNIEnv* env, jstring str) { unimplemented("GetStringUTF
 const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringUTFChars"); }
 void ReleaseStringUTFChars(JNIEnv* env, jstring str, const char* chars) { unimplemented("ReleaseStringUTFChars"); }
 jsize GetArrayLength(JNIEnv* env, jarray array) { unimplemented("GetArrayLength"); }
-jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) { unimplemented("NewObjectArray"); }
 jobject GetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index) { unimplemented("GetObjectArrayElement"); }
-void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject val) {
-  unimplemented("SetObjectArrayElement");
-}
 jbooleanArray NewBooleanArray(JNIEnv* env, jsize len) { unimplemented("NewBooleanArray"); }
 jbyteArray NewByteArray(JNIEnv* env, jsize len) { unimplemented("NewByteArray"); }
 jcharArray NewCharArray(JNIEnv* env, jsize len) { unimplemented("NewCharArray"); }

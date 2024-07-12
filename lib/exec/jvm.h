@@ -32,6 +32,8 @@ struct JVMData {
   value make_string_callback;
   value invoke_method_callback;
   value get_virtual_method_callback;
+  value make_object_array_callback;
+  value set_object_array_callback;
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));

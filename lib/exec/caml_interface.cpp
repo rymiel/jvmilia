@@ -106,10 +106,10 @@ value reconstruct_evalue(jvalue j, vtype ty) {
     Store_field(result, 0, Val_int(j.i));
     CAMLreturn(result);
   }
-  case vtype::Class: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
+  case vtype::Class:
+  case vtype::Array: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
   case vtype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case vtype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
-  case vtype::Array: std::puts("reconstruct_evalue: Unimplemented Array"); std::exit(7);
   }
 
   __builtin_unreachable();

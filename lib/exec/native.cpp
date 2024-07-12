@@ -435,6 +435,10 @@ CAMLprim value make_native_interface_native(value interface_data) {
   caml_register_global_root(&data->invoke_method_callback);
   data->get_virtual_method_callback = Field(interface_data, 5);
   caml_register_global_root(&data->get_virtual_method_callback);
+  data->make_object_array_callback = Field(interface_data, 6);
+  caml_register_global_root(&data->make_object_array_callback);
+  data->set_object_array_callback = Field(interface_data, 7);
+  caml_register_global_root(&data->set_object_array_callback);
 
   Context* context = new Context;
   context->interface = interface;
@@ -479,6 +483,8 @@ CAMLprim value free_native_interface_native(value handle) {
   caml_remove_global_root(&context->data->make_string_callback);
   caml_remove_global_root(&context->data->invoke_method_callback);
   caml_remove_global_root(&context->data->get_virtual_method_callback);
+  caml_remove_global_root(&context->data->make_object_array_callback);
+  caml_remove_global_root(&context->data->set_object_array_callback);
 
   for (auto [k, v] : context->data->cachedJMethods) {
     caml_remove_global_root(v);

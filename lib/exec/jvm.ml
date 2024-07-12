@@ -50,6 +50,19 @@ let is_static (mth : jmethod) : bool =
 
 let not_static (mth : jmethod) : bool = not mth.access_flags.is_static
 
+let make_object_array (size : int) (name : string) (default_value : evalue) :
+    evalue =
+  let ty = Vtype.T (Vtype.Class (name, Loader.bootstrap_loader)) in
+  let arr = Array.make size default_value in
+  Array { ty; arr }
+
+let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
+    : unit =
+  (match array with
+  | Array x -> x.arr.(index) <- value
+  | _ -> failwith "Not an array");
+  Printf.printf "%s\n%!" (string_of_evalue_detailed array)
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -76,6 +89,8 @@ class jvm libjava =
             (fun a b c ->
               let cls = self#load_class a in
               self#find_virtual_method cls.raw b c);
+          make_object_array;
+          set_object_array;
         }
       in
       interface <- Shim.make_native_interface interface_data
@@ -384,10 +399,8 @@ class jvm libjava =
           | _ -> assert false (* todo *))
       | Iconst v | Bipush v -> self#push (Int v)
       | Anewarray c ->
-          let ty = Vtype.T (Vtype.Class (c.name, Loader.bootstrap_loader)) in
           let size = self#pop () |> as_int in
-          let arr = Array.make size Null in
-          self#push (Array { ty; arr })
+          make_object_array size c.name Null |> self#push
       | Aastore ->
           let v = self#pop () in
           let i = self#pop () |> as_int in
