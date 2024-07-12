@@ -18,6 +18,7 @@ struct JNIFrame {
   std::vector<std::shared_ptr<value>> localReferences;
 };
 
+auto make_reference(value v) -> std::shared_ptr<value>;
 struct JVMData {
   std::unordered_map<std::string, void*> registeredNatives;
   std::unordered_map<std::string, bridge_t*> cachedBridges;
@@ -30,6 +31,11 @@ struct JVMData {
   value class_name_callback;
   value make_string_callback;
   value invoke_method_callback;
+  value get_virtual_method_callback;
+
+  auto make_local_reference(value v) -> std::shared_ptr<value>& {
+    return frames.back().localReferences.emplace_back(make_reference(v));
+  }
 };
 
 inline auto make_reference(value v) -> std::shared_ptr<value> {

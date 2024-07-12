@@ -7,6 +7,7 @@ type native_interface = {
   class_name : Basic.evalue -> string;
   make_string : string -> Basic.evalue;
   invoke_method : Java.jmethod -> Basic.evalue list -> Basic.evalue;
+  get_virtual_method : string -> string -> string -> Java.jmethod;
 }
 
 external make_native_interface : native_interface -> int

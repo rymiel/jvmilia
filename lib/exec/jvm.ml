@@ -72,6 +72,10 @@ class jvm libjava =
           class_name = java_lang_Class_name;
           make_string = self#make_string_instance;
           invoke_method = self#exec_with_return;
+          get_virtual_method =
+            (fun a b c ->
+              let cls = self#load_class a in
+              self#find_virtual_method cls.raw b c);
         }
       in
       interface <- Shim.make_native_interface interface_data
@@ -212,7 +216,9 @@ class jvm libjava =
     method private find_virtual_method (cls : jclass) (name : string)
         (desc : string) : jmethod =
       match find_methodj cls name desc with
-      | Some m -> m
+      | Some m ->
+          assert (not_static m);
+          m
       | None -> (
           match cls.superclass with
           | Some super ->

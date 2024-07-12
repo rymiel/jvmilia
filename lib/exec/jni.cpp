@@ -56,7 +56,7 @@ jclass FindClass(JNIEnv* env, const char* name) {
 
   caml_name = caml_copy_string(name);
   result = caml_callback(data->find_class_callback, caml_name);
-  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  auto ref = data->make_local_reference(result);
   printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
 
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
@@ -99,18 +99,19 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
   printf("jni: NewStringUTF %s\n", utf);
 
   result = caml_callback(data->make_string_callback, caml_copy_string(utf));
-  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  auto ref = data->make_local_reference(result);
   printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, result, ref.get());
 
   CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
 }
 
-jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  CAMLparam0();
+jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const char* sig, const char* jni_name,
+                          value callback) {
+  CAMLparam1(callback);
   CAMLlocal4(caml_cls, caml_name, caml_desc, result);
   JVMData* data = getData(env);
   const char* className = class_name(data, clazz);
-  printf("jni: GetStaticMethodID %s %s %s\n", className, name, sig);
+  printf("jni: %s %s %s %s\n", jni_name, className, name, sig);
 
   auto key = jvmilia::registerKey(className, name, sig);
   auto iter = data->cachedJMethods.find(key);
@@ -118,21 +119,29 @@ jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const c
     caml_cls = caml_copy_string(className);
     caml_name = caml_copy_string(name);
     caml_desc = caml_copy_string(sig);
-    result = caml_callback3(data->get_static_method_callback, caml_cls, caml_name, caml_desc);
+    result = caml_callback3(callback, caml_cls, caml_name, caml_desc);
 
     auto* ptr = new value;
     *ptr = result;
     data->cachedJMethods.insert_or_assign(key, ptr);
     caml_register_global_root(ptr);
 
-    printf("jni: GetStaticMethodID %s %s %s -> %lx (new)\n", className, name, sig, result);
+    printf("jni: %s %s %s %s -> %lx (new)\n", jni_name, className, name, sig, result);
 
     CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(ptr));
   }
 
-  printf("jni: GetStaticMethodID %s %s %s -> %lx (cached)\n", className, name, sig, *iter->second);
+  printf("jni: %s %s %s %s -> %lx (cached)\n", jni_name, className, name, sig, *iter->second);
 
   CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(iter->second));
+}
+
+jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+  return getMethodCommon(env, clazz, name, sig, "GetStaticMethodID", getData(env)->get_static_method_callback);
+}
+
+jmethodID GetMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+  return getMethodCommon(env, clazz, name, sig, "GetMethodID", getData(env)->get_virtual_method_callback);
 }
 
 jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
@@ -150,7 +159,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   for (int i = 0; i < nargs; i++) {
     // todo: types
     value arg = *std::bit_cast<value*>(va_arg(args, jobject));
-    dump_value(arg, 4);
+    // dump_value(arg, 4);
     r = caml_alloc(2, 0);
     Store_field(r, 0, arg);
     Store_field(r, 1, list);
@@ -158,10 +167,11 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   }
 
   result = caml_callback2(data->invoke_method_callback, method, list);
-  dump_value(result, 4);
+  // dump_value(result, 4);
 
-  unimplemented("CallStaticObjectMethodV");
-  CAMLreturnT(jobject, nullptr);
+  auto ref = data->make_local_reference(result);
+
+  CAMLreturnT(jobject, std::bit_cast<jobject>(ref.get()));
 }
 
 jclass GetObjectClass(JNIEnv* env, jobject obj) {
@@ -174,7 +184,7 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
   name = Field(Field(Field(Field(obj_value, 0), 0), 0), 0);
   dump_value(name, 4);
   result = caml_callback(data->find_class_callback, name);
-  auto ref = data->frames.back().localReferences.emplace_back(make_reference(result));
+  auto ref = data->make_local_reference(result);
   printf("jni: GetObjectClass %s -> %lx (%p)\n", String_val(name), result, ref.get());
 
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
@@ -213,7 +223,6 @@ jobject NewObject(JNIEnv* env, jclass clazz, jmethodID methodID, ...) { unimplem
 jobject NewObjectV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) { unimplemented("NewObjectV"); }
 jobject NewObjectA(JNIEnv* env, jclass clazz, jmethodID methodID, const jvalue* args) { unimplemented("NewObjectA"); }
 jboolean IsInstanceOf(JNIEnv* env, jobject obj, jclass clazz) { unimplemented("IsInstanceOf"); }
-jmethodID GetMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) { unimplemented("GetMethodID"); }
 jobject CallObjectMethod(JNIEnv* env, jobject obj, jmethodID methodID, ...) { unimplemented("CallObjectMethod"); }
 jobject CallObjectMethodV(JNIEnv* env, jobject obj, jmethodID methodID, va_list args) {
   unimplemented("CallObjectMethodV");
