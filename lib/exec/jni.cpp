@@ -111,6 +111,32 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
   CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
 }
 
+jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) {
+  CAMLparam0();
+  CAMLlocal1(result);
+  JVMData* data = getData(env);
+
+  printf("jni: NewString ");
+
+  mbstate_t state{};
+  char* buf = std::bit_cast<char*>(calloc(MB_CUR_MAX * len + 1, 1)); // leave space for null terminator, just in
+  char* p = buf;
+
+  for (int i = 0; i < len; i++) {
+    auto s = wcrtomb(p, unicode[i], &state);
+    printf("%lc", unicode[i]);
+    p += s;
+  }
+  printf("\n");
+
+  result = caml_callback(data->make_string_callback, caml_copy_string(buf));
+  auto ref = data->make_local_reference(result);
+  printf("jni: NewString %s -> %lx (%p)\n", buf, result, ref.get());
+  free(buf);
+
+  CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
+}
+
 jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const char* sig, const char* jni_name,
                           value callback) {
   CAMLparam1(callback);
@@ -230,6 +256,13 @@ void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject
   CAMLreturn0;
 }
 
+// todo: i dont have exception yet
+jthrowable ExceptionOccurred(JNIEnv* env) {
+  (void)env;
+  printf("jni: ExceptionOccurred\n");
+  return nullptr;
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -249,7 +282,6 @@ jobject ToReflectedField(JNIEnv* env, jclass cls, jfieldID fieldID, jboolean isS
 }
 jint Throw(JNIEnv* env, jthrowable obj) { unimplemented("Throw"); }
 jint ThrowNew(JNIEnv* env, jclass clazz, const char* msg) { unimplemented("ThrowNew"); }
-jthrowable ExceptionOccurred(JNIEnv* env) { unimplemented("ExceptionOccurred"); }
 void ExceptionDescribe(JNIEnv* env) { unimplemented("ExceptionDescribe"); }
 void ExceptionClear(JNIEnv* env) { unimplemented("ExceptionClear"); }
 void FatalError(JNIEnv* env, const char* msg) { unimplemented("FatalError"); }
@@ -551,7 +583,6 @@ void SetStaticFloatField(JNIEnv* env, jclass clazz, jfieldID fieldID, jfloat val
 void SetStaticDoubleField(JNIEnv* env, jclass clazz, jfieldID fieldID, jdouble value) {
   unimplemented("SetStaticDoubleField");
 }
-jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) { unimplemented("NewString"); }
 jsize GetStringLength(JNIEnv* env, jstring str) { unimplemented("GetStringLength"); }
 const jchar* GetStringChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringChars"); }
 void ReleaseStringChars(JNIEnv* env, jstring str, const jchar* chars) { unimplemented("ReleaseStringChars"); }
