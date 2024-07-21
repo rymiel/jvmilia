@@ -1,8 +1,8 @@
 open Java
 open Basic
 
-let char_range = (65535l, 0l)
-let short_range = (32767l, -32768l)
+let char_range = (0l, 65535l)
+let short_range = (-32768l, 32767l)
 
 let clamp range v =
   let min, max = range in
