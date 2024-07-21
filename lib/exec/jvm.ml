@@ -27,13 +27,18 @@ let as_float (v : evalue) : float =
   | Float v -> v
   | x -> failwith (Printf.sprintf "Not a float %s" (string_of_evalue x))
 
-let java_lang_Class_name (v : evalue) : string =
+let object_type_name (v : evalue) : string =
+  match v with Object o -> o.cls.raw.name | _ -> failwith "Not an object"
+
+let object_instance_field (v : evalue) (name : string) : evalue =
   match v with
-  | Object o -> (
-      assert (o.cls.raw.name = "java/lang/Class");
-      match StringMap.find "__jvmilia_name" o.fields with
-      | ByteArray a -> Bytes.to_string a
-      | _ -> failwith "Nope")
+  | Object o -> StringMap.find name o.fields
+  | _ -> failwith "Not an object"
+
+let java_lang_Class_name (v : evalue) : string =
+  assert (object_type_name v = "java/lang/Class");
+  match object_instance_field v "__jvmilia_name" with
+  | ByteArray a -> Bytes.to_string a
   | _ -> failwith "Nope"
 
 (* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
@@ -105,6 +110,9 @@ class jvm libjava =
               self#find_virtual_method cls.raw b c);
           make_object_array;
           set_object_array;
+          object_type_name;
+          object_instance_field;
+          make_class_direct = self#make_class_instance;
         }
       in
       interface <- Shim.make_native_interface interface_data

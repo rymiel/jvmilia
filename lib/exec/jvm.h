@@ -1,5 +1,6 @@
 #pragma once
 
+#include "caml/alloc.h"
 #include "caml/callback.h"
 #include "caml/memory.h"
 #include "caml/mlvalues.h"
@@ -34,9 +35,22 @@ struct JVMData {
   value get_virtual_method_callback;
   value make_object_array_callback;
   value set_object_array_callback;
+  value object_type_name_callback;
+  value object_instance_field_callback;
+  value make_class_direct_callback;
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
+  }
+
+  // little helper to avoid allocating the field name
+  auto get_object_field(value evalue, const char* field_name) -> value {
+    CAMLparam1(evalue);
+    CAMLlocal1(n);
+
+    n = caml_copy_string(field_name);
+
+    CAMLreturn(caml_callback2(this->object_instance_field_callback, evalue, n));
   }
 };
 

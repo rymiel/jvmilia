@@ -10,6 +10,9 @@ type native_interface = {
   get_virtual_method : string -> string -> string -> Java.jmethod;
   make_object_array : int -> string -> Basic.evalue -> Basic.evalue;
   set_object_array : Basic.evalue -> int -> Basic.evalue -> unit;
+  object_type_name : Basic.evalue -> string;
+  object_instance_field : Basic.evalue -> string -> Basic.evalue;
+  make_class_direct : string -> Basic.evalue;
 }
 
 external make_native_interface : native_interface -> int

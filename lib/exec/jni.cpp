@@ -263,6 +263,34 @@ jthrowable ExceptionOccurred(JNIEnv* env) {
   return nullptr;
 }
 
+const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) {
+  CAMLparam0();
+  CAMLlocal3(str_obj, name_obj, val_obj);
+  JVMData* data = getData(env);
+
+  if (isCopy != nullptr) {
+    *isCopy = 0; // we never copy
+  }
+
+  str_obj = *std::bit_cast<value*>(str);
+  name_obj = caml_callback(data->object_type_name_callback, str_obj);
+  assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
+  val_obj = data->get_object_field(str_obj, "value");
+  assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray
+  const char* val = String_val(Field(val_obj, 0));
+  printf("GetStringUTFChars: %s\n", val);
+
+  CAMLreturnT(const char*, val);
+}
+
+void ReleaseStringUTFChars(JNIEnv* env, jstring str, const char* chars) {
+  // this is a no-op, since we don't allocate anything when getting utf chars
+  (void)env;
+  (void)str;
+  (void)chars;
+  return;
+}
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
@@ -587,8 +615,6 @@ jsize GetStringLength(JNIEnv* env, jstring str) { unimplemented("GetStringLength
 const jchar* GetStringChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringChars"); }
 void ReleaseStringChars(JNIEnv* env, jstring str, const jchar* chars) { unimplemented("ReleaseStringChars"); }
 jsize GetStringUTFLength(JNIEnv* env, jstring str) { unimplemented("GetStringUTFLength"); }
-const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringUTFChars"); }
-void ReleaseStringUTFChars(JNIEnv* env, jstring str, const char* chars) { unimplemented("ReleaseStringUTFChars"); }
 jsize GetArrayLength(JNIEnv* env, jarray array) { unimplemented("GetArrayLength"); }
 jobject GetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index) { unimplemented("GetObjectArrayElement"); }
 jbooleanArray NewBooleanArray(JNIEnv* env, jsize len) { unimplemented("NewBooleanArray"); }
