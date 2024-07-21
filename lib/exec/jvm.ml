@@ -411,27 +411,11 @@ class jvm libjava =
           | _ -> ())
       | If (cond, target) ->
           let v = self#pop () |> as_int in
-          if
-            match cond with
-            | Instr.Eq -> v = 0l
-            | Instr.Ne -> v <> 0l
-            | Instr.Lt -> v < 0l
-            | Instr.Ge -> v >= 0l
-            | Instr.Gt -> v > 0l
-            | Instr.Le -> v <= 0l
-          then self#curframe.nextpc <- target
+          if compare_cond v 0l cond then self#curframe.nextpc <- target
       | If_icmp (cond, target) ->
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
-          if
-            match cond with
-            | Instr.Eq -> a = b
-            | Instr.Ne -> a <> b
-            | Instr.Lt -> a < b
-            | Instr.Ge -> a >= b
-            | Instr.Gt -> a > b
-            | Instr.Le -> a <= b
-          then self#curframe.nextpc <- target
+          if compare_cond a b cond then self#curframe.nextpc <- target
       | If_acmpeq target ->
           let b = self#pop () in
           let a = self#pop () in
