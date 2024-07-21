@@ -1,5 +1,5 @@
-#include "../../exec/jni.h"
-#include "../../exec/jvm.h"
+#include "../../native/jni.h"
+#include "../../native/jvm.h"
 #include "caml/alloc.h"
 #include "caml/callback.h"
 #include "caml/memory.h"
