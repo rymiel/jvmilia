@@ -22,6 +22,11 @@ let as_int (v : evalue) : int32 =
   | Int v -> v
   | x -> failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
 
+let as_float (v : evalue) : float =
+  match v with
+  | Float v -> v
+  | x -> failwith (Printf.sprintf "Not a float %s" (string_of_evalue x))
+
 let java_lang_Class_name (v : evalue) : string =
   match v with
   | Object o -> (
@@ -347,7 +352,7 @@ class jvm libjava =
           let v = self#pop () in
           self#push v;
           self#push v
-      | Aload i | Iload i | Lload i -> self#load i |> self#push
+      | Aload i | Iload i | Lload i | Fload i -> self#load i |> self#push
       | Astore i | Istore i | Lstore i -> self#pop () |> self#store i
       | Iinc (i, v) ->
           self#load i |> as_int
@@ -398,12 +403,12 @@ class jvm libjava =
             | Instr.Le -> a <= b
           then self#curframe.nextpc <- target
       | If_acmpeq target ->
-          let a = self#pop () in
           let b = self#pop () in
+          let a = self#pop () in
           if a == b then self#curframe.nextpc <- target
       | If_acmpne target ->
-          let a = self#pop () in
           let b = self#pop () in
+          let a = self#pop () in
           if a != b then self#curframe.nextpc <- target
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
@@ -423,6 +428,12 @@ class jvm libjava =
           | Shared.Long l -> self#push (Long l)
           | _ -> assert false (* todo *))
       | Iconst v | Bipush v -> self#push (Int v)
+      | Fconst f -> self#push (Float f)
+      | Fcmpg ->
+          let b = self#pop () |> as_float in
+          let a = self#pop () |> as_float in
+          if Float.is_nan a || Float.is_nan b then self#push (Int 1l)
+          else Int (compare a b |> Int32.of_int) |> self#push
       | Anewarray c ->
           let size = self#pop () |> as_int in
           make_object_array (Int32.to_int size) c.name Null |> self#push
