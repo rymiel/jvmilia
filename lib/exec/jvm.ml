@@ -373,7 +373,8 @@ class jvm libjava =
           Int
             (match op with
             | Div -> Int32.div a b
-            | Add -> Int32.add a b (* overflow *)
+            | Add -> Int32.add a b
+            | Sub -> Int32.sub a b
             | _ ->
                 failwith
                   (Printf.sprintf "iarith unimplemented %s"
