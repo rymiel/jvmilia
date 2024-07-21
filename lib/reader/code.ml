@@ -1,16 +1,16 @@
 open Constpool
 open Instr
 
-let read_newarray_type (atype : int) : Type.arraytype =
+let read_newarray_type (atype : int) : Type.dtype =
   match atype with
   | 4 -> Boolean
   | 5 -> Char
-  | 6 -> T Float
-  | 7 -> T Double
+  | 6 -> Float
+  | 7 -> Double
   | 8 -> Byte
   | 9 -> Short
-  | 10 -> T Int
-  | 11 -> T Long
+  | 10 -> Int
+  | 11 -> Long
   | _ -> failwith "Invalid array type"
 
 let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :

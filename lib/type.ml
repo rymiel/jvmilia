@@ -201,6 +201,7 @@ let map_vtype_method ((args, ret) : dtype list * dtype) : vtype list * vtype =
 let (parse_vtype [@deprecated]) = parse_vtype
 let (parse_arraytype [@deprecated]) = parse_arraytype
 let (parse_method_descriptor [@deprecated]) = parse_method_descriptor
+let (parse_field_descriptor [@deprecated]) = parse_field_descriptor
 
 let size (t : vtype) : int =
   match t with

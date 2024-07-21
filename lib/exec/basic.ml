@@ -13,7 +13,7 @@ type evalue =
   | Float of float
 
 and eobjectvalue = { cls : eclass; mutable fields : evalue StringMap.t }
-and earrayvalue = { ty : Type.arraytype; arr : evalue array }
+and earrayvalue = { ty : Type.dtype; arr : evalue array }
 and eclass = { raw : jclass; mutable static : evalue StringMap.t }
 
 type exec_frame = {
@@ -38,7 +38,7 @@ let string_of_evalue (value : evalue) : string =
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
       Printf.sprintf "%x:array %s[%d]" (Obj.magic value)
-        (Type.string_of_arraytype v.ty)
+        (Type.string_of_dtype v.ty)
         (Array.length v.arr)
   | ByteArray v ->
       Printf.sprintf "%x:array byte[%d]" (Obj.magic value) (Bytes.length v)
@@ -63,7 +63,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
       Printf.sprintf "%x:array %s[%d] {%s}" (Obj.magic value)
-        (Type.string_of_arraytype v.ty)
+        (Type.string_of_dtype v.ty)
         (Array.length v.arr)
         (String.concat ", "
            (Array.to_list (Array.map string_of_evalue_detailed v.arr)))

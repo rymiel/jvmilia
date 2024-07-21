@@ -43,32 +43,19 @@ let java_lang_Class_name (v : evalue) : string =
   | ByteArray a -> Bytes.to_string a
   | _ -> failwith "Nope"
 
-(* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
-   that can then be converted to vtype in the verifier whenever needed? *)
-let default_value (ty : Type.vtype) : evalue =
+let default_value (ty : Type.dtype) : evalue =
   Type.(
     match ty with
-    | Top | OneWord | TwoWord | Void | Uninitialized | UninitializedThis
-    | UninitializedOffset _ ->
-        failwith "Not a valid type"
-    | Int -> Int 0l
+    | Void -> failwith "Can't initialize void"
+    | Int | Byte | Char | Short | Boolean -> Int 0l
     | Float -> Float 0.0
     | Long -> Long 0L
     | Double -> failwith "unimplemented double"
-    | Class (_, _) | Array _ | Reference | Null -> Null)
-
-let default_arraytype_value (ty : Type.arraytype) : evalue =
-  Type.(
-    match ty with
-    | T x -> default_value x
-    | Byte | Char | Short | Boolean -> Int 0l)
+    | Object _ | Array _ -> Null)
 
 let fields_default_mapped =
   List.fold_left
-    (fun m (f : jfield) ->
-      StringMap.add f.name
-        (default_value (Type.parse_field_descriptor f.desc))
-        m)
+    (fun m (f : jfield) -> StringMap.add f.name (default_value f.field_type) m)
     StringMap.empty
 
 let is_static (mth : jmethod) : bool =
@@ -78,7 +65,7 @@ let not_static (mth : jmethod) : bool = not mth.access_flags.is_static
 
 let make_object_array (size : int) (name : string) (default_value : evalue) :
     evalue =
-  let ty = Type.T (Type.Class (name, Loader.bootstrap_loader)) in
+  let ty = Type.Object name in
   let arr = Array.make size default_value in
   Array { ty; arr }
 
@@ -455,7 +442,7 @@ class jvm libjava =
       | Newarray ty ->
           assert (ty != Byte);
           let size = self#pop () |> as_int |> Int32.to_int in
-          let arr = default_arraytype_value ty |> Array.make size in
+          let arr = default_value ty |> Array.make size in
           self#push (Array { ty; arr })
       | Aastore ->
           let v = self#pop () in

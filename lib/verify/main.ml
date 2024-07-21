@@ -663,22 +663,22 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       AfterGoto
   | Lcmp -> validTypeTransition env [ Long; Long ] Int frame |> next
   | Getfield f ->
-      let t = parse_field_descriptor f.desc in
+      let t = parse_field_descriptord f.desc |> vtype_of_dtype in
       (* TODO: passesProtectedCheck *)
       let loader = currentClassLoader env in
       validTypeTransition env [ Class (f.cls, loader) ] t frame |> next
   | Putfield f ->
-      let t = parse_field_descriptor f.desc in
+      let t = parse_field_descriptord f.desc |> vtype_of_dtype in
       (* TODO: <init> and uninitializedThis *)
       let _popped = canPop frame [ t ] in
       (* TODO: passesProtectedCheck *)
       let loader = currentClassLoader env in
       canPop frame [ t; Class (f.cls, loader) ] |> next
   | Getstatic f ->
-      let t = parse_field_descriptor f.desc in
+      let t = parse_field_descriptord f.desc |> vtype_of_dtype in
       validTypeTransition env [] t frame |> next
   | Putstatic f ->
-      let t = parse_field_descriptor f.desc in
+      let t = parse_field_descriptord f.desc |> vtype_of_dtype in
       canPop frame [ t ] |> next
   | Arraylength ->
       let arraytype = List.nth frame.stack 0 in
@@ -704,7 +704,9 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Anewarray c ->
       let t = Type.parse_class_internal_name c.name in
       validTypeTransition env [ Int ] (Array (T t)) frame |> next
-  | Newarray t -> validTypeTransition env [ Int ] (Array t) frame |> next
+  | Newarray t ->
+      validTypeTransition env [ Int ] (Array (Type.arraytype_of_dtype t)) frame
+      |> next
   | Ifnull t | Ifnonnull t ->
       let n = canPop frame [ Reference ] in
       let () = targetIsTypeSafe env n t in
