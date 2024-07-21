@@ -106,8 +106,7 @@ value reconstruct_evalue(jvalue j, vtype ty) {
     Store_field(result, 0, caml_copy_int32(j.i));
     CAMLreturn(result);
   }
-  case vtype::Class:
-  case vtype::Array: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
+  case vtype::Object: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
   case vtype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case vtype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
   }
@@ -117,19 +116,17 @@ value reconstruct_evalue(jvalue j, vtype ty) {
 
 auto vtype_string(vtype v) -> std::string_view {
   switch (v) {
-  case vtype::Class: return "class";
+  case vtype::Object: return "object";
   case vtype::Void: return "void";
   case vtype::Nil: return "nil";
   case vtype::Int: return "int";
-  case vtype::Array: return "array";
   }
   __builtin_unreachable();
 }
 
 void vtype_c_type(vtype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Class:
-  case vtype::Array: os << "void*"; return;
+  case vtype::Object: os << "void*"; return;
   case vtype::Void: os << "void"; return;
   case vtype::Nil: os << "nil"; return;
   case vtype::Int: os << "int"; return;
@@ -139,8 +136,7 @@ void vtype_c_type(vtype ty, std::ostream& os) {
 
 void vtype_c_active_union(vtype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Class:
-  case vtype::Array: os << "l"; return;
+  case vtype::Object: os << "l"; return;
   case vtype::Void: os << "void"; return;
   case vtype::Nil: os << "nil"; return;
   case vtype::Int: os << "i"; return;
@@ -154,14 +150,8 @@ auto vtype_conversion(value v) -> vtype {
   if (Is_block(v)) {
     switch (Tag_val(v)) {
     case 0: dump_value(v); caml_failwith("Invalid vtype in this context");
-    case 1: {
-      const char* name = String_val(Field(v, 0));
-      if (strcmp(name, "java/lang/Class") == 0) {
-        CAMLreturnT(vtype, vtype::Class);
-      }
-      caml_failwith("Unimplemented class vtype");
-    }
-    case 2: CAMLreturnT(vtype, vtype::Array);
+    case 1:
+    case 2: CAMLreturnT(vtype, vtype::Object);
     default: caml_failwith("Invalid block vtype");
     }
   } else {

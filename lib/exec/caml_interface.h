@@ -11,7 +11,7 @@
 
 namespace jvmilia {
 
-enum struct vtype { Nil, Class, Void, Int, Array };
+enum struct vtype { Nil, Object, Void, Int };
 
 bool value_is_cons(value v);
 
