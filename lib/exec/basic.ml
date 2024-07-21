@@ -6,7 +6,7 @@ type evalue =
   | Void
   | Null
   | Object of eobjectvalue
-  | Int of int
+  | Int of int32
   | Array of earrayvalue
   | Long of int64
   | ByteArray of bytes
@@ -29,7 +29,7 @@ let string_of_evalue (value : evalue) : string =
   | Void -> "void"
   | Null -> "null"
   | Object v -> Printf.sprintf "%x:%s" (Obj.magic value) v.cls.raw.name
-  | Int v -> Printf.sprintf "int %d" v
+  | Int v -> Printf.sprintf "int %ld" v
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
       Printf.sprintf "%x:array %s[%d]" (Obj.magic value)
@@ -50,7 +50,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
               (fun (k, v) ->
                 Printf.sprintf "%s=%s" k (string_of_evalue_detailed v))
               (StringMap.to_list v.fields)))
-  | Int v -> Printf.sprintf "int %d" v
+  | Int v -> Printf.sprintf "int %ld" v
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
       Printf.sprintf "%x:array %s[%d] {%s}" (Obj.magic value)

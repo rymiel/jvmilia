@@ -17,7 +17,7 @@ let instance_fields (cls : jclass) : jfield list =
 let static_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
 
-let as_int (v : evalue) : int =
+let as_int (v : evalue) : int32 =
   match v with
   | Int v -> v
   | x -> failwith (Printf.sprintf "Not an int %s" (string_of_evalue x))
@@ -39,7 +39,7 @@ let default_value (ty : Vtype.vtype) : evalue =
     | Top | OneWord | TwoWord | Void | Uninitialized | UninitializedThis
     | UninitializedOffset _ ->
         failwith "Not a valid type"
-    | Int -> Int 0
+    | Int -> Int 0l
     | Float -> Float 0.0
     | Long -> Long 0L
     | Double -> failwith "unimplemented double"
@@ -62,6 +62,15 @@ let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
   | Array x -> x.arr.(index) <- value
   | _ -> failwith "Not an array");
   Printf.printf "%s\n%!" (string_of_evalue_detailed array)
+
+let compare_cond (a : int32) (b : int32) cond =
+  match cond with
+  | Instr.Eq -> a = b
+  | Instr.Ne -> a <> b
+  | Instr.Lt -> a < b
+  | Instr.Ge -> a >= b
+  | Instr.Gt -> a > b
+  | Instr.Le -> a <= b
 
 class jvm libjava =
   object (self)
@@ -192,7 +201,7 @@ class jvm libjava =
       let fields =
         StringMap.empty
         |> StringMap.add "value" (ByteArray (Bytes.of_string str))
-        |> StringMap.add "coder" (Int 0)
+        |> StringMap.add "coder" (Int 0l)
       in
       Object { cls = self#load_class "java/lang/String"; fields }
 
@@ -341,14 +350,17 @@ class jvm libjava =
       | Aload i | Iload i | Lload i -> self#load i |> self#push
       | Astore i | Istore i | Lstore i -> self#pop () |> self#store i
       | Iinc (i, v) ->
-          self#load i |> as_int |> ( + ) v |> (fun x -> Int x) |> self#store i
+          self#load i |> as_int
+          |> Int32.add (Int32.of_int v)
+          |> (fun x -> Int x)
+          |> self#store i
       | Iarith op ->
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
           Int
             (match op with
-            | Div -> a / b
-            | Add -> a + b (* overflow *)
+            | Div -> Int32.div a b
+            | Add -> Int32.add a b (* overflow *)
             | _ ->
                 failwith
                   (Printf.sprintf "iarith unimplemented %s"
@@ -366,12 +378,12 @@ class jvm libjava =
           let v = self#pop () |> as_int in
           if
             match cond with
-            | Instr.Eq -> v = 0
-            | Instr.Ne -> v <> 0
-            | Instr.Lt -> v < 0
-            | Instr.Ge -> v >= 0
-            | Instr.Gt -> v > 0
-            | Instr.Le -> v <= 0
+            | Instr.Eq -> v = 0l
+            | Instr.Ne -> v <> 0l
+            | Instr.Lt -> v < 0l
+            | Instr.Ge -> v >= 0l
+            | Instr.Gt -> v > 0l
+            | Instr.Le -> v <= 0l
           then self#curframe.nextpc <- target
       | If_icmp (cond, target) ->
           let b = self#pop () |> as_int in
@@ -405,7 +417,7 @@ class jvm libjava =
                   string_pool <- StringMap.add s v string_pool;
                   self#push v)
           | Shared.Float f -> Float f |> self#push
-          | Shared.Integer i -> Int (Int32.to_int i) |> self#push)
+          | Shared.Integer i -> Int i |> self#push)
       | Ldc2_w x -> (
           match x with
           | Shared.Long l -> self#push (Long l)
@@ -413,31 +425,32 @@ class jvm libjava =
       | Iconst v | Bipush v -> self#push (Int v)
       | Anewarray c ->
           let size = self#pop () |> as_int in
-          make_object_array size c.name Null |> self#push
+          make_object_array (Int32.to_int size) c.name Null |> self#push
       | Aastore ->
           let v = self#pop () in
-          let i = self#pop () |> as_int in
+          let i = self#pop () |> as_int |> Int32.to_int in
           let a =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
           a.arr.(i) <- v
       | Baload ->
-          let i = self#pop () |> as_int in
+          let i = self#pop () |> as_int |> Int32.to_int in
           (match self#pop () with
-          | ByteArray x -> Int (Char.code (Bytes.get x i))
+          | ByteArray x -> Int (Char.code (Bytes.get x i) |> Int32.of_int)
           | _ -> failwith "Not an array")
           |> self#push
       | Arraylength ->
           self#push
             (Int
-               (match self#pop () with
-               | Array x -> Array.length x.arr
-               | ByteArray x -> Bytes.length x
-               | _ -> failwith "Not an array"))
+               ((match self#pop () with
+                | Array x -> Array.length x.arr
+                | ByteArray x -> Bytes.length x
+                | _ -> failwith "Not an array")
+               |> Int32.of_int))
       | Instanceof desc -> (
           match self#pop () with
           | Object o ->
-              self#push (Int (if o.cls.raw.name = desc.name then 1 else 0))
+              self#push (Int (if o.cls.raw.name = desc.name then 1l else 0l))
           | _ -> failwith "not an object")
       | Checkcast desc ->
           let v = self#pop () in

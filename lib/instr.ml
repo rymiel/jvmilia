@@ -25,12 +25,12 @@ type instrbody =
   (* constants *)
   | Nop
   | Aconst_null
-  | Iconst of int
-  | Lconst of int
+  | Iconst of int32
+  | Lconst of int64
   | Fconst of float
   | Dconst of float
-  | Bipush of int
-  | Sipush of int
+  | Bipush of int32
+  | Sipush of int32
   | Ldc of loadable_constant
   | Ldc2_w of loadable_constant2
   (* loads *)
@@ -159,12 +159,12 @@ let string_of_instr (i : instrbody) : string =
   let inner = function
     | Nop -> ("nop", "")
     | Aconst_null -> ("aconst_null", "")
-    | Iconst i -> ("iconst", string_of_int i)
-    | Lconst i -> ("lconst", string_of_int i)
+    | Iconst i -> ("iconst", Int32.to_string i)
+    | Lconst i -> ("lconst", Int64.to_string i)
     | Fconst i -> ("fconst", string_of_float i)
     | Dconst i -> ("dconst", string_of_float i)
-    | Bipush i -> ("bipush", string_of_int i)
-    | Sipush i -> ("sipush", string_of_int i)
+    | Bipush i -> ("bipush", Int32.to_string i)
+    | Sipush i -> ("sipush", Int32.to_string i)
     | Ldc i -> ("ldc", string_of_loadable_constant i)
     | Ldc2_w i -> ("ldc2_w", string_of_loadable_constant2 i)
     | Iload i -> ("iload", string_of_int i)

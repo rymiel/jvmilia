@@ -24,22 +24,22 @@ let read_instr (pos : int) (opcode : int) (pool : const_pool) (r : Io.reader) :
   match opcode with
   | 0x00 -> Nop
   | 0x01 -> Aconst_null
-  | 0x02 -> Iconst (-1)
-  | 0x03 -> Iconst 0
-  | 0x04 -> Iconst 1
-  | 0x05 -> Iconst 2
-  | 0x06 -> Iconst 3
-  | 0x07 -> Iconst 4
-  | 0x08 -> Iconst 5
-  | 0x09 -> Lconst 0
-  | 0x0a -> Lconst 1
+  | 0x02 -> Iconst (-1l)
+  | 0x03 -> Iconst 0l
+  | 0x04 -> Iconst 1l
+  | 0x05 -> Iconst 2l
+  | 0x06 -> Iconst 3l
+  | 0x07 -> Iconst 4l
+  | 0x08 -> Iconst 5l
+  | 0x09 -> Lconst 0L
+  | 0x0a -> Lconst 1L
   | 0x0b -> Fconst 0.0
   | 0x0c -> Fconst 1.0
   | 0x0d -> Fconst 2.0
   | 0x0e -> Dconst 0.0
   | 0x0f -> Dconst 1.0
-  | 0x10 -> Bipush (Io.read_i1 r)
-  | 0x11 -> Sipush (Io.read_i2 r)
+  | 0x10 -> Bipush (Io.read_i1 r |> Int32.of_int)
+  | 0x11 -> Sipush (Io.read_i2 r |> Int32.of_int)
   | 0x12 ->
       let const = Io.read_u1 r |> const_pool_loadable_constant pool in
       Ldc const

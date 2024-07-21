@@ -103,7 +103,7 @@ value reconstruct_evalue(jvalue j, vtype ty) {
   switch (ty) {
   case vtype::Int: {
     result = caml_alloc(1, 1);
-    Store_field(result, 0, Val_int(j.i));
+    Store_field(result, 0, caml_copy_int32(j.i));
     CAMLreturn(result);
   }
   case vtype::Class:
