@@ -342,6 +342,18 @@ class jvm libjava =
       | Astore i | Istore i | Lstore i -> self#pop () |> self#store i
       | Iinc (i, v) ->
           self#load i |> as_int |> ( + ) v |> (fun x -> Int x) |> self#store i
+      | Iarith op ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          Int
+            (match op with
+            | Div -> a / b
+            | Add -> a + b (* overflow *)
+            | _ ->
+                failwith
+                  (Printf.sprintf "iarith unimplemented %s"
+                     (Instr.string_of_arith_op op)))
+          |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
