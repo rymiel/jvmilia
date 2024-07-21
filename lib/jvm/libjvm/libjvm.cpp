@@ -36,16 +36,16 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
   printf("libjvm: JVM_FindPrimitiveClass: %s\n", utf);
   if (strcmp(utf, "float") == 0) {
     n = caml_copy_string("/float");
-    result = caml_callback(data->make_class_direct_callback, n);
-    auto ref = data->make_local_reference(result);
-    printf("jni: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
-    CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
+  } else if (strcmp(utf, "int") == 0) {
+    n = caml_copy_string("/int");
   } else {
     printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
     assert(false);
   }
-  unimplemented("JVM_FindPrimitiveClass");
-  CAMLreturnT(jclass, nullptr); // unreachable
+  result = caml_callback(data->make_class_direct_callback, n);
+  auto ref = data->make_local_reference(result);
+  printf("jni: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
+  CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
