@@ -8,15 +8,10 @@ let clamp range v =
   let min, max = range in
   if v < min then min else if v > max then max else v
 
-let find_methodj (cls : jclass) (name : string) (desc : string) : jmethod option
+let find_method (cls : jclass) (name : string) (desc : string) : jmethod option
     =
   let matches (m : jmethod) = m.desc = desc && m.name = name in
   List.find_opt matches cls.methods
-
-(* todo: collapse with method above *)
-let find_method (cls : eclass) (name : string) (desc : string) : jmethod option
-    =
-  find_methodj cls.raw name desc
 
 let instance_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
@@ -207,14 +202,14 @@ class jvm libjava =
       let ecls = { raw = cls; static = fields } in
       self#mark_loaded ecls;
       (* mark as loaded before clinit, otherwise we recurse *)
-      (match find_method ecls "<clinit>" "()V" with
+      (match find_method cls "<clinit>" "()V" with
       | Some clinit ->
           self#exec clinit [];
           ()
       | None -> ());
       (* openjdk is special *)
       (if cls.name = "java/lang/System" then
-         match find_method ecls "initPhase1" "()V" with
+         match find_method cls "initPhase1" "()V" with
          | Some init ->
              self#exec init [];
              ()
@@ -257,7 +252,7 @@ class jvm libjava =
         : jmethod =
       let def_cls = self#load_class cls in
       let def_mth =
-        match find_method def_cls name desc with
+        match find_method def_cls.raw name desc with
         | Some m -> m
         | None -> failwith "Cannot find static method (TODO add more info)"
       in
@@ -267,7 +262,7 @@ class jvm libjava =
        but load_class_definition doesn't have to be *)
     method private find_virtual_method (cls : jclass) (name : string)
         (desc : string) : jmethod =
-      match find_methodj cls name desc with
+      match find_method cls name desc with
       | Some m ->
           assert (not_static m);
           m
@@ -297,7 +292,7 @@ class jvm libjava =
           (* todo proper method resolution *)
           (* todo find actual method, looking up superclasses if necessary *)
           let def_mth =
-            match find_method def_cls method_desc.name method_desc.desc with
+            match find_method def_cls.raw method_desc.name method_desc.desc with
             | Some m -> m
             | None ->
                 failwith
@@ -624,7 +619,7 @@ class jvm libjava =
 
     method exec_main (main_class_name : string) : unit =
       let main_class = self#load_class main_class_name in
-      match find_method main_class "main" "([Ljava/lang/String;)V" with
+      match find_method main_class.raw "main" "([Ljava/lang/String;)V" with
       | Some main_method ->
           let flags = main_method.access_flags in
           if not flags.is_static then failwith "Main method is not static";
