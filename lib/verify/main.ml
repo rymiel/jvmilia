@@ -746,10 +746,16 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Caload -> validTypeTransition env [ Int; Array Char ] Int frame |> next
   | Castore -> canPop frame [ Int; Int; Array Char ] |> next
   | Daload ->
-      validTypeTransition env [ Int; Array (T Double) ] Int frame |> next
+      validTypeTransition env [ Int; Array (T Double) ] Double frame |> next
   | Dastore -> canPop frame [ Double; Int; Array (T Double) ] |> next
+  | Faload -> validTypeTransition env [ Int; Array (T Float) ] Float frame |> next
+  | Fastore -> canPop frame [ Float; Int; Array (T Float) ] |> next
   | Iaload -> validTypeTransition env [ Int; Array (T Int) ] Int frame |> next
   | Iastore -> canPop frame [ Int; Int; Array (T Int) ] |> next
+  | Laload -> validTypeTransition env [ Int; Array (T Long) ] Long frame |> next
+  | Lastore -> canPop frame [ Long; Int; Array (T Long) ] |> next
+  | Saload -> validTypeTransition env [ Int; Array Short ] Int frame |> next
+  | Sastore -> canPop frame [ Int; Int; Array Short ] |> next
   | Lookupswitch (default, pairs) ->
       let sorted =
         List.sort (fun (k1, _) (k2, _) -> Stdlib.compare k1 k2) pairs
