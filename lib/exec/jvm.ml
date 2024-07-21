@@ -527,6 +527,17 @@ class jvm libjava =
       | Monitorenter | Monitorexit ->
           let _ignore = self#pop () in
           ()
+      | Lookupswitch (default, table) ->
+          let key = self#pop () |> as_int |> Int32.to_int in
+          List.iter (fun (a, b) -> Printf.printf "%d -> %d\n" a b) table;
+          Printf.printf "default %d\n" default;
+          let res = List.assoc_opt key table in
+          (match res with
+          | Some x -> Printf.printf "Some %d\n" x
+          | None -> Printf.printf "None\n");
+          assert (Option.is_none res);
+          self#curframe.nextpc <-
+            (match res with Some x -> x | None -> default)
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
