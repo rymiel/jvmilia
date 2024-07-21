@@ -442,6 +442,12 @@ class jvm libjava =
           let a = self#pop () |> as_float in
           if Float.is_nan a || Float.is_nan b then self#push (Int 1l)
           else Int (compare a b |> Int32.of_int) |> self#push
+          (* deduplicate? *)
+      | Fcmpl ->
+          let b = self#pop () |> as_float in
+          let a = self#pop () |> as_float in
+          if Float.is_nan a || Float.is_nan b then self#push (Int (-1l))
+          else Int (compare a b |> Int32.of_int) |> self#push
       | Anewarray c ->
           let size = self#pop () |> as_int in
           make_object_array (Int32.to_int size) c.name Null |> self#push
