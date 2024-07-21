@@ -1,6 +1,12 @@
 open Java
 open Basic
 
+let char_max = 65535l
+let char_min = 0l
+let short_max = 32767l
+let short_min = -32768l
+let clamp min max v = if v < min then min else if v > max then max else v
+
 let find_methodj (cls : jclass) (name : string) (desc : string) : jmethod option
     =
   let matches (m : jmethod) = m.desc = desc && m.name = name in
@@ -54,6 +60,12 @@ let default_value (ty : Vtype.vtype) : evalue =
     | Long -> Long 0L
     | Double -> failwith "unimplemented double"
     | Class (_, _) | Array _ | Reference | Null -> Null)
+
+let default_arraytype_value (ty : Vtype.arraytype) : evalue =
+  Vtype.(
+    match ty with
+    | T x -> default_value x
+    | Byte | Char | Short | Boolean -> Int 0l)
 
 let is_static (mth : jmethod) : bool =
   mth.access_flags.is_static && not mth.access_flags.is_abstract
@@ -436,7 +448,7 @@ class jvm libjava =
           match x with
           | Shared.Long l -> self#push (Long l)
           | _ -> assert false (* todo *))
-      | Iconst v | Bipush v -> self#push (Int v)
+      | Iconst v | Bipush v | Sipush v -> self#push (Int v)
       | Fconst f -> self#push (Float f)
       | Fcmpg ->
           let b = self#pop () |> as_float in
@@ -450,8 +462,13 @@ class jvm libjava =
           if Float.is_nan a || Float.is_nan b then self#push (Int (-1l))
           else Int (compare a b |> Int32.of_int) |> self#push
       | Anewarray c ->
-          let size = self#pop () |> as_int in
-          make_object_array (Int32.to_int size) c.name Null |> self#push
+          let size = self#pop () |> as_int |> Int32.to_int in
+          make_object_array size c.name Null |> self#push
+      | Newarray ty ->
+          assert (ty != Byte);
+          let size = self#pop () |> as_int |> Int32.to_int in
+          let arr = default_arraytype_value ty |> Array.make size in
+          self#push (Array { ty; arr })
       | Aastore ->
           let v = self#pop () in
           let i = self#pop () |> as_int |> Int32.to_int in
@@ -459,6 +476,13 @@ class jvm libjava =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
           a.arr.(i) <- v
+      | Castore ->
+          let v = self#pop () |> as_int |> clamp char_min char_max in
+          let i = self#pop () |> as_int |> Int32.to_int in
+          let a =
+            match self#pop () with Array x -> x | _ -> failwith "Not an array"
+          in
+          a.arr.(i) <- Int v
       | Baload ->
           let i = self#pop () |> as_int |> Int32.to_int in
           (match self#pop () with
