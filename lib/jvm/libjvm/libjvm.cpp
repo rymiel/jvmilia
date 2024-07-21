@@ -1,10 +1,15 @@
 #include "../../exec/jni.h"
 #include "../../exec/jvm.h"
+#include "caml/alloc.h"
+#include "caml/callback.h"
+#include "caml/memory.h"
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 [[noreturn]] void unimplemented(const char* methodName) {
-  printf("Unimplemented libjvm method %s\n", methodName);
+  printf("libjvm: Unimplemented libjvm method %s\n", methodName);
   std::exit(1);
 }
 
@@ -22,6 +27,25 @@ jobjectArray JVM_GetProperties(JNIEnv* env) {
   std::printf("libjvm: JVM_GetProperties\n");
   jclass string = jvmilia::FindClass(env, "java/lang/String");
   return jvmilia::NewObjectArray(env, 1, string, nullptr);
+}
+
+jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
+  CAMLparam0();
+  CAMLlocal2(n, result);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  printf("libjvm: JVM_FindPrimitiveClass: %s\n", utf);
+  if (strcmp(utf, "float") == 0) {
+    n = caml_copy_string("/float");
+    result = caml_callback(data->make_class_direct_callback, n);
+    auto ref = data->make_local_reference(result);
+    printf("jni: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
+    CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
+  } else {
+    printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
+    assert(false);
+  }
+  unimplemented("JVM_FindPrimitiveClass");
+  CAMLreturnT(jclass, nullptr); // unreachable
 }
 
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
@@ -68,7 +92,6 @@ void JVM_FindClassFromBootLoader() { unimplemented("JVM_FindClassFromBootLoader"
 void JVM_FindClassFromCaller() { unimplemented("JVM_FindClassFromCaller"); }
 void JVM_FindLibraryEntry() { unimplemented("JVM_FindLibraryEntry"); }
 void JVM_FindLoadedClass() { unimplemented("JVM_FindLoadedClass"); }
-void JVM_FindPrimitiveClass() { unimplemented("JVM_FindPrimitiveClass"); }
 void JVM_FindScopedValueBindings() { unimplemented("JVM_FindScopedValueBindings"); }
 void JVM_FindSignal() { unimplemented("JVM_FindSignal"); }
 void JVM_FreeMemory() { unimplemented("JVM_FreeMemory"); }
