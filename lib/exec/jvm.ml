@@ -392,6 +392,11 @@ class jvm libjava =
                   (Printf.sprintf "iarith unimplemented %s"
                      (Instr.string_of_arith_op op)))
           |> self#push
+      | Iushr ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          let s = Int32.logand b 0b11111l |> Int32.to_int in
+          Int (Int32.shift_right_logical a s) |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -483,6 +488,12 @@ class jvm libjava =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
           in
           a.arr.(i) <- Int v
+      | Aaload ->
+          let i = self#pop () |> as_int |> Int32.to_int in
+          (match self#pop () with
+          | Array x -> x.arr.(i)
+          | _ -> failwith "Not an array")
+          |> self#push
       | Baload ->
           let i = self#pop () |> as_int |> Int32.to_int in
           (match self#pop () with
