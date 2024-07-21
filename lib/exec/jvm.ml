@@ -67,6 +67,14 @@ let default_arraytype_value (ty : Vtype.arraytype) : evalue =
     | T x -> default_value x
     | Byte | Char | Short | Boolean -> Int 0l)
 
+let fields_default_mapped =
+  List.fold_left
+    (fun m (f : jfield) ->
+      StringMap.add f.name
+        (default_value (Vtype.parse_field_descriptor f.desc))
+        m)
+    StringMap.empty
+
 let is_static (mth : jmethod) : bool =
   mth.access_flags.is_static && not mth.access_flags.is_abstract
 
@@ -189,15 +197,7 @@ class jvm libjava =
       let safe = Verify.Main.classIsTypeSafe cls in
       if not safe then
         failwith (Printf.sprintf "Class %S failed verification" class_name);
-      let fields =
-        static_fields cls
-        |> List.fold_left
-             (fun m (f : jfield) ->
-               StringMap.add f.name
-                 (default_value (Vtype.parse_field_descriptor f.desc))
-                 m)
-             StringMap.empty
-      in
+      let fields = static_fields cls |> fields_default_mapped in
       Printf.printf "%s %s\n" class_name
         (String.concat ", "
            (List.map
@@ -227,6 +227,8 @@ class jvm libjava =
         StringMap.empty
         |> StringMap.add "value" (ByteArray (Bytes.of_string str))
         |> StringMap.add "coder" (Int 0l)
+        |> StringMap.add "hash" (Int 0l)
+        |> StringMap.add "hashIsZero" (Int 0l)
       in
       Object { cls = self#load_class "java/lang/String"; fields }
 
@@ -360,13 +362,14 @@ class jvm libjava =
           self#curframe.retval <- Some value
       | New class_desc ->
           let def_cls = self#load_class class_desc.name in
-          let fields = instance_fields def_cls.raw in
-          List.iteri
-            (fun i (field : jfield) ->
-              Printf.printf "%d %s %s\n" i field.name field.desc)
-            fields;
+          let fields = instance_fields def_cls.raw |> fields_default_mapped in
+          Printf.printf "%s %s\n" class_desc.name
+            (String.concat ", "
+               (List.map
+                  (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue v))
+                  (StringMap.to_list fields)));
           (* todo: declare fields *)
-          self#push (Object { cls = def_cls; fields = StringMap.empty })
+          self#push (Object { cls = def_cls; fields })
       | Dup ->
           (* todo: longs/doubles stuff*)
           let v = self#pop () in
@@ -517,6 +520,7 @@ class jvm libjava =
           let v = self#pop () in
           (match v with
           | Object o -> assert (self#is_indirect_superclass o.cls desc.name)
+          | Null -> ()
           | _ -> failwith "not an object");
           self#push v
       (* TODO monitor stuff? *)
