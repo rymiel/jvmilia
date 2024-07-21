@@ -20,7 +20,7 @@ let read_exception_table_entry (pool : const_pool) (r : Io.reader) :
     class_name = catch_type;
   }
 
-let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Vtype.vtype =
+let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Type.vtype =
   let tag = Io.read_u1 r in
   match tag with
   | 0 -> Top
@@ -32,7 +32,7 @@ let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Vtype.vtype =
   | 6 -> UninitializedThis
   | 7 ->
       let cls = Io.read_u2 r |> const_pool_class pool in
-      let name = Vtype.parse_class_internal_name cls.name in
+      let name = Type.parse_class_internal_name cls.name in
       name
   | 8 ->
       let offset = Io.read_u2 r in
@@ -106,7 +106,7 @@ let read_field_info (pool : const_pool) (cls : string) (r : Io.reader) : jfield
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  let field_type = Vtype.parse_field_descriptord desc in
+  let field_type = Type.parse_field_descriptord desc in
   { access_flags; name; desc; attributes; field_type; cls }
 
 let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
@@ -115,7 +115,7 @@ let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  let arg_types, ret_type = Vtype.parse_method_descriptord desc in
+  let arg_types, ret_type = Type.parse_method_descriptord desc in
   let nargs = List.length arg_types in
   { access_flags; name; desc; attributes; nargs; arg_types; ret_type; cls }
 

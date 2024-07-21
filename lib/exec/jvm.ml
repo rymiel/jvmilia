@@ -45,8 +45,8 @@ let java_lang_Class_name (v : evalue) : string =
 
 (* todo: maybe descriptors shouldn't become vtype, but some smaller subset of vtype,
    that can then be converted to vtype in the verifier whenever needed? *)
-let default_value (ty : Vtype.vtype) : evalue =
-  Vtype.(
+let default_value (ty : Type.vtype) : evalue =
+  Type.(
     match ty with
     | Top | OneWord | TwoWord | Void | Uninitialized | UninitializedThis
     | UninitializedOffset _ ->
@@ -57,8 +57,8 @@ let default_value (ty : Vtype.vtype) : evalue =
     | Double -> failwith "unimplemented double"
     | Class (_, _) | Array _ | Reference | Null -> Null)
 
-let default_arraytype_value (ty : Vtype.arraytype) : evalue =
-  Vtype.(
+let default_arraytype_value (ty : Type.arraytype) : evalue =
+  Type.(
     match ty with
     | T x -> default_value x
     | Byte | Char | Short | Boolean -> Int 0l)
@@ -67,7 +67,7 @@ let fields_default_mapped =
   List.fold_left
     (fun m (f : jfield) ->
       StringMap.add f.name
-        (default_value (Vtype.parse_field_descriptor f.desc))
+        (default_value (Type.parse_field_descriptor f.desc))
         m)
     StringMap.empty
 
@@ -78,7 +78,7 @@ let not_static (mth : jmethod) : bool = not mth.access_flags.is_static
 
 let make_object_array (size : int) (name : string) (default_value : evalue) :
     evalue =
-  let ty = Vtype.T (Vtype.Class (name, Loader.bootstrap_loader)) in
+  let ty = Type.T (Type.Class (name, Loader.bootstrap_loader)) in
   let arr = Array.make size default_value in
   Array { ty; arr }
 
@@ -590,8 +590,8 @@ class jvm libjava =
           else args
         in
         Printf.printf "%#x ((%s) -> %s) [%s]\n%!" method_handle
-          (String.concat ", " (List.map Vtype.string_of_dtype mth.arg_types))
-          (Vtype.string_of_dtype mth.ret_type)
+          (String.concat ", " (List.map Type.string_of_dtype mth.arg_types))
+          (Type.string_of_dtype mth.ret_type)
           (String.concat ", " (List.map string_of_evalue_detailed args_real));
         let result =
           Native.execute_native_auto interface args_real mth.arg_types

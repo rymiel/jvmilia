@@ -142,7 +142,7 @@ type instrbody =
   | Invokeinterface of method_desc * int
   | Invokedynamic of Shared.dynamic_desc
   | New of class_desc
-  | Newarray of Vtype.arraytype
+  | Newarray of Type.arraytype
   | Anewarray of class_desc
   | Arraylength
   | Athrow
@@ -289,7 +289,7 @@ let string_of_instr (i : instrbody) : string =
         ( "invokedynamic",
           Printf.sprintf "#%d %s %s" x.bootstrap_idx x.name x.desc )
     | New i -> ("new", i.name)
-    | Newarray t -> ("newarray", Vtype.string_of_arraytype t)
+    | Newarray t -> ("newarray", Type.string_of_arraytype t)
     | Anewarray i -> ("anewarray", i.name)
     | Arraylength -> ("arraylength", "")
     | Athrow -> ("athrow", "")

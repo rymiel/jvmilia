@@ -1,5 +1,5 @@
 open Shared
-open Vtype
+open Type
 open Java
 
 type flags = { is_this_uninit : bool }

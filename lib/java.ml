@@ -7,8 +7,8 @@ type jmethod = {
   desc : string;
   attributes : attribute list;
   nargs : int;
-  arg_types : Vtype.dtype list;
-  ret_type : Vtype.dtype;
+  arg_types : Type.dtype list;
+  ret_type : Type.dtype;
   cls : string;
 }
 
@@ -17,7 +17,7 @@ type jfield = {
   access_flags : field_access_flags;
   desc : string;
   attributes : attribute list;
-  field_type : Vtype.dtype;
+  field_type : Type.dtype;
   cls : string;
 }
 

@@ -1,7 +1,7 @@
 open Basic
 open Shared
 open Java
-open Vtype
+open Type
 open Attr
 
 (* classIsInterface(Class) *)
@@ -519,7 +519,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       (*oh no*)
       let _loader = currentClassLoader env in
       let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
-      let cls = Vtype.parse_class_internal_name m.cls in
+      let cls = Type.parse_class_internal_name m.cls in
       let stack_arg_list = List.rev (cls :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
       (* let arg_list = List.rev op_args in *)
@@ -694,15 +694,15 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       assert (List.nth frame.locals i = Int);
       next frame
   | Checkcast c ->
-      let t = Vtype.parse_class_internal_name c.name in
+      let t = Type.parse_class_internal_name c.name in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] t frame |> next
   | Instanceof c ->
-      let _ = Vtype.parse_class_internal_name c.name in
+      let _ = Type.parse_class_internal_name c.name in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] Int frame |> next
   | Anewarray c ->
-      let t = Vtype.parse_class_internal_name c.name in
+      let t = Type.parse_class_internal_name c.name in
       validTypeTransition env [ Int ] (Array (T t)) frame |> next
   | Newarray t -> validTypeTransition env [ Int ] (Array t) frame |> next
   | Ifnull t | Ifnonnull t ->

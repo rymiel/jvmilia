@@ -1,7 +1,7 @@
 open Constpool
 open Instr
 
-let read_newarray_type (atype : int) : Vtype.arraytype =
+let read_newarray_type (atype : int) : Type.arraytype =
   match atype with
   | 4 -> Boolean
   | 5 -> Char

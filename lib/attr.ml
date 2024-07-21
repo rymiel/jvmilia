@@ -1,5 +1,5 @@
 open Shared
-open Vtype
+open Type
 
 type frame_desc =
   | Same
