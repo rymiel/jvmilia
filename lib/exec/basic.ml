@@ -24,6 +24,11 @@ type exec_frame = {
   mutable retval : evalue option;
 }
 
+let string_type_value (v : eobjectvalue) : string =
+  match StringMap.find "value" v.fields with
+  | ByteArray x -> Bytes.to_string x
+  | _ -> assert false
+
 let string_of_evalue (value : evalue) : string =
   match value with
   | Void -> "void"
@@ -43,13 +48,17 @@ let rec string_of_evalue_detailed (value : evalue) : string =
   match value with
   | Void -> "void"
   | Null -> "null"
-  | Object v ->
-      Printf.sprintf "%x:%s {%s}" (Obj.magic value) v.cls.raw.name
-        (String.concat ", "
-           (List.map
-              (fun (k, v) ->
-                Printf.sprintf "%s=%s" k (string_of_evalue_detailed v))
-              (StringMap.to_list v.fields)))
+  | Object v -> (
+      match v.cls.raw.name with
+      | "java/lang/String" ->
+          Printf.sprintf "%x:%S" (Obj.magic value) (string_type_value v)
+      | name ->
+          Printf.sprintf "%x:%s {%s}" (Obj.magic value) name
+            (String.concat ", "
+               (List.map
+                  (fun (k, v) ->
+                    Printf.sprintf "%s=%s" k (string_of_evalue_detailed v))
+                  (StringMap.to_list v.fields))))
   | Int v -> Printf.sprintf "int %ld" v
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
