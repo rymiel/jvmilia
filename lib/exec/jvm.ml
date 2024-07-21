@@ -1,11 +1,12 @@
 open Java
 open Basic
 
-let char_max = 65535l
-let char_min = 0l
-let short_max = 32767l
-let short_min = -32768l
-let clamp min max v = if v < min then min else if v > max then max else v
+let char_range = (65535l, 0l)
+let short_range = (32767l, -32768l)
+
+let clamp range v =
+  let min, max = range in
+  if v < min then min else if v > max then max else v
 
 let find_methodj (cls : jclass) (name : string) (desc : string) : jmethod option
     =
@@ -485,7 +486,7 @@ class jvm libjava =
           in
           a.arr.(i) <- v
       | Castore ->
-          let v = self#pop () |> as_int |> clamp char_min char_max in
+          let v = self#pop () |> as_int |> clamp char_range in
           let i = self#pop () |> as_int |> Int32.to_int in
           let a =
             match self#pop () with Array x -> x | _ -> failwith "Not an array"
