@@ -64,7 +64,7 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
         }
       }
     } else if (tag == String_tag) {
-      std::printf("string (\"%s\")\n", String_val(input));
+      std::printf("string (%lu) \"%s\"\n", caml_string_length(input), String_val(input));
     } else {
       std::printf("raw block (tag=%d, p=%p)\n", tag, std::bit_cast<void*>(input));
     }
