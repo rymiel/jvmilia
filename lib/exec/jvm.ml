@@ -404,7 +404,8 @@ class jvm libjava =
                   let v = self#make_string_instance s in
                   string_pool <- StringMap.add s v string_pool;
                   self#push v)
-          | _ -> assert false (* todo *))
+          | Shared.Float f -> Float f |> self#push
+          | Shared.Integer i -> Int (Int32.to_int i) |> self#push)
       | Ldc2_w x -> (
           match x with
           | Shared.Long l -> self#push (Long l)
