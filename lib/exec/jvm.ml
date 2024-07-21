@@ -113,7 +113,7 @@ class jvm libjava =
     method init : unit =
       let interface_data =
         {
-          Shim.find_class =
+          Native.find_class =
             (fun name ->
               (self#load_class name).raw.name |> self#make_class_instance);
           get_static_method =
@@ -135,9 +135,9 @@ class jvm libjava =
           make_class_direct = self#make_class_instance;
         }
       in
-      interface <- Shim.make_native_interface interface_data
+      interface <- Native.make_native_interface interface_data
 
-    method free = Shim.free_native_interface interface
+    method free = Native.free_native_interface interface
     method private curframe = List.hd frames
 
     method private push (value : evalue) =
@@ -583,7 +583,7 @@ class jvm libjava =
       in
       if mth.access_flags.is_native then (
         let registered =
-          Shim.get_registered_fnptr interface mth.cls mth.name mth.desc
+          Native.get_registered_fnptr interface mth.cls mth.name mth.desc
         in
         let method_handle =
           match registered with
@@ -598,7 +598,7 @@ class jvm libjava =
               in
               Printf.printf "Native method %s.%s -> %s\n" mth.cls mth.name
                 filtered_name;
-              Shim.load_method libjava filtered_name
+              Native.load_method libjava filtered_name
         in
         Printf.printf "%s %s %s -> %#x\n%!" mth.cls mth.name mth.desc
           method_handle;
@@ -615,7 +615,7 @@ class jvm libjava =
           (Vtype.string_of_vtype ret_type)
           (String.concat ", " (List.map string_of_evalue_detailed args_real));
         let result =
-          Shim.execute_native_auto interface args_real param_types ret_type
+          Native.execute_native_auto interface args_real param_types ret_type
             method_handle
         in
         Printf.printf "Return value: %s\n%!" (string_of_evalue result);
@@ -652,7 +652,7 @@ class jvm libjava =
 let create_jvm (loader : string -> jclass) : jvm =
   (* TODO: maybe this should be stored in jvm *)
   Loader.initialize_bootstrap_loader loader;
-  let libjava = Shim.load_library "./class/extern-lib/libjava.so" in
+  let libjava = Native.load_library "./class/extern-lib/libjava.so" in
   Printf.printf "libjava: %#x\n" libjava;
   let jvm = new jvm libjava in
   jvm#init;
