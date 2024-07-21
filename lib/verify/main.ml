@@ -692,14 +692,6 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
       next frame
-  | Baload ->
-      let arraytype = List.nth frame.stack 1 in
-      assert (isSmallArray arraytype);
-      validTypeTransition env [ Int; Top ] Int frame |> next
-  | Bastore ->
-      let arraytype = List.nth frame.stack 2 in
-      assert (isSmallArray arraytype);
-      canPop frame [ Int; Int; Top ] |> next
   | Checkcast c ->
       let t = Vtype.parse_class_internal_name c.name in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
@@ -743,8 +735,19 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Aastore ->
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       canPop frame [ obj; Int; Array (T obj) ] |> next
+  | Baload ->
+      let arraytype = List.nth frame.stack 1 in
+      assert (isSmallArray arraytype);
+      validTypeTransition env [ Int; Top ] Int frame |> next
+  | Bastore ->
+      let arraytype = List.nth frame.stack 2 in
+      assert (isSmallArray arraytype);
+      canPop frame [ Int; Int; Top ] |> next
   | Caload -> validTypeTransition env [ Int; Array Char ] Int frame |> next
   | Castore -> canPop frame [ Int; Int; Array Char ] |> next
+  | Daload ->
+      validTypeTransition env [ Int; Array (T Double) ] Int frame |> next
+  | Dastore -> canPop frame [ Double; Int; Array (T Double) ] |> next
   | Iaload -> validTypeTransition env [ Int; Array (T Int) ] Int frame |> next
   | Iastore -> canPop frame [ Int; Int; Array (T Int) ] |> next
   | Lookupswitch (default, pairs) ->
