@@ -40,7 +40,7 @@ let default_value (ty : Vtype.vtype) : evalue =
     | UninitializedOffset _ ->
         failwith "Not a valid type"
     | Int -> Int 0
-    | Float -> failwith "unimplemented float"
+    | Float -> Float 0.0
     | Long -> Long 0L
     | Double -> failwith "unimplemented double"
     | Class (_, _) | Array _ | Reference | Null -> Null)

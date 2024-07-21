@@ -10,6 +10,7 @@ type evalue =
   | Array of earrayvalue
   | Long of int64
   | ByteArray of bytes
+  | Float of float
 
 and eobjectvalue = { cls : eclass; mutable fields : evalue StringMap.t }
 and earrayvalue = { ty : Vtype.arraytype; arr : evalue array }
@@ -36,6 +37,7 @@ let string_of_evalue (value : evalue) : string =
         (Array.length v.arr)
   | ByteArray v ->
       Printf.sprintf "%x:array byte[%d]" (Obj.magic value) (Bytes.length v)
+  | Float v -> Printf.sprintf "float %f" v
 
 let rec string_of_evalue_detailed (value : evalue) : string =
   match value with
@@ -59,6 +61,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
   | ByteArray v ->
       Printf.sprintf "%x:array byte[%d] {%s}" (Obj.magic value) (Bytes.length v)
         (Bytes.escaped v |> Bytes.to_string)
+  | Float v -> Printf.sprintf "float %f" v
 
 let string_of_frame (f : exec_frame) : string =
   let locals_s =
