@@ -179,7 +179,7 @@ let string_of_instr (i : instrbody) : string =
     | Aaload -> ("aaload", "")
     | Baload -> ("baload", "")
     | Caload -> ("caload", "")
-    | Saload -> ("daload", "")
+    | Saload -> ("saload", "")
     | Istore i -> ("istore", string_of_int i)
     | Lstore i -> ("lstore", string_of_int i)
     | Fstore i -> ("fstore", string_of_int i)
