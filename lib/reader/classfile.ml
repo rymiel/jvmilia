@@ -106,7 +106,8 @@ let read_field_info (pool : const_pool) (cls : string) (r : Io.reader) : jfield
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  { access_flags; name; desc; attributes; cls }
+  let field_type = Vtype.parse_field_descriptord desc in
+  { access_flags; name; desc; attributes; field_type; cls }
 
 let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
     jmethod =
@@ -114,8 +115,9 @@ let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  let nargs = Vtype.parse_method_nargs desc in
-  { access_flags; name; desc; attributes; nargs; cls }
+  let arg_types, ret_type = Vtype.parse_method_descriptord desc in
+  let nargs = List.length arg_types in
+  { access_flags; name; desc; attributes; nargs; arg_types; ret_type; cls }
 
 type class_file = {
   major_version : int;

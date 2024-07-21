@@ -96,68 +96,71 @@ jvalue evalue_conversion(value* v) {
   }
 }
 
-value reconstruct_evalue(jvalue j, vtype ty) {
+value reconstruct_evalue(jvalue j, ntype ty) {
   CAMLparam0();
   CAMLlocal1(result);
 
   switch (ty) {
-  case vtype::Int: {
+  case ntype::Int: {
     result = caml_alloc(1, 1);
     Store_field(result, 0, caml_copy_int32(j.i));
     CAMLreturn(result);
   }
-  case vtype::Object: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
-  case vtype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
-  case vtype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
+  case ntype::Reference: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
+  case ntype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
+  case ntype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
   }
 
   __builtin_unreachable();
 }
 
-auto vtype_string(vtype v) -> std::string_view {
+auto ntype_string(ntype v) -> std::string_view {
   switch (v) {
-  case vtype::Object: return "object";
-  case vtype::Void: return "void";
-  case vtype::Nil: return "nil";
-  case vtype::Int: return "int";
+  case ntype::Reference: return "object";
+  case ntype::Void: return "void";
+  case ntype::Nil: return "nil";
+  case ntype::Int: return "int";
   }
   __builtin_unreachable();
 }
 
-void vtype_c_type(vtype ty, std::ostream& os) {
+void ntype_c_type(ntype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Object: os << "void*"; return;
-  case vtype::Void: os << "void"; return;
-  case vtype::Nil: os << "nil"; return;
-  case vtype::Int: os << "int"; return;
+  case ntype::Reference: os << "void*"; return;
+  case ntype::Void: os << "void"; return;
+  case ntype::Nil: os << "nil"; return;
+  case ntype::Int: os << "int"; return;
   }
   __builtin_unreachable();
 }
 
-void vtype_c_active_union(vtype ty, std::ostream& os) {
+void ntype_c_active_union(ntype ty, std::ostream& os) {
   switch (ty) {
-  case vtype::Object: os << "l"; return;
-  case vtype::Void: os << "void"; return;
-  case vtype::Nil: os << "nil"; return;
-  case vtype::Int: os << "i"; return;
+  case ntype::Reference: os << "l"; return;
+  case ntype::Void: os << "void"; return;
+  case ntype::Nil: os << "nil"; return;
+  case ntype::Int: os << "i"; return;
   }
   __builtin_unreachable();
 }
 
-auto vtype_conversion(value v) -> vtype {
+// 2 Double
+// 3 Float
+// 5 Long
+
+auto ntype_of_dtype(value v) -> ntype {
   CAMLparam1(v);
 
   if (Is_block(v)) {
-    switch (Tag_val(v)) {
-    case 0: dump_value(v); caml_failwith("Invalid vtype in this context");
-    case 1:
-    case 2: CAMLreturnT(vtype, vtype::Object);
-    default: caml_failwith("Invalid block vtype");
-    }
+    CAMLreturnT(ntype, ntype::Reference);
   } else {
-    switch (Long_val(v)) {
-    case 2: return vtype::Int;
-    case 11: return vtype::Void;
+    switch (Int_val(v)) {
+    case 0:
+    case 1:
+    case 4:
+    case 6:
+    case 7: CAMLreturnT(ntype, ntype::Int);
+    case 8: CAMLreturnT(ntype, ntype::Void);
     default: caml_failwith("Unimplemented integer vtype");
     }
   }

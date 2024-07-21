@@ -65,14 +65,14 @@ CAMLprim value load_method_native(value lib_val, value name_val) {
 
 // this could go in a separate file
 namespace codegen {
-std::string build_bridge_name(std::vector<vtype>& args, vtype ret) {
+std::string build_bridge_name(std::vector<ntype>& args, ntype ret) {
   std::stringstream bridge_os{};
   bridge_os << "jvmilia_bridge_";
   for (auto v : args) {
-    vtype_c_active_union(v, bridge_os);
+    ntype_c_active_union(v, bridge_os);
   }
   bridge_os << "_";
-  vtype_c_active_union(ret, bridge_os);
+  ntype_c_active_union(ret, bridge_os);
 
   return bridge_os.str();
 }
@@ -84,16 +84,16 @@ void build_source_header(std::ostream& os) {
   os.flush();
 }
 
-void build_source_function(std::vector<vtype>& args, vtype ret, std::ostream& os, int key) {
-  bool not_void = ret != vtype::Void;
+void build_source_function(std::vector<ntype>& args, ntype ret, std::ostream& os, int key) {
+  bool not_void = ret != ntype::Void;
 
-  vtype_c_type(ret, os);
+  ntype_c_type(ret, os);
   os << " target" << key << "(";
   os << "void** env, void* receiver";
   int i = 0;
   for (auto v : args) {
     os << ", ";
-    vtype_c_type(v, os);
+    ntype_c_type(v, os);
     os << " arg" << i;
     i++;
   }
@@ -101,10 +101,10 @@ void build_source_function(std::vector<vtype>& args, vtype ret, std::ostream& os
   os << "using target" << key << "_type = decltype(target" << key << ");\n\n";
   os << "extern \"C\" jvalue jvmilia_bridge_";
   for (auto v : args) {
-    vtype_c_active_union(v, os);
+    ntype_c_active_union(v, os);
   }
   os << "_";
-  vtype_c_active_union(ret, os);
+  ntype_c_active_union(ret, os);
   os << "(void* fn_ptr, void** env, std::vector<jvalue> args) {\n";
   os << "  auto function = std::bit_cast<target" << key << "_type*>(fn_ptr);\n";
   os << "  jvalue ret;\n";
@@ -118,13 +118,13 @@ void build_source_function(std::vector<vtype>& args, vtype ret, std::ostream& os
   for (auto v : args) {
     os << ", args[";
     os << i << "].";
-    vtype_c_active_union(v, os);
+    ntype_c_active_union(v, os);
     i++;
   }
   os << ");\n";
   if (not_void) {
     os << "  ret.";
-    vtype_c_active_union(ret, os);
+    ntype_c_active_union(ret, os);
     os << " = result;\n";
   }
   os << "  return ret;\n";
@@ -132,7 +132,7 @@ void build_source_function(std::vector<vtype>& args, vtype ret, std::ostream& os
   os.flush();
 }
 
-void build_source(std::vector<vtype>& args, vtype ret, std::ostream& os, int key = 0) {
+void build_source(std::vector<ntype>& args, ntype ret, std::ostream& os, int key = 0) {
   build_source_header(os);
   build_source_function(args, ret, os, key);
 }
@@ -453,8 +453,8 @@ CAMLprim value make_native_interface_native(value interface_data) {
   // __builtin_dump_struct(context, printf);
   printf("interface: %p; data: %p; context: %p\n", interface, data, context);
 
-  const std::tuple<std::vector<vtype>, vtype> to_preload[] = {
-      {{}, vtype::Void}, {{vtype::Object}, vtype::Int}, {{}, vtype::Object}, {{vtype::Object}, vtype::Object}};
+  const std::tuple<std::vector<ntype>, ntype> to_preload[] = {
+      {{}, ntype::Void}, {{ntype::Reference}, ntype::Int}, {{}, ntype::Reference}, {{ntype::Reference}, ntype::Reference}};
 
   auto src_path = create_temporary_file(context->data->temp, "preload", "source.cpp");
   auto dst_path = create_temporary_file(context->data->temp, "preload", "lib.so");
@@ -515,13 +515,13 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   context->data->frames.emplace_back();
 
-  auto param_vtypes = list_vector_map(param_types, &vtype_conversion);
+  auto param_vtypes = list_vector_map(param_types, &ntype_of_dtype);
   for (auto v : param_vtypes) {
-    std::printf("<- %s\n", vtype_string(v).data());
+    std::printf("<- %s\n", ntype_string(v).data());
   }
 
-  auto ret_vtype = vtype_conversion(ret_type);
-  std::printf("-> %s\n", vtype_string(ret_vtype).data());
+  auto ret_vtype = ntype_of_dtype(ret_type);
+  std::printf("-> %s\n", ntype_string(ret_vtype).data());
 
   auto bridge_name = codegen::build_bridge_name(param_vtypes, ret_vtype);
   bridge_t* bridge;
@@ -555,7 +555,7 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   std::printf("result: %lx\n", result.j);
 
-  if (ret_vtype == vtype::Void) {
+  if (ret_vtype == ntype::Void) {
     context->data->frames.pop_back();
     CAMLreturn(Val_unit);
   }

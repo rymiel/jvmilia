@@ -11,7 +11,8 @@
 
 namespace jvmilia {
 
-enum struct vtype { Nil, Object, Void, Int };
+// native type
+enum struct ntype { Nil, Reference, Void, Int };
 
 bool value_is_cons(value v);
 
@@ -55,12 +56,11 @@ auto evalue_is_object(value evalue) -> bool;
 
 auto evalue_conversion(value* v) -> jvalue;
 
-auto reconstruct_evalue(jvalue j, vtype ty) -> value;
+auto reconstruct_evalue(jvalue j, ntype ty) -> value;
 
-auto vtype_string(vtype v) -> std::string_view;
-void vtype_c_type(vtype ty, std::ostream& os);
-void vtype_c_active_union(vtype ty, std::ostream& os);
-
-auto vtype_conversion(value v) -> vtype;
+auto ntype_string(ntype v) -> std::string_view;
+void ntype_c_type(ntype ty, std::ostream& os);
+void ntype_c_active_union(ntype ty, std::ostream& os);
+auto ntype_of_dtype(value v) -> ntype;
 
 } // namespace jvmilia

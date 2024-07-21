@@ -186,7 +186,8 @@ let rec expandToLength (al : 'a list) (size : int) (filler : 'a) : 'a list =
 
 let methodInitialStackFrame (cls : jclass) (mth : jmethod) (frame_size : int) :
     frame * vtype =
-  let raw_args, ret = parse_method_descriptor mth.desc in
+  let raw_args = List.map vtype_of_dtype mth.arg_types in
+  let ret = vtype_of_dtype mth.ret_type in
   let args = expandTypeList raw_args in
   let this = methodInitialThisType cls mth in
   let flags =
@@ -463,11 +464,11 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Nop -> Frame frame
   | Aload i -> loadIsTypeSafe env i Reference frame |> next
   | Invokespecial m -> (
-      let op_args, r = parse_method_descriptor m.desc in
+      let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
       match m.name with
       | "<init>" ->
           assert (r = Void);
-          let stack_args = List.rev op_args in
+          let stack_args = op_args |> List.rev in
           let f = canPop frame stack_args in
           let loader = currentClassLoader env in
           let head = List.hd f.stack in
@@ -517,7 +518,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       assert (m.name <> "<clinit>");
       (*oh no*)
       let _loader = currentClassLoader env in
-      let op_args, r = parse_method_descriptor m.desc in
+      let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
       let cls = Vtype.parse_class_internal_name m.cls in
       let stack_arg_list = List.rev (cls :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
@@ -528,13 +529,13 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Invokestatic m ->
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parse_method_descriptor m.desc in
+      let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
       let stack_arg_list = List.rev op_args in
       validTypeTransition env stack_arg_list r frame |> next
   | Invokedynamic m ->
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parse_method_descriptor m.desc in
+      let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
       let stack_arg_list = List.rev op_args in
       validTypeTransition env stack_arg_list r frame |> next
   | Invokeinterface (m, count) ->
@@ -547,7 +548,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
 
       assert (m.name <> "<init>");
       assert (m.name <> "<clinit>");
-      let op_args, r = parse_method_descriptor m.desc in
+      let op_args, r = parse_method_descriptord m.desc |> map_vtype_method in
       let loader = currentClassLoader env in
       let intf = Class (m.cls, loader) in
       let stack_arg_list = List.rev (intf :: op_args) in
@@ -748,7 +749,8 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Daload ->
       validTypeTransition env [ Int; Array (T Double) ] Double frame |> next
   | Dastore -> canPop frame [ Double; Int; Array (T Double) ] |> next
-  | Faload -> validTypeTransition env [ Int; Array (T Float) ] Float frame |> next
+  | Faload ->
+      validTypeTransition env [ Int; Array (T Float) ] Float frame |> next
   | Fastore -> canPop frame [ Float; Int; Array (T Float) ] |> next
   | Iaload -> validTypeTransition env [ Int; Array (T Int) ] Int frame |> next
   | Iastore -> canPop frame [ Int; Int; Array (T Int) ] |> next

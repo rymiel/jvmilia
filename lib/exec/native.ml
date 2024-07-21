@@ -23,8 +23,8 @@ external free_native_interface : int -> unit = "free_native_interface_native"
 external execute_native_auto :
   int ->
   Basic.evalue list ->
-  Vtype.vtype list ->
-  Vtype.vtype ->
+  Vtype.dtype list ->
+  Vtype.dtype ->
   int ->
   Basic.evalue = "execute_native_auto_native"
 

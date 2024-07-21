@@ -7,3 +7,7 @@
   (names native jni caml_interface)
   (flags -std=c++20 -fPIC -Wall -Wextra -g -Og))
  (libraries str))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

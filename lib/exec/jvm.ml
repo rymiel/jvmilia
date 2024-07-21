@@ -583,7 +583,6 @@ class jvm libjava =
         Printf.printf "%s %s %s -> %#x\n%!" mth.cls mth.name mth.desc
           method_handle;
         if method_handle = 0 then failwith "Method handle is null";
-        let param_types, ret_type = Vtype.parse_method_descriptor mth.desc in
         let args_real =
           if mth.access_flags.is_static then
             let receiver = self#make_class_instance mth.cls in
@@ -591,12 +590,12 @@ class jvm libjava =
           else args
         in
         Printf.printf "%#x ((%s) -> %s) [%s]\n%!" method_handle
-          (String.concat ", " (List.map Vtype.string_of_vtype param_types))
-          (Vtype.string_of_vtype ret_type)
+          (String.concat ", " (List.map Vtype.string_of_dtype mth.arg_types))
+          (Vtype.string_of_dtype mth.ret_type)
           (String.concat ", " (List.map string_of_evalue_detailed args_real));
         let result =
-          Native.execute_native_auto interface args_real param_types ret_type
-            method_handle
+          Native.execute_native_auto interface args_real mth.arg_types
+            mth.ret_type method_handle
         in
         Printf.printf "Return value: %s\n%!" (string_of_evalue result);
         result)
