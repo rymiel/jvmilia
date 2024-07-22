@@ -65,8 +65,8 @@ union jvalue {
 };
 
 struct JNINativeMethod {
-  char* name;
-  char* signature;
+  const char* name;
+  const char* signature;
   void* fnPtr;
 };
 

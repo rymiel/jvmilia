@@ -13,11 +13,43 @@
   std::exit(1);
 }
 
+[[noreturn]] void unimplemented_unsafe(const char* methodName) {
+  printf("libjvm shim: jdk.internal.misc.Unsafe: unimplemented %s\n", methodName);
+  std::exit(1);
+}
+
+jint unsafe_arrayBaseOffset0(JNIEnv* env, jobject unsafe, jclass clazz) {
+  (void)unsafe;
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  printf("libjvm shim: jdk.internal.misc.Unsafe: arrayBaseOffset0: %s\n", data->class_name(clazz));
+
+  return 0;
+}
+
+jint unsafe_arrayIndexScale0(JNIEnv* env, jobject unsafe, jclass clazz) {
+  (void)unsafe;
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  printf("libjvm shim: jdk.internal.misc.Unsafe: arrayIndexScale0: %s\n", data->class_name(clazz));
+
+  return 1;
+}
+
+static JNINativeMethod unsafe_native_methods[] = {
+    {"arrayBaseOffset0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayBaseOffset0)},
+    {"arrayIndexScale0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayIndexScale0)},
+};
+
 extern "C" {
+void Java_jdk_internal_misc_Unsafe_registerNatives(JNIEnv* env, jclass unsafecls) {
+  printf("libjvm shim: jdk.internal.misc.Unsafe registerNatives");
+  (*env)->RegisterNatives(env, unsafecls, unsafe_native_methods,
+                          sizeof(unsafe_native_methods) / sizeof(JNINativeMethod));
+}
+
 jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
   jvmilia::JVMData* data = jvmilia::getData(env);
-  auto* unused_name = jvmilia::class_name(data, unused);
-  auto* cls_name = jvmilia::class_name(data, cls);
+  auto* unused_name = data->class_name(unused);
+  auto* cls_name = data->class_name(cls);
   std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
 
   return 0;

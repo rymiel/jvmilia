@@ -22,7 +22,7 @@ auto coerce_null(jobject v) -> value { return v == nullptr ? Val_int(1) : *std::
 
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   JVMData* data = getData(env);
-  const char* className = class_name(data, clazz);
+  const char* className = data->class_name(clazz);
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
     auto key = registerKey(className, method.name, method.signature);
@@ -142,7 +142,7 @@ jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const cha
   CAMLparam1(callback);
   CAMLlocal4(caml_cls, caml_name, caml_desc, result);
   JVMData* data = getData(env);
-  const char* className = class_name(data, clazz);
+  const char* className = data->class_name(clazz);
   printf("jni: %s %s %s %s\n", jni_name, className, name, sig);
 
   auto key = jvmilia::registerKey(className, name, sig);
@@ -181,7 +181,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   CAMLlocal4(list, r, result, method);
   JVMData* data = getData(env);
 
-  printf("jni: CallStaticObjectMethodV %s\n", class_name(data, clazz));
+  printf("jni: CallStaticObjectMethodV %s\n", data->class_name(clazz));
   method = *std::bit_cast<value*>(methodID);
   dump_value(method, 4);
   long nargs = Long_val(Field(method, 4));
@@ -227,7 +227,7 @@ jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig
   JVMData* data = getData(env);
 
   auto ref = data->make_local_reference(caml_copy_string(name));
-  printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", class_name(data, clazz), name, sig, *ref, ref.get());
+  printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
 }
@@ -236,9 +236,9 @@ jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) 
   CAMLparam0();
   CAMLlocal1(result);
   JVMData* data = getData(env);
-  printf("jni: NewObjectArray %d %s %p\n", len, class_name(data, clazz), init);
+  printf("jni: NewObjectArray %d %s %p\n", len, data->class_name(clazz), init);
 
-  result = caml_callback3(data->make_object_array_callback, Val_int(len), caml_copy_string(class_name(data, clazz)),
+  result = caml_callback3(data->make_object_array_callback, Val_int(len), caml_copy_string(data->class_name(clazz)),
                           coerce_null(init));
   auto ref = data->make_local_reference(result);
 

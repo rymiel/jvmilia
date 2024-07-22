@@ -52,6 +52,15 @@ struct JVMData {
 
     CAMLreturn(caml_callback2(this->object_instance_field_callback, evalue, n));
   }
+
+  auto class_name(jclass clazz) -> const char* {
+    CAMLparam0();
+    CAMLlocal1(result);
+
+    result = caml_callback(this->class_name_callback, *std::bit_cast<value*>(clazz));
+
+    CAMLreturnT(const char*, String_val(result));
+  }
 };
 
 inline auto make_reference(value v) -> std::shared_ptr<value> {
@@ -78,15 +87,6 @@ inline JVMData* getData(JNIEnv* env) {
   Context* context = std::bit_cast<Context*>(env);
   //   __builtin_dump_struct(context->data, printf);
   return context->data;
-}
-
-inline auto class_name(JVMData* data, jclass clazz) -> const char* {
-  CAMLparam0();
-  CAMLlocal1(result);
-
-  result = caml_callback(data->class_name_callback, *std::bit_cast<value*>(clazz));
-
-  CAMLreturnT(const char*, String_val(result));
 }
 
 inline std::string registerKey(const char* className, const char* methodName, const char* signature) {
