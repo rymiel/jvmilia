@@ -76,24 +76,31 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
 }
 
 bool evalue_is_object(value evalue) {
-  CAMLparam1(evalue);
+  return Is_block(evalue)             // has parameter
+         && (Tag_val(evalue) == 0     // index 0 (Object)
+             || Tag_val(evalue) == 2  // index 2 (Array)
+             || Tag_val(evalue) == 4) // index 4 (ByteArray)
+         && Wosize_val(evalue) == 1;  // one field (eobjectvalue)
+}
 
-  CAMLreturnT(bool,
-              Is_block(evalue)               // has parameter
-                  && Tag_val(evalue) == 0    // index 0
-                  && Wosize_val(evalue) == 1 // one field (eobjectvalue)
-  );
+bool evalue_is_integer(value evalue) {
+  return Is_block(evalue)            // has parameter
+         && Tag_val(evalue) == 1     // index 1 (Int)
+         && Wosize_val(evalue) == 1; // one field (int32)
 }
 
 jvalue evalue_conversion(value* v) {
   jvalue j = {};
   if (evalue_is_object(*v)) {
     j.l = std::bit_cast<jobject>(v);
-    return j;
+  } else if (evalue_is_integer(*v)) {
+    j.i = std::bit_cast<jint>(Int32_val(v));
   } else {
+    dump_value(*v, 4);
     std::puts("unimplemented evalue");
     std::exit(4);
   }
+  return j;
 }
 
 value reconstruct_evalue(jvalue j, ntype ty) {
