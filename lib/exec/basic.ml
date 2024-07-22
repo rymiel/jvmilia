@@ -27,6 +27,7 @@ type exec_frame = {
 let string_type_value (v : eobjectvalue) : string =
   match StringMap.find "value" v.fields with
   | ByteArray x -> Bytes.to_string x
+  | Null -> "(null string)"
   | _ -> assert false
 
 let string_of_evalue (value : evalue) : string =
