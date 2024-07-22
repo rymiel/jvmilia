@@ -1,6 +1,7 @@
 open Java
 open Basic
 
+let byte_range = (-128l, 127l)
 let char_range = (0l, 65535l)
 let short_range = (-32768l, 32767l)
 
@@ -28,6 +29,11 @@ let as_float (v : evalue) : float =
   match v with
   | Float v -> v
   | x -> failwith (Printf.sprintf "Not a float %s" (string_of_evalue x))
+
+let as_long (v : evalue) : int64 =
+  match v with
+  | Long v -> v
+  | x -> failwith (Printf.sprintf "Not a long %s" (string_of_evalue x))
 
 let object_type_name (v : evalue) : string =
   match v with Object o -> o.cls.raw.name | _ -> failwith "Not an object"
@@ -340,7 +346,7 @@ class jvm libjava =
           | _ -> failwith "Can't put field of non-object type")
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
-      | Ireturn | Areturn ->
+      | Ireturn | Areturn | Lreturn ->
           let value = self#pop () in
           self#curframe.retval <- Some value
       | New class_desc ->
@@ -354,12 +360,20 @@ class jvm libjava =
           (* todo: declare fields *)
           self#push (Object { cls = def_cls; fields })
       | Dup ->
-          (* todo: longs/doubles stuff*)
           let v = self#pop () in
           self#push v;
           self#push v
+      | Dup_x1 ->
+          let v1 = self#pop () in
+          let v2 = self#pop () in
+          self#push v1;
+          self#push v2;
+          self#push v1
+      | Pop ->
+          let _ = self#pop () in
+          ()
       | Aload i | Iload i | Lload i | Fload i -> self#load i |> self#push
-      | Astore i | Istore i | Lstore i -> self#pop () |> self#store i
+      | Astore i | Istore i | Lstore i | Fstore i -> self#pop () |> self#store i
       | Iinc (i, v) ->
           self#load i |> as_int
           |> Int32.add (Int32.of_int v)
@@ -379,6 +393,16 @@ class jvm libjava =
                   (Printf.sprintf "iarith unimplemented %s"
                      (Instr.string_of_arith_op op)))
           |> self#push
+      | Ishl ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          let s = Int32.logand b 0b11111l |> Int32.to_int in
+          Int (Int32.shift_left a s) |> self#push
+      | Ishr ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          let s = Int32.logand b 0b11111l |> Int32.to_int in
+          Int (Int32.shift_right a s) |> self#push
       | Iushr ->
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
@@ -392,6 +416,44 @@ class jvm libjava =
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
           Int (Int32.logxor a b) |> self#push
+      | Larith op ->
+          let b = self#pop () |> as_long in
+          let a = self#pop () |> as_long in
+          Long
+            (match op with
+            | Div -> Int64.div a b
+            | Add -> Int64.add a b
+            | Sub -> Int64.sub a b
+            | Mul -> Int64.mul a b
+            | _ ->
+                failwith
+                  (Printf.sprintf "iarith unimplemented %s"
+                     (Instr.string_of_arith_op op)))
+          |> self#push
+      | Lshr ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_long in
+          let s = Int32.logand b 0b11111_11111l |> Int32.to_int in
+          Long (Int64.shift_right a s) |> self#push
+      | I2f -> Float (self#pop () |> as_int |> Int32.to_float) |> self#push
+      | I2b -> Int (self#pop () |> as_int |> clamp byte_range) |> self#push
+      | F2i -> Int (self#pop () |> as_float |> Int32.of_float) |> self#push
+      | I2l -> Long (self#pop () |> as_int |> Int64.of_int32) |> self#push
+      | L2i -> Int (self#pop () |> as_long |> Int64.to_int32) |> self#push
+      | Farith op ->
+          let b = self#pop () |> as_float in
+          let a = self#pop () |> as_float in
+          Float
+            (match op with
+            | Div -> a /. b
+            | Add -> a +. b
+            | Sub -> a -. b
+            | Mul -> a *. b
+            | _ ->
+                failwith
+                  (Printf.sprintf "farith unimplemented %s"
+                     (Instr.string_of_arith_op op)))
+          |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -415,6 +477,10 @@ class jvm libjava =
           let b = self#pop () in
           let a = self#pop () in
           if a != b then self#curframe.nextpc <- target
+      | Lcmp ->
+          let b = self#pop () in
+          let a = self#pop () in
+          Int (compare a b |> Int32.of_int) |> self#push
       | Goto target -> self#curframe.nextpc <- target
       | Ldc x -> (
           match x with
@@ -433,6 +499,7 @@ class jvm libjava =
           | Shared.Long l -> self#push (Long l)
           | _ -> assert false (* todo *))
       | Iconst v | Bipush v | Sipush v -> self#push (Int v)
+      | Lconst v -> self#push (Long v)
       | Fconst f -> self#push (Float f)
       | Fcmpg ->
           let b = self#pop () |> as_float in
@@ -449,10 +516,13 @@ class jvm libjava =
           let size = self#pop () |> as_int |> Int32.to_int in
           make_object_array size c.name Null |> self#push
       | Newarray ty ->
-          assert (ty != Byte);
           let size = self#pop () |> as_int |> Int32.to_int in
-          let arr = default_value ty |> Array.make size in
-          self#push (Array { ty; arr })
+          (match ty with
+          | Byte -> ByteArray (Bytes.make size (Char.chr 0))
+          | _ ->
+              let arr = default_value ty |> Array.make size in
+              Array { ty; arr })
+          |> self#push
       | Aastore ->
           let v = self#pop () in
           let i = self#pop () |> as_int |> Int32.to_int in
