@@ -373,6 +373,7 @@ class jvm libjava =
             | Div -> Int32.div a b
             | Add -> Int32.add a b
             | Sub -> Int32.sub a b
+            | Mul -> Int32.mul a b
             | _ ->
                 failwith
                   (Printf.sprintf "iarith unimplemented %s"
@@ -383,6 +384,14 @@ class jvm libjava =
           let a = self#pop () |> as_int in
           let s = Int32.logand b 0b11111l |> Int32.to_int in
           Int (Int32.shift_right_logical a s) |> self#push
+      | Iand ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          Int (Int32.logand a b) |> self#push
+      | Ixor ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          Int (Int32.logxor a b) |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -487,6 +496,8 @@ class jvm libjava =
           let v = self#pop () in
           (match v with
           | Object o -> assert (self#is_indirect_superclass o.cls desc.name)
+          | ByteArray _ ->
+              assert (desc.name = "[B" (*this is so dirty pls fixme*))
           | Null -> ()
           | _ -> failwith "not an object");
           self#push v
@@ -505,6 +516,13 @@ class jvm libjava =
           assert (Option.is_none res);
           self#curframe.nextpc <-
             (match res with Some x -> x | None -> default)
+      | Tableswitch (default, (low, high), targets) ->
+          let key = self#pop () |> as_int |> Int32.to_int in
+          let res =
+            if key < low || key > high then default
+            else List.nth targets (key - low)
+          in
+          self#curframe.nextpc <- res
       | x ->
           failwith
             (Printf.sprintf "Unimplemented instruction excecution %s"
