@@ -78,7 +78,7 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
   }
   result = caml_callback(data->make_class_direct_callback, n);
   auto ref = data->make_local_reference(result);
-  printf("jni: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
+  printf("libjvm: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
@@ -88,13 +88,56 @@ jboolean JVM_IsPrimitiveClass(JNIEnv* env, jclass cls) {
   return name[0] == '/';
 }
 
+void print_array(unsigned char* arr, unsigned long len) {
+  for (unsigned long i = 0; i < len; i++) {
+    unsigned char v = arr[i];
+    if (v == 0) {
+      printf("\\0");
+    } else {
+      printf("%c", v);
+    }
+  }
+}
+
+void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
+  CAMLparam0();
+  CAMLlocal2(src_val, dst_val);
+  (void)env;
+  (void)ignored;
+
+  printf("libjvm: JVM_ArrayCopy: %d -> %d, length %d\n", src_pos, dst_pos, length);
+  src_val = *std::bit_cast<value*>(src);
+  dst_val = *std::bit_cast<value*>(dst);
+
+  assert(Tag_val(src_val) == 4 && Tag_val(dst_val) == 4); // only byte arrays for now
+  assert(src_pos >= 0 && dst_pos >= 0 && length >= 0);
+
+  unsigned char* src_bytes = Bytes_val(Field(src_val, 0));
+  unsigned char* dst_bytes = Bytes_val(Field(dst_val, 0));
+  auto src_len = caml_string_length(Field(src_val, 0));
+  auto dst_len = caml_string_length(Field(dst_val, 0));
+
+  print_array(src_bytes, src_len);
+  printf(" -> ");
+  print_array(dst_bytes, dst_len);
+  printf("\n");
+
+  memmove(dst_bytes + dst_pos, src_bytes + src_pos, length);
+
+  print_array(src_bytes, src_len);
+  printf(" -> ");
+  print_array(dst_bytes, dst_len);
+  printf("\n");
+
+  CAMLreturn0;
+}
+
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
 void JVM_AddReadsModule() { unimplemented("JVM_AddReadsModule"); }
 void JVM_AreNestMates() { unimplemented("JVM_AreNestMates"); }
-void JVM_ArrayCopy() { unimplemented("JVM_ArrayCopy"); }
 void JVM_AssertionStatusDirectives() { unimplemented("JVM_AssertionStatusDirectives"); }
 void JVM_BeforeHalt() { unimplemented("JVM_BeforeHalt"); }
 void JVM_CallStackWalk() { unimplemented("JVM_CallStackWalk"); }
