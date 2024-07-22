@@ -94,7 +94,7 @@ jvalue evalue_conversion(value* v) {
   if (evalue_is_object(*v)) {
     j.l = std::bit_cast<jobject>(v);
   } else if (evalue_is_integer(*v)) {
-    j.i = std::bit_cast<jint>(Int32_val(v));
+    j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0)));
   } else {
     dump_value(*v, 4);
     std::puts("unimplemented evalue");
