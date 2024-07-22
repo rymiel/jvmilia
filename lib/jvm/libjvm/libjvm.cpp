@@ -70,6 +70,8 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
     n = caml_copy_string("/float");
   } else if (strcmp(utf, "int") == 0) {
     n = caml_copy_string("/int");
+  } else if (strcmp(utf, "byte") == 0) {
+    n = caml_copy_string("/byte");
   } else {
     printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
     assert(false);
@@ -78,6 +80,12 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
   auto ref = data->make_local_reference(result);
   printf("jni: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
+}
+
+jboolean JVM_IsPrimitiveClass(JNIEnv* env, jclass cls) {
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  const char* name = data->class_name(cls);
+  return name[0] == '/';
 }
 
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
@@ -191,7 +199,6 @@ void JVM_IsForeignLinkerSupported() { unimplemented("JVM_IsForeignLinkerSupporte
 void JVM_IsHiddenClass() { unimplemented("JVM_IsHiddenClass"); }
 void JVM_IsInterface() { unimplemented("JVM_IsInterface"); }
 void JVM_IsPreviewEnabled() { unimplemented("JVM_IsPreviewEnabled"); }
-void JVM_IsPrimitiveClass() { unimplemented("JVM_IsPrimitiveClass"); }
 void JVM_IsRecord() { unimplemented("JVM_IsRecord"); }
 void JVM_IsSharingEnabled() { unimplemented("JVM_IsSharingEnabled"); }
 void JVM_IsSupportedJNIVersion() { unimplemented("JVM_IsSupportedJNIVersion"); }
