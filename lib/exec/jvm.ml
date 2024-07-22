@@ -236,10 +236,13 @@ class jvm libjava =
         : bool =
       if cls.raw.name = target then true
       else
-        match cls.raw.superclass with
+        (match cls.raw.superclass with
         | Some super ->
             self#is_indirect_superclass (self#load_class super) target
-        | None -> false
+        | None -> false)
+        || cls.raw.superinterfaces
+           |> List.exists (fun super ->
+                  self#is_indirect_superclass (self#load_class super) target)
 
     method private find_method (cls : string) (name : string) (desc : string)
         : jmethod =
@@ -302,7 +305,7 @@ class jvm libjava =
             | _ -> false);
           (* todo frame stuff *)
           self#exec def_mth (objectref :: args)
-      | Invokevirtual desc ->
+      | Invokevirtual desc | Invokeinterface (desc, _) ->
           let base_mth = self#find_method desc.cls desc.name desc.desc in
           assert (not_static base_mth);
           let args = self#pop_list base_mth.nargs in
