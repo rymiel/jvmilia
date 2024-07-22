@@ -113,6 +113,11 @@ value reconstruct_evalue(jvalue j, ntype ty) {
     Store_field(result, 0, caml_copy_int32(j.i));
     CAMLreturn(result);
   }
+  case ntype::Long: {
+    result = caml_alloc(1, 3);
+    Store_field(result, 0, caml_copy_int64(j.j));
+    CAMLreturn(result);
+  }
   case ntype::Reference: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
   case ntype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case ntype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
@@ -127,6 +132,7 @@ auto ntype_string(ntype v) -> std::string_view {
   case ntype::Void: return "void";
   case ntype::Nil: return "nil";
   case ntype::Int: return "int";
+  case ntype::Long: return "long";
   }
   __builtin_unreachable();
 }
@@ -137,6 +143,7 @@ void ntype_c_type(ntype ty, std::ostream& os) {
   case ntype::Void: os << "void"; return;
   case ntype::Nil: os << "nil"; return;
   case ntype::Int: os << "int"; return;
+  case ntype::Long: os << "long"; return;
   }
   __builtin_unreachable();
 }
@@ -147,6 +154,7 @@ void ntype_c_active_union(ntype ty, std::ostream& os) {
   case ntype::Void: os << "void"; return;
   case ntype::Nil: os << "nil"; return;
   case ntype::Int: os << "i"; return;
+  case ntype::Long: os << "j"; return;
   }
   __builtin_unreachable();
 }
@@ -168,7 +176,8 @@ auto ntype_of_dtype(value v) -> ntype {
     case 6:
     case 7: CAMLreturnT(ntype, ntype::Int);
     case 8: CAMLreturnT(ntype, ntype::Void);
-    default: caml_failwith("Unimplemented integer vtype");
+    case 5: CAMLreturnT(ntype, ntype::Long);
+    default: caml_failwith("Unimplemented integer dtype");
     }
   }
 }

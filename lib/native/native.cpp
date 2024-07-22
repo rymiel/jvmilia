@@ -458,6 +458,7 @@ CAMLprim value make_native_interface_native(value interface_data) {
       {{}, Void},      {{Reference}, Int},
       {{}, Reference}, {{Reference}, Reference},
       {{}, Int},       {{Reference, Int, Reference, Int, Int}, Void},
+      {{}, Long},
   };
 
   auto src_path = create_temporary_file(context->data->temp, "preload", "source.cpp");
