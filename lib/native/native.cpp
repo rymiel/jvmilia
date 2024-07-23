@@ -455,10 +455,11 @@ CAMLprim value make_native_interface_native(value interface_data) {
 
   using enum ntype;
   const std::tuple<std::vector<ntype>, ntype> to_preload[] = {
-      {{}, Void},      {{Reference}, Int},
-      {{}, Reference}, {{Reference}, Reference},
-      {{}, Int},       {{Reference, Int, Reference, Int, Int}, Void},
-      {{}, Long},
+      {{}, Void},       {{Reference}, Int},
+      {{}, Reference},  {{Reference}, Reference},
+      {{}, Int},        {{Reference, Int, Reference, Int, Int}, Void},
+      {{}, Long},       {{Float}, Int},
+      {{Double}, Long},
   };
 
   auto src_path = create_temporary_file(context->data->temp, "preload", "source.cpp");
