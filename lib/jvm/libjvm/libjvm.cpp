@@ -137,8 +137,8 @@ void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobje
 }
 
 jlong JVM_MaxMemory() { return 9223372036854775807l; }
+jint JVM_ActiveProcessorCount() { return 1; }
 
-void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
