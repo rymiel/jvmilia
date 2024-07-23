@@ -125,7 +125,7 @@ let parse_class_internal_name (s : string) : vtype =
     (* kissing owner this a good idea *))
   else Class (s, Bootstrap)
 
-let parse_method_descriptord (desc : string) : dtype list * dtype =
+let parse_method_descriptor (desc : string) : dtype list * dtype =
   let s = desc in
   assert (String.get s 0 = '(');
   let offset = ref 1 in
@@ -139,7 +139,7 @@ let parse_method_descriptord (desc : string) : dtype list * dtype =
   assert (!offset = String.length desc);
   (!args, ret)
 
-let parse_field_descriptord (desc : string) : dtype =
+let parse_field_descriptor (desc : string) : dtype =
   let offset = ref 0 in
   let t = parse_dtype desc offset in
   assert (!offset = String.length desc);

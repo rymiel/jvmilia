@@ -106,7 +106,7 @@ let read_field_info (pool : const_pool) (cls : string) (r : Io.reader) : jfield
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  let field_type = Type.parse_field_descriptord desc in
+  let field_type = Type.parse_field_descriptor desc in
   { access_flags; name; desc; attributes; field_type; cls }
 
 let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
@@ -115,7 +115,7 @@ let read_method_info (pool : const_pool) (cls : string) (r : Io.reader) :
   let name = const_pool_utf8 pool (Io.read_u2 r) in
   let desc = const_pool_utf8 pool (Io.read_u2 r) in
   let attributes = Io.read_list r (read_attribute pool) in
-  let arg_types, ret_type = Type.parse_method_descriptord desc in
+  let arg_types, ret_type = Type.parse_method_descriptor desc in
   let nargs = List.length arg_types in
   { access_flags; name; desc; attributes; nargs; arg_types; ret_type; cls }
 
