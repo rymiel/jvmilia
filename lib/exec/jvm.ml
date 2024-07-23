@@ -18,6 +18,8 @@ let find_method (cls : jclass) (name : string) (desc : string) : jmethod option
 let instance_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
 
+let (instance_fields [@deprecated]) = instance_fields
+
 let static_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
 
@@ -41,7 +43,7 @@ let object_type_name (v : evalue) : string =
 
 let object_instance_field (v : evalue) (name : string) : evalue =
   match v with
-  | Object o -> StringMap.find name o.fields
+  | Object o -> !(StringMap.find name o.fields)
   | _ -> failwith "Not an object"
 
 let java_lang_Class_name (v : evalue) : string =
@@ -62,7 +64,8 @@ let default_value (ty : Type.dtype) : evalue =
 
 let fields_default_mapped =
   List.fold_left
-    (fun m (f : jfield) -> StringMap.add f.name (default_value f.field_type) m)
+    (fun m (f : jfield) ->
+      StringMap.add f.name (default_value f.field_type |> ref) m)
     StringMap.empty
 
 let is_static (mth : jmethod) : bool =
@@ -191,7 +194,7 @@ class jvm libjava =
       Printf.printf "%s %s\n" class_name
         (String.concat ", "
            (List.map
-              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue v))
+              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
               (StringMap.to_list fields)));
       let ecls = { raw = cls; static = fields } in
       self#mark_loaded ecls;
@@ -213,21 +216,23 @@ class jvm libjava =
 
     (* todo: interning? *)
     method private make_string_instance (str : string) : evalue =
+      (* todo: use actual field initialization, to make sure we don't miss any *)
       let fields =
         StringMap.empty
-        |> StringMap.add "value" (ByteArray (Bytes.of_string str))
-        |> StringMap.add "coder" (Int 0l)
-        |> StringMap.add "hash" (Int 0l)
-        |> StringMap.add "hashIsZero" (Int 0l)
+        |> StringMap.add "value" (ref (ByteArray (Bytes.of_string str)))
+        |> StringMap.add "coder" (ref (Int 0l))
+        |> StringMap.add "hash" (ref (Int 0l))
+        |> StringMap.add "hashIsZero" (ref (Int 0l))
       in
       Object { cls = self#load_class "java/lang/String"; fields }
 
     method private make_class_instance (class_name : string) : evalue =
+      (* todo: use actual field initialization, to make sure we don't miss any *)
       let fields =
         StringMap.empty
-        |> StringMap.add "classLoader" Null
+        |> StringMap.add "classLoader" (ref Null)
         |> StringMap.add "__jvmilia_name"
-             (ByteArray (Bytes.of_string class_name))
+             (ref (ByteArray (Bytes.of_string class_name)))
       in
       Object { cls = self#load_class "java/lang/Class"; fields }
 
@@ -269,6 +274,15 @@ class jvm libjava =
               let super_cls = self#load_class_definition super in
               self#find_virtual_method super_cls name desc
           | None -> failwith "Virtual dispatch failed (TODO add more info)")
+
+    (* note: only a method because load_class_definition is,
+       but load_class_definition doesn't have to be *)
+    method private instance_fields (cls : jclass) : jfield list =
+      List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
+      @
+      match cls.superclass with
+      | Some super -> self#instance_fields (self#load_class_definition super)
+      | None -> []
 
     method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
         (instr : Instr.instrbody) : unit =
@@ -328,22 +342,23 @@ class jvm libjava =
           self#exec resolved_mth (objectref :: args)
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
-          StringMap.find field_desc.name def_cls.static |> self#push
+          StringMap.find field_desc.name def_cls.static |> ( ! ) |> self#push
       | Getfield field_desc -> (
           match self#pop () with
-          | Object x -> StringMap.find field_desc.name x.fields |> self#push
+          | Object x ->
+              StringMap.find field_desc.name x.fields |> ( ! ) |> self#push
           | _ -> failwith "Can't get field of non-object type")
       | Putstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           let value = self#pop () in
-          def_cls.static <- StringMap.add field_desc.name value def_cls.static;
+          StringMap.find field_desc.name def_cls.static := value;
           Printf.printf "putstatic %s %s %s %s\n" def_cls.raw.name
             field_desc.name field_desc.desc (string_of_evalue value)
       | Putfield field_desc -> (
           let value = self#pop () in
           match self#pop () with
           | Object x ->
-              x.fields <- StringMap.add field_desc.name value x.fields;
+              StringMap.find field_desc.name x.fields := value;
               Printf.printf "putfield %s %s %s %s\n"
                 (string_of_evalue (Object x))
                 field_desc.name field_desc.desc (string_of_evalue value)
@@ -355,11 +370,11 @@ class jvm libjava =
           self#curframe.retval <- Some value
       | New class_desc ->
           let def_cls = self#load_class class_desc.name in
-          let fields = instance_fields def_cls.raw |> fields_default_mapped in
+          let fields = self#instance_fields def_cls.raw |> fields_default_mapped in
           Printf.printf "%s %s\n" class_desc.name
             (String.concat ", "
                (List.map
-                  (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue v))
+                  (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
                   (StringMap.to_list fields)));
           (* todo: declare fields *)
           self#push (Object { cls = def_cls; fields })

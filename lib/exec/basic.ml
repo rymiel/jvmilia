@@ -13,9 +13,9 @@ type evalue =
   | Float of float
   | Double of float
 
-and eobjectvalue = { cls : eclass; mutable fields : evalue StringMap.t }
+and eobjectvalue = { cls : eclass; fields : evalue ref StringMap.t }
 and earrayvalue = { ty : Type.dtype; arr : evalue array }
-and eclass = { raw : jclass; mutable static : evalue StringMap.t }
+and eclass = { raw : jclass; static : evalue ref StringMap.t }
 
 type exec_frame = {
   locals : evalue array;
@@ -26,7 +26,7 @@ type exec_frame = {
 }
 
 let string_type_value (v : eobjectvalue) : string =
-  match StringMap.find "value" v.fields with
+  match !(StringMap.find "value" v.fields) with
   | ByteArray x -> Bytes.to_string x
   | Null -> "(null string)"
   | _ -> assert false
@@ -60,7 +60,7 @@ let rec string_of_evalue_detailed (value : evalue) : string =
             (String.concat ", "
                (List.map
                   (fun (k, v) ->
-                    Printf.sprintf "%s=%s" k (string_of_evalue_detailed v))
+                    Printf.sprintf "%s=%s" k (string_of_evalue_detailed !v))
                   (StringMap.to_list v.fields))))
   | Int v -> Printf.sprintf "int %ld" v
   | Long v -> Printf.sprintf "long %Ld" v
