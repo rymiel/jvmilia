@@ -500,7 +500,7 @@ class jvm libjava =
       | Ldc2_w x -> (
           match x with
           | Shared.Long l -> self#push (Long l)
-          | _ -> assert false (* todo *))
+          | Shared.Double d -> self#push (Double d))
       | Iconst v | Bipush v | Sipush v -> self#push (Int v)
       | Lconst v -> self#push (Long v)
       | Fconst f -> self#push (Float f)
