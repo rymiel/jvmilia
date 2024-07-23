@@ -694,6 +694,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Aconst_null -> validTypeTransition env [] Null frame |> next
   | Ineg | I2b | I2c | I2s -> validTypeTransition env [ Int ] Int frame |> next
   | Lneg -> validTypeTransition env [ Long ] Long frame |> next
+  | Fneg -> validTypeTransition env [ Float ] Float frame |> next
   | Sipush _ | Bipush _ -> validTypeTransition env [] Int frame |> next
   | Iinc (i, _) ->
       assert (List.nth frame.locals i = Int);
@@ -788,7 +789,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       validTypeTransition env [ Double; Double ] Int frame |> next
   | unimplemented ->
       failwith
-        (Printf.sprintf "TODO: unimplemented instruction %s"
+        (Printf.sprintf "unimplemented instruction verification %s"
            (Instr.string_of_instr unimplemented))
 
 let instructionIsTypeSafe (i : Instr.instrbody) (env : jenvironment)
