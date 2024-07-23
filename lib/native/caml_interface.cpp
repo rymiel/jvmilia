@@ -65,6 +65,8 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
       }
     } else if (tag == String_tag) {
       std::printf("string (%lu) \"%s\"\n", caml_string_length(input), String_val(input));
+    } else if (tag == Double_tag) {
+      std::printf("double %f\n", Double_val(input));
     } else {
       std::printf("raw block (tag=%d, p=%p)\n", tag, std::bit_cast<void*>(input));
     }
@@ -89,12 +91,20 @@ bool evalue_is_integer(value evalue) {
          && Wosize_val(evalue) == 1; // one field (int32)
 }
 
+bool evalue_is_float(value evalue) {
+  return Is_block(evalue)            // has parameter
+         && Tag_val(evalue) == 5     // index 5 (Float)
+         && Wosize_val(evalue) == 1; // one field (double)
+}
+
 jvalue evalue_conversion(value* v) {
   jvalue j = {};
   if (evalue_is_object(*v)) {
     j.l = std::bit_cast<jobject>(v);
   } else if (evalue_is_integer(*v)) {
     j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0)));
+  } else if (evalue_is_float(*v)) {
+    j.f = static_cast<float>(Double_val(Field(*v, 0)));
   } else {
     dump_value(*v, 4);
     std::puts("unimplemented evalue");
@@ -118,6 +128,11 @@ value reconstruct_evalue(jvalue j, ntype ty) {
     Store_field(result, 0, caml_copy_int64(j.j));
     CAMLreturn(result);
   }
+  case ntype::Float: {
+    result = caml_alloc(1, 5);
+    Store_field(result, 0, caml_copy_double(j.f));
+    CAMLreturn(result);
+  }
   case ntype::Reference: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
   case ntype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case ntype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
@@ -133,6 +148,7 @@ auto ntype_string(ntype v) -> std::string_view {
   case ntype::Nil: return "nil";
   case ntype::Int: return "int";
   case ntype::Long: return "long";
+  case ntype::Float: return "float";
   }
   __builtin_unreachable();
 }
@@ -144,6 +160,7 @@ void ntype_c_type(ntype ty, std::ostream& os) {
   case ntype::Nil: os << "nil"; return;
   case ntype::Int: os << "int"; return;
   case ntype::Long: os << "long"; return;
+  case ntype::Float: os << "float"; return;
   }
   __builtin_unreachable();
 }
@@ -155,12 +172,12 @@ void ntype_c_active_union(ntype ty, std::ostream& os) {
   case ntype::Nil: os << "nil"; return;
   case ntype::Int: os << "i"; return;
   case ntype::Long: os << "j"; return;
+  case ntype::Float: os << "f"; return;
   }
   __builtin_unreachable();
 }
 
 // 2 Double
-// 3 Float
 // 5 Long
 
 auto ntype_of_dtype(value v) -> ntype {
@@ -177,6 +194,7 @@ auto ntype_of_dtype(value v) -> ntype {
     case 7: CAMLreturnT(ntype, ntype::Int);
     case 8: CAMLreturnT(ntype, ntype::Void);
     case 5: CAMLreturnT(ntype, ntype::Long);
+    case 3: CAMLreturnT(ntype, ntype::Float);
     default: caml_failwith("Unimplemented integer dtype");
     }
   }
