@@ -132,6 +132,8 @@ void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobje
   CAMLreturn0;
 }
 
+jlong JVM_MaxMemory() { return 9223372036854775807l; }
+
 void JVM_ActiveProcessorCount() { unimplemented("JVM_ActiveProcessorCount"); }
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
@@ -251,7 +253,6 @@ void JVM_LoadLibrary() { unimplemented("JVM_LoadLibrary"); }
 void JVM_LogLambdaFormInvoker() { unimplemented("JVM_LogLambdaFormInvoker"); }
 void JVM_LookupDefineClass() { unimplemented("JVM_LookupDefineClass"); }
 void JVM_LookupLambdaProxyClassFromArchive() { unimplemented("JVM_LookupLambdaProxyClassFromArchive"); }
-void JVM_MaxMemory() { unimplemented("JVM_MaxMemory"); }
 void JVM_MoreStackWalk() { unimplemented("JVM_MoreStackWalk"); }
 void JVM_NanoTime() { unimplemented("JVM_NanoTime"); }
 void JVM_NewArray() { unimplemented("JVM_NewArray"); }
