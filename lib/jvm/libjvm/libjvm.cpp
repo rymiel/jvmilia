@@ -72,6 +72,8 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
     n = caml_copy_string("/int");
   } else if (strcmp(utf, "byte") == 0) {
     n = caml_copy_string("/byte");
+  } else if (strcmp(utf, "double") == 0) {
+    n = caml_copy_string("/double");
   } else {
     printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
     assert(false);
