@@ -56,7 +56,7 @@ let default_value (ty : Type.dtype) : evalue =
     | Int | Byte | Char | Short | Boolean -> Int 0l
     | Float -> Float 0.0
     | Long -> Long 0L
-    | Double -> failwith "unimplemented double"
+    | Double -> Double 0.0
     | Object _ | Array _ -> Null)
 
 let fields_default_mapped =
@@ -132,14 +132,14 @@ class jvm libjava =
     method private push (value : evalue) =
       let frame = self#curframe in
       match value with
-      | Long _ -> frame.stack <- value :: Void :: frame.stack
+      | Long _ | Double _ -> frame.stack <- value :: Void :: frame.stack
       | _ -> frame.stack <- value :: frame.stack
 
     method private pop () : evalue =
       let frame = self#curframe in
       let value = List.hd frame.stack in
       (match value with
-      | Long _ -> (
+      | Long _ | Double _ -> (
           match List.tl frame.stack with
           | Void :: xs -> frame.stack <- xs
           | _ -> failwith "invalid stack state")
@@ -564,6 +564,7 @@ class jvm libjava =
           match self#pop () with
           | Object o ->
               self#push (Int (if o.cls.raw.name = desc.name then 1l else 0l))
+          | Null -> self#push (Int 0l)
           | _ -> failwith "not an object")
       | Checkcast desc ->
           let v = self#pop () in
@@ -606,7 +607,7 @@ class jvm libjava =
       List.iter
         (fun v ->
           self#curframe.locals.(!i) <- v;
-          i := !i + match v with Long _ -> 2 | _ -> 1)
+          i := !i + match v with Long _ | Double _ -> 2 | _ -> 1)
         args
 
     method private exec_code (mth : jmethod) (code : Attr.code_attribute)
@@ -614,7 +615,6 @@ class jvm libjava =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" mth.cls mth.name mth.desc);
       self#add_frame code.frame_size;
-      (* todo longs and stuff *)
       Debug.frame self#curframe;
       self#initialize_locals args;
       let frame = self#curframe in
