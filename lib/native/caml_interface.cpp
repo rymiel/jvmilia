@@ -83,6 +83,7 @@ static constexpr tag_t EVALUE_ARRAY_TAG = 2;
 static constexpr tag_t EVALUE_LONG_TAG = 3;
 static constexpr tag_t EVALUE_BYTEARRAY_TAG = 4;
 static constexpr tag_t EVALUE_FLOAT_TAG = 5;
+static constexpr tag_t EVALUE_DOUBLE_TAG = 6;
 
 bool evalue_is_object(value evalue) {
   return Is_block(evalue) &&
@@ -100,6 +101,7 @@ jvalue evalue_conversion(value* v) {
     case EVALUE_BYTEARRAY_TAG: j.l = std::bit_cast<jobject>(v); break;
     case EVALUE_INT_TAG: j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0))); break;
     case EVALUE_FLOAT_TAG: j.f = static_cast<float>(Double_val(Field(*v, 0))); break;
+    case EVALUE_DOUBLE_TAG: j.d = Double_val(Field(*v, 0)); break;
     default:
       dump_value(*v, 4);
       std::puts("unimplemented block evalue");
@@ -133,6 +135,11 @@ value reconstruct_evalue(jvalue j, ntype ty) {
     Store_field(result, 0, caml_copy_double(j.f));
     CAMLreturn(result);
   }
+  case ntype::Double: {
+    result = caml_alloc(1, EVALUE_DOUBLE_TAG);
+    Store_field(result, 0, caml_copy_double(j.d));
+    CAMLreturn(result);
+  }
   case ntype::Reference: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
   case ntype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case ntype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
@@ -149,6 +156,7 @@ auto ntype_string(ntype v) -> std::string_view {
   case ntype::Int: return "int";
   case ntype::Long: return "long";
   case ntype::Float: return "float";
+  case ntype::Double: return "double";
   }
   __builtin_unreachable();
 }
@@ -161,6 +169,7 @@ void ntype_c_type(ntype ty, std::ostream& os) {
   case ntype::Int: os << "int"; return;
   case ntype::Long: os << "long"; return;
   case ntype::Float: os << "float"; return;
+  case ntype::Double: os << "double"; return;
   }
   __builtin_unreachable();
 }
@@ -173,6 +182,7 @@ void ntype_c_active_union(ntype ty, std::ostream& os) {
   case ntype::Int: os << "i"; return;
   case ntype::Long: os << "j"; return;
   case ntype::Float: os << "f"; return;
+  case ntype::Double: os << "d"; return;
   }
   __builtin_unreachable();
 }
@@ -195,6 +205,7 @@ auto ntype_of_dtype(value v) -> ntype {
     case 8: CAMLreturnT(ntype, ntype::Void);
     case 5: CAMLreturnT(ntype, ntype::Long);
     case 3: CAMLreturnT(ntype, ntype::Float);
+    case 2: CAMLreturnT(ntype, ntype::Double);
     default: caml_failwith("Unimplemented integer dtype");
     }
   }

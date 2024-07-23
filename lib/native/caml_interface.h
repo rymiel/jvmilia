@@ -12,7 +12,7 @@
 namespace jvmilia {
 
 // native type
-enum struct ntype { Nil, Reference, Void, Int, Long, Float };
+enum struct ntype { Nil, Reference, Void, Int, Long, Float, Double };
 
 bool value_is_cons(value v);
 
