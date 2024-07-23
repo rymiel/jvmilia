@@ -669,11 +669,16 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       validTypeTransition env [ Class (f.cls, loader) ] t frame |> next
   | Putfield f ->
       let t = parse_field_descriptor f.desc |> vtype_of_dtype in
-      (* TODO: <init> and uninitializedThis *)
-      let _popped = canPop frame [ t ] in
-      (* TODO: passesProtectedCheck *)
-      let loader = currentClassLoader env in
-      canPop frame [ t; Class (f.cls, loader) ] |> next
+      if List.nth frame.stack 1 = UninitializedThis then (
+        assert (env.mth.name = "<init>");
+        assert (
+          env.cls.fields |> List.exists (fun (f' : jfield) -> f'.name = f.name));
+        canPop frame [ t; UninitializedThis ] |> next)
+      else
+        let _popped = canPop frame [ t ] in
+        (* TODO: passesProtectedCheck *)
+        let loader = currentClassLoader env in
+        canPop frame [ t; Class (f.cls, loader) ] |> next
   | Getstatic f ->
       let t = parse_field_descriptor f.desc |> vtype_of_dtype in
       validTypeTransition env [] t frame |> next
