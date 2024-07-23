@@ -77,37 +77,37 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
   CAMLreturn0;
 }
 
+static constexpr tag_t EVALUE_OBJECT_TAG = 0;
+static constexpr tag_t EVALUE_INT_TAG = 1;
+static constexpr tag_t EVALUE_ARRAY_TAG = 2;
+static constexpr tag_t EVALUE_LONG_TAG = 3;
+static constexpr tag_t EVALUE_BYTEARRAY_TAG = 4;
+static constexpr tag_t EVALUE_FLOAT_TAG = 5;
+
 bool evalue_is_object(value evalue) {
-  return Is_block(evalue)             // has parameter
-         && (Tag_val(evalue) == 0     // index 0 (Object)
-             || Tag_val(evalue) == 2  // index 2 (Array)
-             || Tag_val(evalue) == 4) // index 4 (ByteArray)
-         && Wosize_val(evalue) == 1;  // one field (eobjectvalue)
-}
-
-bool evalue_is_integer(value evalue) {
-  return Is_block(evalue)            // has parameter
-         && Tag_val(evalue) == 1     // index 1 (Int)
-         && Wosize_val(evalue) == 1; // one field (int32)
-}
-
-bool evalue_is_float(value evalue) {
-  return Is_block(evalue)            // has parameter
-         && Tag_val(evalue) == 5     // index 5 (Float)
-         && Wosize_val(evalue) == 1; // one field (double)
+  return Is_block(evalue) &&
+         (Tag_val(evalue) == EVALUE_OBJECT_TAG || Tag_val(evalue) == EVALUE_ARRAY_TAG ||
+          Tag_val(evalue) == EVALUE_BYTEARRAY_TAG) &&
+         Wosize_val(evalue) == 1;
 }
 
 jvalue evalue_conversion(value* v) {
   jvalue j = {};
-  if (evalue_is_object(*v)) {
-    j.l = std::bit_cast<jobject>(v);
-  } else if (evalue_is_integer(*v)) {
-    j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0)));
-  } else if (evalue_is_float(*v)) {
-    j.f = static_cast<float>(Double_val(Field(*v, 0)));
+  if (Is_block(*v)) {
+    switch (Tag_val(*v)) {
+    case EVALUE_OBJECT_TAG:
+    case EVALUE_ARRAY_TAG:
+    case EVALUE_BYTEARRAY_TAG: j.l = std::bit_cast<jobject>(v); break;
+    case EVALUE_INT_TAG: j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0))); break;
+    case EVALUE_FLOAT_TAG: j.f = static_cast<float>(Double_val(Field(*v, 0))); break;
+    default:
+      dump_value(*v, 4);
+      std::puts("unimplemented block evalue");
+      std::exit(4);
+    }
   } else {
     dump_value(*v, 4);
-    std::puts("unimplemented evalue");
+    std::puts("unimplemented non-block evalue");
     std::exit(4);
   }
   return j;
@@ -119,17 +119,17 @@ value reconstruct_evalue(jvalue j, ntype ty) {
 
   switch (ty) {
   case ntype::Int: {
-    result = caml_alloc(1, 1);
+    result = caml_alloc(1, EVALUE_INT_TAG);
     Store_field(result, 0, caml_copy_int32(j.i));
     CAMLreturn(result);
   }
   case ntype::Long: {
-    result = caml_alloc(1, 3);
+    result = caml_alloc(1, EVALUE_LONG_TAG);
     Store_field(result, 0, caml_copy_int64(j.j));
     CAMLreturn(result);
   }
   case ntype::Float: {
-    result = caml_alloc(1, 5);
+    result = caml_alloc(1, EVALUE_FLOAT_TAG);
     Store_field(result, 0, caml_copy_double(j.f));
     CAMLreturn(result);
   }
