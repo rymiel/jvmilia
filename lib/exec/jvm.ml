@@ -1,14 +1,14 @@
 open Java
 open Basic
 
-let byte_range = Bytes.get_int8
-let char_range = Bytes.get_uint16_le
-let short_range = Bytes.get_int16_le
-
 let truncate (m : bytes -> int -> int) (v : int32) : int32 =
   let buf = Bytes.create 4 in
   Bytes.set_int32_le buf 0 v;
   m buf 0 |> Int32.of_int
+
+let truncate_byte_range x = truncate Bytes.get_int8 x
+let truncate_char_range x = truncate Bytes.get_uint16_le x
+let truncate_short_range x = truncate Bytes.get_int16_le x
 
 let find_method (cls : jclass) (name : string) (desc : string) : jmethod option
     =
@@ -440,8 +440,8 @@ class jvm libjava =
           let s = Int32.logand b 0b11111_11111l |> Int32.to_int in
           Long (Int64.shift_right a s) |> self#push
       | I2f -> Float (self#pop () |> as_int |> Int32.to_float) |> self#push
-      | I2b -> Int (self#pop () |> as_int |> truncate byte_range) |> self#push
-      | I2c -> Int (self#pop () |> as_int |> truncate char_range) |> self#push
+      | I2b -> Int (self#pop () |> as_int |> truncate_byte_range) |> self#push
+      | I2c -> Int (self#pop () |> as_int |> truncate_char_range) |> self#push
       | I2l -> Long (self#pop () |> as_int |> Int64.of_int32) |> self#push
       | F2i -> Int (self#pop () |> as_float |> Int32.of_float) |> self#push
       | L2i -> Int (self#pop () |> as_long |> Int64.to_int32) |> self#push
@@ -528,20 +528,24 @@ class jvm libjava =
               let arr = default_value ty |> Array.make size in
               Array { ty; arr })
           |> self#push
-      | Aastore ->
+      | Aastore -> (
           let v = self#pop () in
           let i = self#pop () |> as_int |> Int32.to_int in
-          let a =
-            match self#pop () with Array x -> x | _ -> failwith "Not an array"
-          in
-          a.arr.(i) <- v
-      | Castore ->
-          let v = self#pop () |> as_int |> truncate char_range in
+          match self#pop () with
+          | Array a -> a.arr.(i) <- v
+          | _ -> failwith "Not an array")
+      | Bastore -> (
+          let v = self#pop () |> as_int |> Int32.to_int in
           let i = self#pop () |> as_int |> Int32.to_int in
-          let a =
-            match self#pop () with Array x -> x | _ -> failwith "Not an array"
-          in
-          a.arr.(i) <- Int v
+          match self#pop () with
+          | ByteArray a -> Bytes.set_int8 a i v
+          | _ -> failwith "Not an array")
+      | Castore -> (
+          let v = self#pop () |> as_int |> truncate_char_range in
+          let i = self#pop () |> as_int |> Int32.to_int in
+          match self#pop () with
+          | Array a -> a.arr.(i) <- Int v
+          | _ -> failwith "Not an array")
       | Aaload ->
           let i = self#pop () |> as_int |> Int32.to_int in
           (match self#pop () with
@@ -551,7 +555,7 @@ class jvm libjava =
       | Baload ->
           let i = self#pop () |> as_int |> Int32.to_int in
           (match self#pop () with
-          | ByteArray x -> Int (Char.code (Bytes.get x i) |> Int32.of_int)
+          | ByteArray x -> Int (Bytes.get_int8 x i |> Int32.of_int)
           | _ -> failwith "Not an array")
           |> self#push
       | Arraylength ->
