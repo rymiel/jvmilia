@@ -423,28 +423,8 @@ CAMLprim value make_native_interface_native(value interface_data) {
   JVMData* data = new JVMData;
 
   data->temp = create_temporary_directory();
-  data->find_class_callback = Field(interface_data, 0);
-  caml_register_global_root(&data->find_class_callback);
-  data->get_static_method_callback = Field(interface_data, 1);
-  caml_register_global_root(&data->get_static_method_callback);
-  data->class_name_callback = Field(interface_data, 2);
-  caml_register_global_root(&data->class_name_callback);
-  data->make_string_callback = Field(interface_data, 3);
-  caml_register_global_root(&data->make_string_callback);
-  data->invoke_method_callback = Field(interface_data, 4);
-  caml_register_global_root(&data->invoke_method_callback);
-  data->get_virtual_method_callback = Field(interface_data, 5);
-  caml_register_global_root(&data->get_virtual_method_callback);
-  data->make_object_array_callback = Field(interface_data, 6);
-  caml_register_global_root(&data->make_object_array_callback);
-  data->set_object_array_callback = Field(interface_data, 7);
-  caml_register_global_root(&data->set_object_array_callback);
-  data->object_type_name_callback = Field(interface_data, 8);
-  caml_register_global_root(&data->object_type_name_callback);
-  data->object_instance_field_callback = Field(interface_data, 9);
-  caml_register_global_root(&data->object_instance_field_callback);
-  data->make_class_direct_callback = Field(interface_data, 10);
-  caml_register_global_root(&data->make_class_direct_callback);
+  data->callbacks = interface_data;
+  caml_register_global_root(&data->callbacks);
 
   Context* context = new Context;
   context->interface = interface;
@@ -489,17 +469,7 @@ CAMLprim value make_native_interface_native(value interface_data) {
 CAMLprim value free_native_interface_native(value handle) {
   auto* context = value_to_handle<Context>(handle);
 
-  caml_remove_global_root(&context->data->find_class_callback);
-  caml_remove_global_root(&context->data->get_static_method_callback);
-  caml_remove_global_root(&context->data->class_name_callback);
-  caml_remove_global_root(&context->data->make_string_callback);
-  caml_remove_global_root(&context->data->invoke_method_callback);
-  caml_remove_global_root(&context->data->get_virtual_method_callback);
-  caml_remove_global_root(&context->data->make_object_array_callback);
-  caml_remove_global_root(&context->data->set_object_array_callback);
-  caml_remove_global_root(&context->data->object_type_name_callback);
-  caml_remove_global_root(&context->data->object_instance_field_callback);
-  caml_remove_global_root(&context->data->make_class_direct_callback);
+  caml_remove_global_root(&context->data->callbacks);
 
   for (auto [k, v] : context->data->cachedJMethods) {
     caml_remove_global_root(v);

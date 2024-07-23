@@ -27,17 +27,20 @@ struct JVMData {
   std::deque<JNIFrame> frames;
   std::vector<std::shared_ptr<value>> globalReferences;
   std::filesystem::path temp;
-  value find_class_callback;
-  value get_static_method_callback;
-  value class_name_callback;
-  value make_string_callback;
-  value invoke_method_callback;
-  value get_virtual_method_callback;
-  value make_object_array_callback;
-  value set_object_array_callback;
-  value object_type_name_callback;
-  value object_instance_field_callback;
-  value make_class_direct_callback;
+
+  value callbacks;
+
+  value find_class_callback() { return Field(callbacks, 0); };
+  value get_static_method_callback() { return Field(callbacks, 1); };
+  value class_name_callback() { return Field(callbacks, 2); };
+  value make_string_callback() { return Field(callbacks, 3); };
+  value invoke_method_callback() { return Field(callbacks, 4); };
+  value get_virtual_method_callback() { return Field(callbacks, 5); };
+  value make_object_array_callback() { return Field(callbacks, 6); };
+  value set_object_array_callback() { return Field(callbacks, 7); };
+  value object_type_name_callback() { return Field(callbacks, 8); };
+  value object_instance_field_callback() { return Field(callbacks, 9); };
+  value make_class_direct_callback() { return Field(callbacks, 10); };
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
@@ -50,14 +53,14 @@ struct JVMData {
 
     n = caml_copy_string(field_name);
 
-    CAMLreturn(caml_callback2(this->object_instance_field_callback, evalue, n));
+    CAMLreturn(caml_callback2(this->object_instance_field_callback(), evalue, n));
   }
 
   auto class_name(jclass clazz) -> const char* {
     CAMLparam0();
     CAMLlocal1(result);
 
-    result = caml_callback(this->class_name_callback, *std::bit_cast<value*>(clazz));
+    result = caml_callback(this->class_name_callback(), *std::bit_cast<value*>(clazz));
 
     CAMLreturnT(const char*, String_val(result));
   }

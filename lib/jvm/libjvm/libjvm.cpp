@@ -80,7 +80,7 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
     printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
     assert(false);
   }
-  result = caml_callback(data->make_class_direct_callback, n);
+  result = caml_callback(data->make_class_direct_callback(), n);
   auto ref = data->make_local_reference(result);
   printf("libjvm: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));

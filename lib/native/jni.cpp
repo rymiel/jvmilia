@@ -61,7 +61,7 @@ jclass FindClass(JNIEnv* env, const char* name) {
   printf("jni: FindClass %s\n", name);
 
   caml_name = caml_copy_string(name);
-  result = caml_callback(data->find_class_callback, caml_name);
+  result = caml_callback(data->find_class_callback(), caml_name);
   auto ref = data->make_local_reference(result);
   printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
 
@@ -104,7 +104,7 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
   JVMData* data = getData(env);
   printf("jni: NewStringUTF %s\n", utf);
 
-  result = caml_callback(data->make_string_callback, caml_copy_string(utf));
+  result = caml_callback(data->make_string_callback(), caml_copy_string(utf));
   auto ref = data->make_local_reference(result);
   printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, result, ref.get());
 
@@ -129,7 +129,7 @@ jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) {
   }
   printf("\n");
 
-  result = caml_callback(data->make_string_callback, caml_copy_string(buf));
+  result = caml_callback(data->make_string_callback(), caml_copy_string(buf));
   auto ref = data->make_local_reference(result);
   printf("jni: NewString %s -> %lx (%p)\n", buf, result, ref.get());
   free(buf);
@@ -169,11 +169,11 @@ jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const cha
 }
 
 jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  return getMethodCommon(env, clazz, name, sig, "GetStaticMethodID", getData(env)->get_static_method_callback);
+  return getMethodCommon(env, clazz, name, sig, "GetStaticMethodID", getData(env)->get_static_method_callback());
 }
 
 jmethodID GetMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  return getMethodCommon(env, clazz, name, sig, "GetMethodID", getData(env)->get_virtual_method_callback);
+  return getMethodCommon(env, clazz, name, sig, "GetMethodID", getData(env)->get_virtual_method_callback());
 }
 
 jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, va_list args) {
@@ -198,7 +198,7 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
     list = r;
   }
 
-  result = caml_callback2(data->invoke_method_callback, method, list);
+  result = caml_callback2(data->invoke_method_callback(), method, list);
   // dump_value(result, 4);
 
   auto ref = data->make_local_reference(result);
@@ -215,7 +215,7 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
   assert(evalue_is_object(obj_value));
   name = Field(Field(Field(Field(obj_value, 0), 0), 0), 0);
   dump_value(name, 4);
-  result = caml_callback(data->find_class_callback, name);
+  result = caml_callback(data->find_class_callback(), name);
   auto ref = data->make_local_reference(result);
   printf("jni: GetObjectClass %s -> %lx (%p)\n", String_val(name), result, ref.get());
 
@@ -238,7 +238,7 @@ jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) 
   JVMData* data = getData(env);
   printf("jni: NewObjectArray %d %s %p\n", len, data->class_name(clazz), init);
 
-  result = caml_callback3(data->make_object_array_callback, Val_int(len), caml_copy_string(data->class_name(clazz)),
+  result = caml_callback3(data->make_object_array_callback(), Val_int(len), caml_copy_string(data->class_name(clazz)),
                           coerce_null(init));
   auto ref = data->make_local_reference(result);
 
@@ -250,7 +250,7 @@ void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject
   JVMData* data = getData(env);
   printf("jni: SetObjectArrayElement %p %d %p\n", array, index, val);
 
-  caml_callback3(data->set_object_array_callback, *std::bit_cast<value*>(array), Val_int(index),
+  caml_callback3(data->set_object_array_callback(), *std::bit_cast<value*>(array), Val_int(index),
                  *std::bit_cast<value*>(val));
 
   CAMLreturn0;
@@ -273,7 +273,7 @@ const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) {
   }
 
   str_obj = *std::bit_cast<value*>(str);
-  name_obj = caml_callback(data->object_type_name_callback, str_obj);
+  name_obj = caml_callback(data->object_type_name_callback(), str_obj);
   assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
   val_obj = data->get_object_field(str_obj, "value");
   assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray
