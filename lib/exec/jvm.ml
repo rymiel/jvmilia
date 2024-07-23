@@ -420,6 +420,9 @@ class jvm libjava =
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
           Int (Int32.logxor a b) |> self#push
+      | Ineg ->
+          let a = self#pop () |> as_int in
+          Int (Int32.neg a) |> self#push
       | Larith op ->
           let b = self#pop () |> as_long in
           let a = self#pop () |> as_long in
@@ -459,6 +462,9 @@ class jvm libjava =
                   (Printf.sprintf "farith unimplemented %s"
                      (Instr.string_of_arith_op op)))
           |> self#push
+      | Fneg ->
+          let a = self#pop () |> as_float in
+          Float (Float.neg a) |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -528,7 +534,7 @@ class jvm libjava =
               let arr = default_value ty |> Array.make size in
               Array { ty; arr })
           |> self#push
-      | Aastore -> (
+      | Aastore | Iastore -> (
           let v = self#pop () in
           let i = self#pop () |> as_int |> Int32.to_int in
           match self#pop () with
