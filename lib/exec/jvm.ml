@@ -475,6 +475,11 @@ class jvm libjava =
           let a = self#pop () |> as_long in
           let s = Int32.logand b 0b11111_11111l |> Int32.to_int in
           Long (Int64.shift_right a s) |> self#push
+      | Lshl ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_long in
+          let s = Int32.logand b 0b11111_11111l |> Int32.to_int in
+          Long (Int64.shift_left a s) |> self#push
       | I2f -> Float (self#pop () |> as_int |> Int32.to_float) |> self#push
       | I2b -> Int (self#pop () |> as_int |> truncate_byte_range) |> self#push
       | I2c -> Int (self#pop () |> as_int |> truncate_char_range) |> self#push
