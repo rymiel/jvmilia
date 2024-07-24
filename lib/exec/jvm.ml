@@ -114,18 +114,14 @@ class jvm libjava =
           Native.find_class =
             (fun name ->
               (self#load_class name).raw.name |> self#make_class_instance);
-          get_static_method =
-            (fun a b c ->
-              let m = self#find_method a b c in
-              assert (is_static m);
-              m);
+          get_static_method = self#find_static_method;
           class_name = java_lang_Class_name;
           make_string = self#make_string_instance;
           invoke_method = self#exec_with_return;
           get_virtual_method =
             (fun a b c ->
               let cls = self#load_class a in
-              self#find_virtual_method cls.raw b c);
+              self#find_virtual_method cls.raw.name b c);
           make_object_array;
           set_object_array;
           object_type_name;
@@ -256,29 +252,30 @@ class jvm libjava =
            |> List.exists (fun super ->
                   self#is_indirect_superclass (self#load_class super) target)
 
-    method private find_method (cls : string) (name : string) (desc : string)
-        : jmethod =
+    method private find_static_method (cls : string) (name : string)
+        (desc : string) : jmethod =
       let def_cls = self#load_class cls in
       let def_mth =
         match find_method def_cls.raw name desc with
-        | Some m -> m
-        | None -> failwith "Cannot find static method (TODO add more info)"
+        | Some m ->
+            assert (is_static m);
+            m
+        | None -> failwith "Cannot find method (TODO add more info)"
       in
       def_mth
 
     (* note: only a method because load_class_definition is,
        but load_class_definition doesn't have to be *)
-    method private find_virtual_method (cls : jclass) (name : string)
+    method private find_virtual_method (cls : string) (name : string)
         (desc : string) : jmethod =
-      match find_method cls name desc with
+      let def_cls = self#load_class_definition cls in
+      match find_method def_cls name desc with
       | Some m ->
           assert (not_static m);
           m
       | None -> (
-          match cls.superclass with
-          | Some super ->
-              let super_cls = self#load_class_definition super in
-              self#find_virtual_method super_cls name desc
+          match def_cls.superclass with
+          | Some super -> self#find_virtual_method super name desc
           | None -> failwith "Virtual dispatch failed (TODO add more info)")
 
     (* note: only a method because load_class_definition is,
@@ -297,7 +294,7 @@ class jvm libjava =
       Debug.instr instr self#curframe.pc;
       match instr with
       | Invokestatic desc ->
-          let def_mth = self#find_method desc.cls desc.name desc.desc in
+          let def_mth = self#find_static_method desc.cls desc.name desc.desc in
           assert (is_static def_mth);
           (* todo frame stuff *)
           let args = self#pop_list def_mth.nargs in
@@ -327,7 +324,9 @@ class jvm libjava =
           (* todo frame stuff *)
           self#exec def_mth (objectref :: args)
       | Invokevirtual desc | Invokeinterface (desc, _) ->
-          let base_mth = self#find_method desc.cls desc.name desc.desc in
+          let base_mth =
+            self#find_virtual_method desc.cls desc.name desc.desc
+          in
           assert (not_static base_mth);
           let args = self#pop_list base_mth.nargs in
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
@@ -342,7 +341,7 @@ class jvm libjava =
             | _ -> failwith "not an object"
           in
           let resolved_mth =
-            self#find_virtual_method clsref desc.name desc.desc
+            self#find_virtual_method clsref.name desc.name desc.desc
           in
           (* todo frame stuff *)
           self#exec resolved_mth (objectref :: args)
