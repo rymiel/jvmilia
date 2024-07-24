@@ -470,6 +470,10 @@ class jvm libjava =
           let b = self#pop () |> as_int in
           let a = self#pop () |> as_int in
           Int (Int32.logxor a b) |> self#push
+      | Ior ->
+          let b = self#pop () |> as_int in
+          let a = self#pop () |> as_int in
+          Int (Int32.logor a b) |> self#push
       | Ineg ->
           let a = self#pop () |> as_int in
           Int (Int32.neg a) |> self#push
