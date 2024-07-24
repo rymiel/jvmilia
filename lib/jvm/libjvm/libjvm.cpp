@@ -86,6 +86,34 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
   }
 }
 
+jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x) {
+  CAMLparam0();
+  CAMLlocal2(ref, new_val);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
+
+  printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx (%ld -> %ld)\n", data->object_type_name(obj), offset, e, x);
+
+  ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
+
+  jvmilia::dump_value(ref);
+
+  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 3); // assert it's a long
+
+  long actual = Int64_val(Field(Field(ref, 0), 0));
+
+  printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx %ld -> %ld, actual %ld\n", data->object_type_name(obj), offset,
+         e, x, actual);
+
+  if (e == actual) {
+    new_val = caml_copy_int64(x);
+    Store_field(Field(ref, 0), 0, new_val);
+    CAMLreturnT(jboolean, true);
+  } else {
+    CAMLreturnT(jboolean, false);
+  }
+}
+
 jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jobject e, jobject x) {
   CAMLparam0();
   CAMLlocal4(ref, val, e_v, x_v);
@@ -149,6 +177,7 @@ static JNINativeMethod unsafe_native_methods[] = {
     {"objectFieldOffset1", "(Ljava/lang/Class;Ljava/lang/String;)J", std::bit_cast<void*>(&unsafe_objectFieldOffset1)},
     {"fullFence", "()V", std::bit_cast<void*>(&unsafe_fullFence)},
     {"compareAndSetInt", "(Ljava/lang/Object;JII)Z", std::bit_cast<void*>(&unsafe_compareAndSetInt)},
+    {"compareAndSetLong", "(Ljava/lang/Object;JJJ)Z", std::bit_cast<void*>(&unsafe_compareAndSetLong)},
     {"compareAndSetReference", "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
      std::bit_cast<void*>(&unsafe_compareAndSetReference)},
     {"getReferenceVolatile", "(Ljava/lang/Object;J)Ljava/lang/Object;",
