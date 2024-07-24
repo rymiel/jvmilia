@@ -52,10 +52,17 @@ jlong unsafe_objectFieldOffset1(JNIEnv* env, jobject unsafe, jclass clazz, jstri
   CAMLreturnT(jlong, Long_val(offset));
 }
 
+void unsafe_fullFence(JNIEnv* env, jobject unsafe) {
+  // we don't have threading!
+  (void)env;
+  (void)unsafe;
+}
+
 static JNINativeMethod unsafe_native_methods[] = {
     {"arrayBaseOffset0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayBaseOffset0)},
     {"arrayIndexScale0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayIndexScale0)},
     {"objectFieldOffset1", "(Ljava/lang/Class;Ljava/lang/String;)J", std::bit_cast<void*>(&unsafe_objectFieldOffset1)},
+    {"fullFence", "()V", std::bit_cast<void*>(&unsafe_fullFence)},
 };
 
 extern "C" {
