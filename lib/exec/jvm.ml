@@ -114,6 +114,8 @@ let compare_cond (a : int32) (b : int32) cond =
   | Instr.Gt -> a > b
   | Instr.Le -> a <= b
 
+let size v = match v with Long _ | Double _ -> 2 | _ -> 1
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -410,6 +412,17 @@ class jvm libjava =
           self#push v1;
           self#push v2;
           self#push v1
+      | Dup2 ->
+          let a = self#pop () in
+          if size a = 2 then (
+            self#push a;
+            self#push a)
+          else
+            let b = self#pop () in
+            self#push b;
+            self#push a;
+            self#push b;
+            self#push a
       | Pop ->
           let _ = self#pop () in
           ()
@@ -679,7 +692,7 @@ class jvm libjava =
       List.iter
         (fun v ->
           self#curframe.locals.(!i) <- v;
-          i := !i + match v with Long _ | Double _ -> 2 | _ -> 1)
+          i := !i + size v)
         args
 
     method private exec_code (mth : jmethod) (code : Attr.code_attribute)
