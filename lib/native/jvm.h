@@ -40,7 +40,7 @@ struct JVMData {
   value get_virtual_method_callback() { return Field(callbacks, 5); };
   value make_object_array_callback() { return Field(callbacks, 6); };
   value set_object_array_callback() { return Field(callbacks, 7); };
-  value object_type_name_callback() { return Field(callbacks, 8); };
+  value reference_type_name_callback() { return Field(callbacks, 8); };
   value object_instance_field_callback() { return Field(callbacks, 9); };
   value make_class_direct_callback() { return Field(callbacks, 10); };
   value string_hash_callback() { return Field(callbacks, 11); }
@@ -70,7 +70,9 @@ struct JVMData {
   }
 
   auto object_type_name(jobject obj) -> const char* {
-    return String_val(caml_callback(this->object_type_name_callback(), *std::bit_cast<value*>(obj)));
+    if (obj == nullptr)
+      return "null";
+    return String_val(caml_callback(this->reference_type_name_callback(), *std::bit_cast<value*>(obj)));
   }
 
   auto string_value(jstring str) -> value {
@@ -78,7 +80,7 @@ struct JVMData {
     CAMLlocal3(str_obj, name_obj, val_obj);
 
     str_obj = *std::bit_cast<value*>(str);
-    name_obj = caml_callback(this->object_type_name_callback(), str_obj);
+    name_obj = caml_callback(this->reference_type_name_callback(), str_obj);
     assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
     val_obj = this->get_object_field(str_obj, "value");
     assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray

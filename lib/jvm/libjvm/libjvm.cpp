@@ -86,12 +86,73 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
   }
 }
 
+jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jobject e, jobject x) {
+  CAMLparam0();
+  CAMLlocal4(ref, val, e_v, x_v);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
+  long field_offset = 0;
+
+  e_v = jvmilia::coerce_null(e);
+  x_v = jvmilia::coerce_null(x);
+  printf("libjvm shim: Unsafe: compareAndSetReference: %s %lx (%lx %s -> %lx %s)\n", data->object_type_name(obj),
+         offset, e_v, data->object_type_name(e), x_v, data->object_type_name(x));
+
+  value obj_val = *std::bit_cast<value*>(obj);
+
+  if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
+    ref = Field(Field(obj_val, 0), 1);
+    field_offset = offset;
+  } else {
+    ref = caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset));
+  }
+
+  val = Field(ref, field_offset);
+  jvmilia::dump_value(val, 4);
+  assert((Is_block(val) && Tag_val(val) == 0) || val == jvmilia::EVALUE_NULL); // assert it's a reference
+
+  if (val == jvmilia::EVALUE_NULL && e_v == jvmilia::EVALUE_NULL) { // i dont actually handle objects yet
+    Store_field(ref, field_offset, x_v);
+    jvmilia::dump_value(ref, 4);
+    CAMLreturnT(jboolean, true);
+  } else {
+    assert(false);
+    CAMLreturnT(jboolean, false);
+  }
+}
+
+jobject unsafe_getReferenceVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong offset) {
+  CAMLparam0();
+  CAMLlocal2(val, new_val);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
+
+  printf("libjvm shim: Unsafe: getReferenceVolatile: %s %lx\n", data->object_type_name(obj), offset);
+  value obj_val = *std::bit_cast<value*>(obj);
+
+  if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
+    val = Field(Field(Field(obj_val, 0), 1), offset);
+  } else {
+    val = Field(caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset)), 0);
+  }
+
+  jvmilia::dump_value(val);
+
+  assert((Is_block(val) && Tag_val(val) == 0) || val == jvmilia::EVALUE_NULL); // assert it's a reference
+
+  CAMLreturnT(jobject, jvmilia::coerce_null(val, data));
+}
+
 static JNINativeMethod unsafe_native_methods[] = {
     {"arrayBaseOffset0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayBaseOffset0)},
     {"arrayIndexScale0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayIndexScale0)},
     {"objectFieldOffset1", "(Ljava/lang/Class;Ljava/lang/String;)J", std::bit_cast<void*>(&unsafe_objectFieldOffset1)},
     {"fullFence", "()V", std::bit_cast<void*>(&unsafe_fullFence)},
     {"compareAndSetInt", "(Ljava/lang/Object;JII)Z", std::bit_cast<void*>(&unsafe_compareAndSetInt)},
+    {"compareAndSetReference", "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+     std::bit_cast<void*>(&unsafe_compareAndSetReference)},
+    {"getReferenceVolatile", "(Ljava/lang/Object;J)Ljava/lang/Object;",
+     std::bit_cast<void*>(&unsafe_getReferenceVolatile)},
 };
 
 extern "C" {

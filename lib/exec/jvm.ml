@@ -43,16 +43,20 @@ let as_double (v : evalue) : float =
   | Double v -> v
   | x -> failwith (Printf.sprintf "Not a double %s" (string_of_evalue x))
 
-let object_type_name (v : evalue) : string =
-  match v with Object o -> o.cls.raw.name | _ -> failwith "Not an object"
+let reference_type_name (v : evalue) : string =
+  match v with
+  | Object o -> o.cls.raw.name
+  | Array a -> Printf.sprintf "%s[]" (Type.string_of_dtype a.ty)
+  | ByteArray _ -> "byte[]"
+  | _ -> failwith "Not an object 1"
 
 let object_instance_field (v : evalue) (name : string) : evalue =
   match v with
   | Object o -> !(StringMap.find name o.fields)
-  | _ -> failwith "Not an object"
+  | _ -> failwith "Not an object 2"
 
 let java_lang_Class_name (v : evalue) : string =
-  assert (object_type_name v = "java/lang/Class");
+  assert (reference_type_name v = "java/lang/Class");
   match object_instance_field v "__jvmilia_name" with
   | ByteArray a -> Bytes.to_string a
   | _ -> failwith "Nope"
@@ -99,7 +103,7 @@ let get_field_by_hash (v : evalue) (hash : int) : evalue ref =
         |> List.find (fun (n, _) -> String.hash n = hash)
       in
       r
-  | _ -> failwith "Not an object"
+  | _ -> failwith "Not an object 3"
 
 let compare_cond (a : int32) (b : int32) cond =
   match cond with
@@ -134,7 +138,7 @@ class jvm libjava =
               self#find_virtual_method cls.raw.name b c);
           make_object_array;
           set_object_array;
-          object_type_name;
+          reference_type_name;
           object_instance_field;
           make_class_direct = self#make_class_instance;
           string_hash = (fun x -> Bytes.to_string x |> String.hash);
@@ -349,7 +353,7 @@ class jvm libjava =
             | Object x ->
                 assert (self#is_indirect_superclass x.cls desc.cls);
                 x.cls.raw
-            | _ -> failwith "not an object"
+            | _ -> failwith "not an object 4"
           in
           let resolved_mth =
             self#find_virtual_method clsref.name desc.name desc.desc
@@ -633,7 +637,7 @@ class jvm libjava =
           | Object o ->
               self#push (Int (if o.cls.raw.name = desc.name then 1l else 0l))
           | Null -> self#push (Int 0l)
-          | _ -> failwith "not an object")
+          | _ -> failwith "not an object 5")
       | Checkcast desc ->
           let v = self#pop () in
           (match v with
@@ -641,7 +645,7 @@ class jvm libjava =
           | ByteArray _ ->
               assert (desc.name = "[B" (*this is so dirty pls fixme*))
           | Null -> ()
-          | _ -> failwith "not an object");
+          | _ -> failwith "not an object 6");
           self#push v
       (* TODO monitor stuff? *)
       | Monitorenter | Monitorexit ->

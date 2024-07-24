@@ -215,7 +215,7 @@ auto ntype_of_dtype(value v) -> ntype {
   }
 }
 
-auto coerce_null(jobject v) -> value { return v == nullptr ? Val_int(1) : *std::bit_cast<value*>(v); }
+auto coerce_null(jobject v) -> value { return v == nullptr ? EVALUE_NULL : *std::bit_cast<value*>(v); }
 auto coerce_null(value v, JVMData* data) -> jobject {
   if (Is_long(v) && Long_val(v) == 1) { // null
     return nullptr;
