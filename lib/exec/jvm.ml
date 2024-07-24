@@ -38,6 +38,11 @@ let as_long (v : evalue) : int64 =
   | Long v -> v
   | x -> failwith (Printf.sprintf "Not a long %s" (string_of_evalue x))
 
+let as_double (v : evalue) : float =
+  match v with
+  | Double v -> v
+  | x -> failwith (Printf.sprintf "Not a double %s" (string_of_evalue x))
+
 let object_type_name (v : evalue) : string =
   match v with Object o -> o.cls.raw.name | _ -> failwith "Not an object"
 
@@ -465,7 +470,10 @@ class jvm libjava =
       | I2c -> Int (self#pop () |> as_int |> truncate_char_range) |> self#push
       | I2l -> Long (self#pop () |> as_int |> Int64.of_int32) |> self#push
       | F2i -> Int (self#pop () |> as_float |> Int32.of_float) |> self#push
+      | F2d -> Double (self#pop () |> as_float) |> self#push
       | L2i -> Int (self#pop () |> as_long |> Int64.to_int32) |> self#push
+      | L2f -> Float (self#pop () |> as_long |> Int64.to_float) |> self#push
+      | D2l -> Long (self#pop () |> as_double |> Int64.of_float) |> self#push
       | Farith op ->
           let b = self#pop () |> as_float in
           let a = self#pop () |> as_float in
@@ -483,6 +491,20 @@ class jvm libjava =
       | Fneg ->
           let a = self#pop () |> as_float in
           Float (Float.neg a) |> self#push
+      | Darith op ->
+          let b = self#pop () |> as_double in
+          let a = self#pop () |> as_double in
+          Double
+            (match op with
+            | Div -> a /. b
+            | Add -> a +. b
+            | Sub -> a -. b
+            | Mul -> a *. b
+            | _ ->
+                failwith
+                  (Printf.sprintf "darith unimplemented %s"
+                     (Instr.string_of_arith_op op)))
+          |> self#push
       | Ifnonnull target -> (
           match self#pop () with
           | Null -> ()
@@ -530,6 +552,7 @@ class jvm libjava =
       | Iconst v | Bipush v | Sipush v -> self#push (Int v)
       | Lconst v -> self#push (Long v)
       | Fconst f -> self#push (Float f)
+      | Dconst d -> self#push (Double d)
       | Fcmpg ->
           let b = self#pop () |> as_float in
           let a = self#pop () |> as_float in
