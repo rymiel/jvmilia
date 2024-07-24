@@ -1,5 +1,6 @@
 open Java
 module StringMap = Map.Make (String)
+module IntSet = Set.Make (Int)
 
 (* WARNING: most types here should not be reordered because native code relies on the order of things *)
 type evalue =
@@ -47,7 +48,8 @@ let string_of_evalue (value : evalue) : string =
   | Float v -> Printf.sprintf "float %f" v
   | Double v -> Printf.sprintf "double %f" v
 
-let rec string_of_evalue_detailed (value : evalue) : string =
+let rec string_of_evalue_detailed ?(seen = IntSet.empty) (value : evalue) :
+    string =
   match value with
   | Void -> "void"
   | Null -> "null"
@@ -57,19 +59,30 @@ let rec string_of_evalue_detailed (value : evalue) : string =
           Printf.sprintf "%x:%S" (Obj.magic value) (string_type_value v)
       | name ->
           Printf.sprintf "%x:%s {%s}" (Obj.magic value) name
-            (String.concat ", "
-               (List.map
-                  (fun (k, v) ->
-                    Printf.sprintf "%s=%s" k (string_of_evalue_detailed !v))
-                  (StringMap.to_list v.fields))))
+            (if IntSet.mem (Obj.magic value) seen then "..."
+             else
+               String.concat ", "
+                 (List.map
+                    (fun (k, v) ->
+                      Printf.sprintf "%s=%s" k
+                        (string_of_evalue_detailed
+                           ~seen:(IntSet.add (Obj.magic value) seen)
+                           !v))
+                    (StringMap.to_list v.fields))))
   | Int v -> Printf.sprintf "int %ld" v
   | Long v -> Printf.sprintf "long %Ld" v
   | Array v ->
       Printf.sprintf "%x:array %s[%d] {%s}" (Obj.magic value)
         (Type.string_of_dtype v.ty)
         (Array.length v.arr)
-        (String.concat ", "
-           (Array.to_list (Array.map string_of_evalue_detailed v.arr)))
+        (if IntSet.mem (Obj.magic value) seen then "..."
+         else
+           String.concat ", "
+             (Array.to_list
+                (Array.map
+                   (string_of_evalue_detailed
+                      ~seen:(IntSet.add (Obj.magic value) seen))
+                   v.arr)))
   | ByteArray v ->
       Printf.sprintf "%x:array byte[%d] {%s}" (Obj.magic value) (Bytes.length v)
         (Bytes.escaped v |> Bytes.to_string)
