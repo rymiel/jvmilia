@@ -68,7 +68,7 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
 
   ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
 
-  jvmilia::dump_value(ref);
+  jvmilia::dump_value(ref, 4);
 
   assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 1); // assert it's an integer
 
@@ -96,7 +96,7 @@ jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlon
 
   ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
 
-  jvmilia::dump_value(ref);
+  jvmilia::dump_value(ref, 4);
 
   assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 3); // assert it's a long
 
@@ -164,7 +164,7 @@ jobject unsafe_getReferenceVolatile(JNIEnv* env, jobject unsafe, jobject obj, jl
     val = Field(caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset)), 0);
   }
 
-  jvmilia::dump_value(val);
+  jvmilia::dump_value(val, 4);
 
   assert((Is_block(val) && Tag_val(val) == 0) || val == jvmilia::EVALUE_NULL); // assert it's a reference
 
@@ -203,7 +203,12 @@ jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
 jobjectArray JVM_GetProperties(JNIEnv* env) {
   std::printf("libjvm: JVM_GetProperties\n");
   jclass string = jvmilia::FindClass(env, "java/lang/String");
-  return jvmilia::NewObjectArray(env, 1, string, nullptr);
+  auto array = jvmilia::NewObjectArray(env, 3, string, nullptr);
+  auto element0 = jvmilia::NewStringUTF(env, "java.home");
+  jvmilia::SetObjectArrayElement(env, array, 0, element0);
+  auto element1 = jvmilia::NewStringUTF(env, "/jvmilia/non/existent/path/");
+  jvmilia::SetObjectArrayElement(env, array, 1, element1);
+  return array;
 }
 
 jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
