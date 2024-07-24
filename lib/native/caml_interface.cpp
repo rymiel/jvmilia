@@ -99,7 +99,8 @@ jvalue evalue_conversion(value* v) {
     case EVALUE_OBJECT_TAG:
     case EVALUE_ARRAY_TAG:
     case EVALUE_BYTEARRAY_TAG: j.l = std::bit_cast<jobject>(v); break;
-    case EVALUE_INT_TAG: j.i = std::bit_cast<jint>(Int32_val(Field(*v, 0))); break;
+    case EVALUE_INT_TAG: j.i = Int32_val(Field(*v, 0)); break;
+    case EVALUE_LONG_TAG: j.j = Int64_val(Field(*v, 0)); break;
     case EVALUE_FLOAT_TAG: j.f = static_cast<float>(Double_val(Field(*v, 0))); break;
     case EVALUE_DOUBLE_TAG: j.d = Double_val(Field(*v, 0)); break;
     default:
