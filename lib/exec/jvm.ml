@@ -126,6 +126,7 @@ class jvm libjava =
           object_type_name;
           object_instance_field;
           make_class_direct = self#make_class_instance;
+          string_hash = (fun x -> Bytes.to_string x |> String.hash);
         }
       in
       interface <- Native.make_native_interface interface_data
@@ -370,7 +371,9 @@ class jvm libjava =
           self#curframe.retval <- Some value
       | New class_desc ->
           let def_cls = self#load_class class_desc.name in
-          let fields = self#instance_fields def_cls.raw |> fields_default_mapped in
+          let fields =
+            self#instance_fields def_cls.raw |> fields_default_mapped
+          in
           Printf.printf "%s %s\n" class_desc.name
             (String.concat ", "
                (List.map

@@ -272,12 +272,7 @@ const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) {
     *isCopy = 0; // we never copy
   }
 
-  str_obj = *std::bit_cast<value*>(str);
-  name_obj = caml_callback(data->object_type_name_callback(), str_obj);
-  assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
-  val_obj = data->get_object_field(str_obj, "value");
-  assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray
-  const char* val = String_val(Field(val_obj, 0));
+  const char* val = data->string_content(str);
   printf("GetStringUTFChars: %s\n", val);
 
   CAMLreturnT(const char*, val);

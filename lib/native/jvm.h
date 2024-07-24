@@ -5,6 +5,8 @@
 #include "caml/memory.h"
 #include "caml/mlvalues.h"
 #include "jni.h"
+#include <cassert>
+#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <string>
@@ -41,6 +43,7 @@ struct JVMData {
   value object_type_name_callback() { return Field(callbacks, 8); };
   value object_instance_field_callback() { return Field(callbacks, 9); };
   value make_class_direct_callback() { return Field(callbacks, 10); };
+  value string_hash_callback() { return Field(callbacks, 11); }
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
@@ -63,6 +66,23 @@ struct JVMData {
     result = caml_callback(this->class_name_callback(), *std::bit_cast<value*>(clazz));
 
     CAMLreturnT(const char*, String_val(result));
+  }
+
+  auto string_value(jstring str) -> value {
+    CAMLparam0();
+    CAMLlocal3(str_obj, name_obj, val_obj);
+
+    str_obj = *std::bit_cast<value*>(str);
+    name_obj = caml_callback(this->object_type_name_callback(), str_obj);
+    assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
+    val_obj = this->get_object_field(str_obj, "value");
+    assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray
+
+    CAMLreturn(Field(val_obj, 0));
+  }
+
+  auto string_content(jstring str) -> const char* {
+    return String_val(string_value(str));
   }
 };
 
