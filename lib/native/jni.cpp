@@ -18,8 +18,6 @@ namespace jvmilia {
   std::exit(1);
 }
 
-auto coerce_null(jobject v) -> value { return v == nullptr ? Val_int(1) : *std::bit_cast<value*>(v); }
-
 jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, jint nMethods) {
   JVMData* data = getData(env);
   const char* className = data->class_name(clazz);

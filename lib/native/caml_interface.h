@@ -14,6 +14,15 @@ namespace jvmilia {
 // native type
 enum struct ntype { Nil, Reference, Void, Int, Long, Float, Double };
 
+static constexpr tag_t EVALUE_OBJECT_TAG = 0;
+static constexpr tag_t EVALUE_INT_TAG = 1;
+static constexpr tag_t EVALUE_ARRAY_TAG = 2;
+static constexpr tag_t EVALUE_LONG_TAG = 3;
+static constexpr tag_t EVALUE_BYTEARRAY_TAG = 4;
+static constexpr tag_t EVALUE_FLOAT_TAG = 5;
+static constexpr tag_t EVALUE_DOUBLE_TAG = 6;
+static constexpr value EVALUE_NULL = Val_int(1);
+
 bool value_is_cons(value v);
 
 auto list_vector(value list) -> std::vector<value>;
@@ -62,5 +71,8 @@ auto ntype_string(ntype v) -> std::string_view;
 void ntype_c_type(ntype ty, std::ostream& os);
 void ntype_c_active_union(ntype ty, std::ostream& os);
 auto ntype_of_dtype(value v) -> ntype;
+
+auto coerce_null(jobject v) -> value;
+auto coerce_null(value v, struct JVMData* data) -> jobject;
 
 } // namespace jvmilia

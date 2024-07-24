@@ -2,6 +2,7 @@
 #include "caml/alloc.h"
 #include "caml/fail.h"
 #include "caml/mlvalues.h"
+#include "jvm.h"
 #include <cstring>
 #include <iostream>
 
@@ -77,14 +78,6 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
   CAMLreturn0;
 }
 
-static constexpr tag_t EVALUE_OBJECT_TAG = 0;
-static constexpr tag_t EVALUE_INT_TAG = 1;
-static constexpr tag_t EVALUE_ARRAY_TAG = 2;
-static constexpr tag_t EVALUE_LONG_TAG = 3;
-static constexpr tag_t EVALUE_BYTEARRAY_TAG = 4;
-static constexpr tag_t EVALUE_FLOAT_TAG = 5;
-static constexpr tag_t EVALUE_DOUBLE_TAG = 6;
-
 bool evalue_is_object(value evalue) {
   return Is_block(evalue) &&
          (Tag_val(evalue) == EVALUE_OBJECT_TAG || Tag_val(evalue) == EVALUE_ARRAY_TAG ||
@@ -109,9 +102,13 @@ jvalue evalue_conversion(value* v) {
       std::exit(4);
     }
   } else {
-    dump_value(*v, 4);
-    std::puts("unimplemented non-block evalue");
-    std::exit(4);
+    switch (*v) {
+    case EVALUE_NULL: j.l = nullptr; break;
+    default:
+      dump_value(*v, 4);
+      std::puts("unimplemented non-block evalue");
+      std::exit(4);
+    }
   }
   return j;
 }
@@ -141,7 +138,13 @@ value reconstruct_evalue(jvalue j, ntype ty) {
     Store_field(result, 0, caml_copy_double(j.d));
     CAMLreturn(result);
   }
-  case ntype::Reference: result = *std::bit_cast<value*>(j.l); CAMLreturn(result);
+  case ntype::Reference:
+    if (j.l == nullptr) {
+      result = EVALUE_NULL;
+    } else {
+      result = *std::bit_cast<value*>(j.l);
+    }
+    CAMLreturn(result);
   case ntype::Void: std::puts("reconstruct_evalue: Unimplemented Void"); std::exit(7);
   case ntype::Nil: std::puts("reconstruct_evalue: Unimplemented Nil"); std::exit(7);
   }
@@ -209,6 +212,16 @@ auto ntype_of_dtype(value v) -> ntype {
     case 2: CAMLreturnT(ntype, ntype::Double);
     default: caml_failwith("Unimplemented integer dtype");
     }
+  }
+}
+
+auto coerce_null(jobject v) -> value { return v == nullptr ? Val_int(1) : *std::bit_cast<value*>(v); }
+auto coerce_null(value v, JVMData* data) -> jobject {
+  if (Is_long(v) && Long_val(v) == 1) { // null
+    return nullptr;
+  } else {
+    auto ref = data->make_local_reference(v);
+    return std::bit_cast<jobject>(ref.get());
   }
 }
 } // namespace jvmilia
