@@ -1,3 +1,4 @@
+#include "../../native/caml_interface.h"
 #include "../../native/jni.h"
 #include "../../native/jvm.h"
 #include "caml/alloc.h"
@@ -14,14 +15,14 @@
 }
 
 [[noreturn]] void unimplemented_unsafe(const char* methodName) {
-  printf("libjvm shim: jdk.internal.misc.Unsafe: unimplemented %s\n", methodName);
+  printf("libjvm shim: Unsafe: unimplemented %s\n", methodName);
   std::exit(1);
 }
 
 jint unsafe_arrayBaseOffset0(JNIEnv* env, jobject unsafe, jclass clazz) {
   (void)unsafe;
   jvmilia::JVMData* data = jvmilia::getData(env);
-  printf("libjvm shim: jdk.internal.misc.Unsafe: arrayBaseOffset0: %s\n", data->class_name(clazz));
+  printf("libjvm shim: Unsafe: arrayBaseOffset0: %s\n", data->class_name(clazz));
 
   return 0;
 }
@@ -29,7 +30,7 @@ jint unsafe_arrayBaseOffset0(JNIEnv* env, jobject unsafe, jclass clazz) {
 jint unsafe_arrayIndexScale0(JNIEnv* env, jobject unsafe, jclass clazz) {
   (void)unsafe;
   jvmilia::JVMData* data = jvmilia::getData(env);
-  printf("libjvm shim: jdk.internal.misc.Unsafe: arrayIndexScale0: %s\n", data->class_name(clazz));
+  printf("libjvm shim: Unsafe: arrayIndexScale0: %s\n", data->class_name(clazz));
 
   return 1;
 }
@@ -38,16 +39,15 @@ jint unsafe_arrayIndexScale0(JNIEnv* env, jobject unsafe, jclass clazz) {
 jlong unsafe_objectFieldOffset1(JNIEnv* env, jobject unsafe, jclass clazz, jstring name) {
   CAMLparam0();
   CAMLlocal1(offset);
-  (void)unsafe;
   jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
 
-  printf("libjvm shim: jdk.internal.misc.Unsafe: objectFieldOffset1: %s %s\n", data->class_name(clazz),
-         data->string_content(name));
+  printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s\n", data->class_name(clazz), data->string_content(name));
 
   offset = caml_callback(data->string_hash_callback(), data->string_value(name));
 
-  printf("libjvm shim: jdk.internal.misc.Unsafe: objectFieldOffset1: %s %s -> %lx\n", data->class_name(clazz),
-         data->string_content(name), Long_val(offset));
+  printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s -> %lx\n", data->class_name(clazz), data->string_content(name),
+         Long_val(offset));
 
   CAMLreturnT(jlong, Long_val(offset));
 }
@@ -58,11 +58,40 @@ void unsafe_fullFence(JNIEnv* env, jobject unsafe) {
   (void)unsafe;
 }
 
+jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jint e, jint x) {
+  CAMLparam0();
+  CAMLlocal2(ref, new_val);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
+
+  printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx (%d -> %d)\n", data->object_type_name(obj), offset, e, x);
+
+  ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
+
+  jvmilia::dump_value(ref);
+
+  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 1); // assert it's an integer
+
+  int actual = Int32_val(Field(Field(ref, 0), 0));
+
+  printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx %d -> %d, actual %d\n", data->object_type_name(obj), offset, e,
+         x, actual);
+
+  if (e == actual) {
+    new_val = caml_copy_int32(x);
+    Store_field(Field(ref, 0), 0, new_val);
+    CAMLreturnT(jboolean, true);
+  } else {
+    CAMLreturnT(jboolean, false);
+  }
+}
+
 static JNINativeMethod unsafe_native_methods[] = {
     {"arrayBaseOffset0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayBaseOffset0)},
     {"arrayIndexScale0", "(Ljava/lang/Class;)I", std::bit_cast<void*>(&unsafe_arrayIndexScale0)},
     {"objectFieldOffset1", "(Ljava/lang/Class;Ljava/lang/String;)J", std::bit_cast<void*>(&unsafe_objectFieldOffset1)},
     {"fullFence", "()V", std::bit_cast<void*>(&unsafe_fullFence)},
+    {"compareAndSetInt", "(Ljava/lang/Object;JII)Z", std::bit_cast<void*>(&unsafe_compareAndSetInt)},
 };
 
 extern "C" {

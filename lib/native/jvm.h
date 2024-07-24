@@ -44,6 +44,7 @@ struct JVMData {
   value object_instance_field_callback() { return Field(callbacks, 9); };
   value make_class_direct_callback() { return Field(callbacks, 10); };
   value string_hash_callback() { return Field(callbacks, 11); }
+  value get_field_by_hash_callback() { return Field(callbacks, 12); }
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
@@ -68,6 +69,10 @@ struct JVMData {
     CAMLreturnT(const char*, String_val(result));
   }
 
+  auto object_type_name(jobject obj) -> const char* {
+    return String_val(caml_callback(this->object_type_name_callback(), *std::bit_cast<value*>(obj)));
+  }
+
   auto string_value(jstring str) -> value {
     CAMLparam0();
     CAMLlocal3(str_obj, name_obj, val_obj);
@@ -81,9 +86,7 @@ struct JVMData {
     CAMLreturn(Field(val_obj, 0));
   }
 
-  auto string_content(jstring str) -> const char* {
-    return String_val(string_value(str));
-  }
+  auto string_content(jstring str) -> const char* { return String_val(string_value(str)); }
 };
 
 inline auto make_reference(value v) -> std::shared_ptr<value> {

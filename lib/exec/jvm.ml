@@ -91,6 +91,16 @@ let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
   | _ -> failwith "Not an array");
   Printf.printf "%s\n%!" (string_of_evalue_detailed array)
 
+let get_field_by_hash (v : evalue) (hash : int) : evalue ref =
+  match v with
+  | Object o ->
+      let _, r =
+        o.fields |> StringMap.bindings
+        |> List.find (fun (n, _) -> String.hash n = hash)
+      in
+      r
+  | _ -> failwith "Not an object"
+
 let compare_cond (a : int32) (b : int32) cond =
   match cond with
   | Instr.Eq -> a = b
@@ -128,6 +138,7 @@ class jvm libjava =
           object_instance_field;
           make_class_direct = self#make_class_instance;
           string_hash = (fun x -> Bytes.to_string x |> String.hash);
+          get_field_by_hash;
         }
       in
       interface <- Native.make_native_interface interface_data

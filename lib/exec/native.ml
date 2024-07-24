@@ -14,6 +14,7 @@ type native_interface = {
   object_instance_field : Basic.evalue -> string -> Basic.evalue;
   make_class_direct : string -> Basic.evalue;
   string_hash : bytes -> int;
+  get_field_by_hash : Basic.evalue -> int -> Basic.evalue ref;
 }
 
 external make_native_interface : native_interface -> int
