@@ -70,3 +70,10 @@ let frame_detailed (f : Basic.exec_frame) : unit =
         Printf.printf "↑↑stack(%d) %s\n%!" i (Basic.string_of_evalue_detailed v))
       f.stack;
     decr depth)
+
+let args (arr : Basic.evalue list) : unit =
+  if not silent then (
+    print_string (String.make (!depth * indent) ' ');
+    print_string "\027[93m>>>>\027[0m ";
+    Printf.printf "[%s]\n"
+      (String.concat ", " (List.map Basic.string_of_evalue arr)))

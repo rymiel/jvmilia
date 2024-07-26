@@ -362,8 +362,7 @@ class jvm libjava =
           assert (is_static def_mth);
           (* todo frame stuff *)
           let args = self#pop_list def_mth.nargs in
-          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
-            (String.concat ", " (List.map string_of_evalue args));
+          Debug.args args;
           self#exec def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
@@ -377,8 +376,7 @@ class jvm libjava =
                   "Cannot find method to invokespecial (TODO add more info)"
           in
           let args = self#pop_list def_mth.nargs in
-          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
-            (String.concat ", " (List.map string_of_evalue args));
+          Debug.args args;
           let objectref = self#pop () in
           (* todo remove this constraint *)
           assert (
@@ -393,8 +391,7 @@ class jvm libjava =
           in
           assert (not_static base_mth);
           let args = self#pop_list base_mth.nargs in
-          Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
-            (String.concat ", " (List.map string_of_evalue args));
+          Debug.args args;
           let objectref = self#pop () in
           match objectref with
           | Object x ->
