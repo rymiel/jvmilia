@@ -671,6 +671,12 @@ class jvm libjava =
           | ByteArray x -> Int (Bytes.get_int8 x i |> Int32.of_int)
           | _ -> failwith "Not an array")
           |> self#push
+      | Caload ->
+          let i = self#pop () |> as_int |> Int32.to_int in
+          (match self#pop () with
+          | Array x -> Int (x.arr.(i) |> as_int |> truncate_char_range)
+          | _ -> failwith "Not an array")
+          |> self#push
       | Arraylength ->
           self#push
             (Int
