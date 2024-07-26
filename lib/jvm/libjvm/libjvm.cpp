@@ -360,6 +360,12 @@ void JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
   return;
 }
 
+jboolean JVM_IsFinalizationEnabled(JNIEnv* env) {
+  (void)env;
+  printf("libjvm: JVM_IsFinalizationEnabled\n");
+  return false;
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -460,7 +466,6 @@ void JVM_Interrupt() { unimplemented("JVM_Interrupt"); }
 void JVM_InvokeMethod() { unimplemented("JVM_InvokeMethod"); }
 void JVM_IsArrayClass() { unimplemented("JVM_IsArrayClass"); }
 void JVM_IsContinuationsSupported() { unimplemented("JVM_IsContinuationsSupported"); }
-void JVM_IsFinalizationEnabled() { unimplemented("JVM_IsFinalizationEnabled"); }
 void JVM_IsForeignLinkerSupported() { unimplemented("JVM_IsForeignLinkerSupported"); }
 void JVM_IsHiddenClass() { unimplemented("JVM_IsHiddenClass"); }
 void JVM_IsInterface() { unimplemented("JVM_IsInterface"); }
