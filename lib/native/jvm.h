@@ -46,6 +46,8 @@ struct JVMData {
   value string_hash_callback() { return Field(callbacks, 11); }
   value get_field_by_hash_callback() { return Field(callbacks, 12); }
   value class_static_field_callback() { return Field(callbacks, 13); }
+  value make_new_callback() { return Field(callbacks, 14); }
+  value print_evalue_detailed_callback() { return Field(callbacks, 15); }
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
@@ -61,14 +63,12 @@ struct JVMData {
     CAMLreturn(caml_callback2(this->object_instance_field_callback(), evalue, n));
   }
 
-  auto class_name(jclass clazz) -> const char* {
+  auto class_name_value(jclass clazz) -> value {
     CAMLparam0();
-    CAMLlocal1(result);
-
-    result = caml_callback(this->class_name_callback(), *std::bit_cast<value*>(clazz));
-
-    CAMLreturnT(const char*, String_val(result));
+    CAMLreturn(caml_callback(this->class_name_callback(), *std::bit_cast<value*>(clazz)));
   }
+
+  auto class_name(jclass clazz) -> const char* { return String_val(class_name_value(clazz)); }
 
   auto object_type_name(jobject obj) -> const char* {
     if (obj == nullptr)
@@ -84,9 +84,8 @@ struct JVMData {
     name_obj = caml_callback(this->reference_type_name_callback(), str_obj);
     assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
     val_obj = this->get_object_field(str_obj, "value");
-    assert(Is_block(val_obj) && Tag_val(val_obj) == 4 && Wosize_val(val_obj) == 1); // ByteArray
 
-    CAMLreturn(Field(val_obj, 0));
+    CAMLreturn(Field(Field(val_obj, 0), 0));
   }
 
   auto string_content(jstring str) -> const char* { return String_val(string_value(str)); }

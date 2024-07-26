@@ -45,14 +45,14 @@ let reference_type_name (v : evalue) : string =
   | ByteArray _ -> "byte[]"
   | _ -> failwith "Not an object 1"
 
-let object_instance_field (v : evalue) (name : string) : evalue =
+let object_instance_field (v : evalue) (name : string) : evalue ref =
   match v with
-  | Object o -> !(StringMap.find name o.fields)
+  | Object o -> StringMap.find name o.fields
   | _ -> failwith "Not an object 2"
 
 let java_lang_Class_name (v : evalue) : string =
   assert (reference_type_name v = "java/lang/Class");
-  match object_instance_field v "__jvmilia_name" with
+  match !(object_instance_field v "__jvmilia_name") with
   | ByteArray a -> Bytes.to_string a
   | _ -> failwith "Nope"
 
@@ -143,6 +143,9 @@ class jvm libjava =
           string_hash = (fun x -> Bytes.to_string x |> String.hash);
           get_field_by_hash;
           class_static_field = self#class_static_field;
+          make_new = self#make_new;
+          print_evalue_detailed =
+            (fun x -> string_of_evalue_detailed x |> print_endline);
         }
       in
       interface <- Native.make_native_interface interface_data
@@ -333,6 +336,16 @@ class jvm libjava =
       | Some super -> self#instance_fields (self#load_class_definition super)
       | None -> []
 
+    method private make_new (name : string) : evalue =
+      let cls = self#load_class name in
+      let fields = self#instance_fields cls.raw |> fields_default_mapped in
+      Printf.printf "%s %s\n" name
+        (String.concat ", "
+           (List.map
+              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
+              (StringMap.to_list fields)));
+      Object { cls; fields }
+
     method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
         (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
@@ -425,18 +438,7 @@ class jvm libjava =
       | Ireturn | Areturn | Lreturn | Freturn ->
           let value = self#pop () in
           self#curframe.retval <- Some value
-      | New class_desc ->
-          let def_cls = self#load_class class_desc.name in
-          let fields =
-            self#instance_fields def_cls.raw |> fields_default_mapped
-          in
-          Printf.printf "%s %s\n" class_desc.name
-            (String.concat ", "
-               (List.map
-                  (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
-                  (StringMap.to_list fields)));
-          (* todo: declare fields *)
-          self#push (Object { cls = def_cls; fields })
+      | New class_desc -> self#make_new class_desc.name |> self#push
       | Dup ->
           let v = self#pop () in
           self#push v;
@@ -809,7 +811,7 @@ class jvm libjava =
     method exec_main (main_class_name : string) : unit =
       (* expected by openjdk *)
       let required_classes =
-        [ "java/lang/System"; "java/lang/ref/Finalizer" ]
+        [ "java/lang/System"; "java/lang/ThreadGroup"; "java/lang/Thread"; "java/lang/ref/Finalizer" ]
       in
       List.iter
         (fun x ->

@@ -370,6 +370,64 @@ jboolean JVM_IsFinalizationEnabled(JNIEnv* env) {
   return false;
 }
 
+void store_object_field(jvmilia::JVMData* data, value object, const char* name, value v) {
+  CAMLparam2(object, v);
+  CAMLlocal2(name_val, field);
+
+  name_val = caml_copy_string(name);
+  field = caml_callback2(data->object_instance_field_callback(), object, name_val);
+  Store_field(field, 0, v);
+
+  CAMLreturn0;
+}
+
+jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
+  CAMLparam0();
+  CAMLlocal5(thread_val, thread_holder_name, thread_holder_val, main_name, main_name_val);
+  CAMLlocal5(status_int, status_val, thread_group_name, thread_group_val, system_name);
+  CAMLlocal3(system_name_val, max_priority_int, max_priority_val);
+  (void)threadClass;
+  jvmilia::JVMData* data = jvmilia::getData(env);
+
+  printf("libjvm: JVM_CurrentThread\n");
+
+  thread_val = caml_callback(data->make_new_callback(), data->class_name_value(threadClass));
+
+  main_name = caml_copy_string("main");
+  main_name_val = caml_callback(data->make_string_callback(), main_name);
+  store_object_field(data, thread_val, "name", main_name_val);
+
+  thread_holder_name = caml_copy_string("java/lang/Thread$FieldHolder");
+  thread_holder_val = caml_callback(data->make_new_callback(), thread_holder_name);
+
+  status_int = caml_copy_int32(0x4 | 0x1); // runnable | alive
+  status_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
+  Store_field(status_val, 0, status_int);
+  store_object_field(data, thread_holder_val, "threadStatus", status_val);
+
+  // TODO: I should be calling the constructor instead of doing all this
+  thread_group_name = caml_copy_string("java/lang/ThreadGroup");
+  thread_group_val = caml_callback(data->make_new_callback(), thread_group_name);
+
+  system_name = caml_copy_string("system");
+  system_name_val = caml_callback(data->make_string_callback(), system_name);
+  store_object_field(data, thread_group_val, "name", system_name_val);
+
+  max_priority_int = caml_copy_int32(10); // magic value
+  max_priority_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
+  Store_field(max_priority_val, 0, max_priority_int);
+  store_object_field(data, thread_group_val, "maxPriority", max_priority_val);
+
+  store_object_field(data, thread_holder_val, "group", thread_group_val);
+
+  store_object_field(data, thread_val, "holder", thread_holder_val);
+
+  // caml_callback(data->print_evalue_detailed_callback(), thread_val);
+  auto ref = data->make_local_reference(thread_val);
+
+  CAMLreturnT(jobject, std::bit_cast<jobject>(ref.get()));
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -397,7 +455,6 @@ void JVM_ConstantPoolGetStringAt() { unimplemented("JVM_ConstantPoolGetStringAt"
 void JVM_ConstantPoolGetTagAt() { unimplemented("JVM_ConstantPoolGetTagAt"); }
 void JVM_ConstantPoolGetUTF8At() { unimplemented("JVM_ConstantPoolGetUTF8At"); }
 void JVM_CurrentCarrierThread() { unimplemented("JVM_CurrentCarrierThread"); }
-void JVM_CurrentThread() { unimplemented("JVM_CurrentThread"); }
 void JVM_CurrentTimeMillis() { unimplemented("JVM_CurrentTimeMillis"); }
 void JVM_DefineArchivedModules() { unimplemented("JVM_DefineArchivedModules"); }
 void JVM_DefineClassWithSource() { unimplemented("JVM_DefineClassWithSource"); }
