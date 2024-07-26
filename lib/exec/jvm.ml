@@ -85,10 +85,9 @@ let make_object_array (size : int) (name : string) (default_value : evalue) :
 
 let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
     : unit =
-  (match array with
+  match array with
   | Array x -> x.arr.(index) <- value
-  | _ -> failwith "Not an array");
-  Printf.printf "%s\n%!" (string_of_evalue_detailed array)
+  | _ -> failwith "Not an array"
 
 (* TODO: kinda bad *)
 let shared_counters =
@@ -689,12 +688,12 @@ class jvm libjava =
           ()
       | Lookupswitch (default, table) ->
           let key = self#pop () |> as_int |> Int32.to_int in
-          List.iter (fun (a, b) -> Printf.printf "%d -> %d\n" a b) table;
-          Printf.printf "default %d\n" default;
+          (* List.iter (fun (a, b) -> Printf.printf "%d -> %d\n" a b) table; *)
+          (* Printf.printf "default %d\n" default; *)
           let res = List.assoc_opt key table in
-          (match res with
-          | Some x -> Printf.printf "Some %d\n" x
-          | None -> Printf.printf "None\n");
+          (* (match res with
+             | Some x -> Printf.printf "Some %d\n" x
+             | None -> Printf.printf "None\n"); *)
           assert (Option.is_none res);
           self#curframe.nextpc <-
             (match res with Some x -> x | None -> default)
@@ -776,7 +775,6 @@ class jvm libjava =
           Native.execute_native_auto interface args_real mth.arg_types
             mth.ret_type method_handle
         in
-        Printf.printf "Return value: %s\n%!" (string_of_evalue result);
         result)
       else if mth.access_flags.is_abstract then
         failwith
@@ -836,7 +834,7 @@ let create_jvm (loader : string -> jclass) : jvm =
   (* TODO: maybe this should be stored in jvm *)
   Loader.initialize_bootstrap_loader loader;
   let libjava = Native.load_library "./class/extern-lib/libjava.so" in
-  Printf.printf "libjava: %#x\n" libjava;
+  (* Printf.printf "libjava: %#x\n" libjava; *)
   let jvm = new jvm libjava in
   jvm#init;
   jvm
