@@ -140,7 +140,6 @@ void build_source(std::vector<ntype>& args, ntype ret, std::ostream& os, int key
 
 void compile_shared_library(std::filesystem::path& src_path, std::filesystem::path& dst_path) {
   auto child = fork();
-  log_printf("fork: %d\n", child);
   if (child == 0) {
     execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
     std::exit(1);
@@ -152,7 +151,6 @@ void compile_shared_library(std::filesystem::path& src_path, std::filesystem::pa
         break;
       }
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    std::puts("Exited");
   }
 }
 
@@ -450,11 +448,13 @@ CAMLprim value make_native_interface_native(value interface_data) {
   auto src_path = create_temporary_file(context->data->temp, "preload", "source.cpp");
   auto dst_path = create_temporary_file(context->data->temp, "preload", "lib.so");
   auto os = std::ofstream(src_path.c_str());
-  codegen::build_source_header(std::cout);
+  if (!silent)
+    codegen::build_source_header(std::cout);
   codegen::build_source_header(os);
   int i = 0;
   for (auto [args, ret] : to_preload) {
-    codegen::build_source_function(args, ret, std::cout, i);
+    if (!silent)
+      codegen::build_source_function(args, ret, std::cout, i);
     codegen::build_source_function(args, ret, os, i++);
   }
 
@@ -513,7 +513,8 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
     log_printf("found cached bridge for %s: %p\n", bridge_name.c_str(), iter->second);
     bridge = iter->second;
   } else {
-    codegen::build_source(param_vtypes, ret_vtype, std::cout);
+    if (!silent)
+      codegen::build_source(param_vtypes, ret_vtype, std::cout);
     auto src_path = create_temporary_file(context->data->temp, bridge_name, "source.cpp");
     auto dst_path = create_temporary_file(context->data->temp, bridge_name, "lib.so");
     auto os = std::ofstream(src_path.c_str());

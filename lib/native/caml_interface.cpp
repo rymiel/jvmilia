@@ -29,15 +29,15 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
   int indent = depth.size();
 
   for (int i = 0; i < indent; i++) {
-    std::putchar('\t');
+    log_printf("\t");
   }
 
   if (indent > 0) {
-    std::putchar('[');
+    log_printf("[");
     bool flag = false;
     for (int i : depth) {
       if (flag) {
-        std::putchar('.');
+        log_printf(".");
       }
       log_printf("%d", i);
       flag = true;
@@ -54,10 +54,10 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
       auto wosize = Wosize_val(input);
       log_printf("block (tag=%d, wosize=%lu, p=%p)", tag, wosize, std::bit_cast<void*>(input));
       if (max_depth == 0) {
-        std::puts(" <...>");
+        log_printf(" <...>'n");
         CAMLreturn0;
       } else {
-        std::puts("");
+        log_printf("\n");
         for (mlsize_t i = 0; i < wosize; i++) {
           auto d = depth;
           d.push_back(i);

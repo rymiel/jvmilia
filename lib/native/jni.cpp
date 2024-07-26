@@ -38,7 +38,7 @@ jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, 
 jboolean ExceptionCheck(JNIEnv* env) {
   // TODO: exceptions
   (void)env;
-  puts("jni: ExceptionCheck");
+  log_printf("jni: ExceptionCheck\n");
 
   return 0;
 }
