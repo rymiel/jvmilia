@@ -14,7 +14,7 @@
 
 namespace jvmilia {
 [[noreturn]] void unimplemented(const char* methodName) {
-  printf("Unimplemented JNI method %s\n", methodName);
+  log_printf("Unimplemented JNI method %s\n", methodName);
   std::exit(1);
 }
 
@@ -24,12 +24,12 @@ jint RegisterNatives(JNIEnv* env, jclass clazz, const JNINativeMethod* methods, 
   for (int i = 0; i < nMethods; i++) {
     auto method = methods[i];
     auto key = registerKey(className, method.name, method.signature);
-    printf("jni: RegisterNatives %s -> %p\n", key.data(), method.fnPtr);
+    log_printf("jni: RegisterNatives %s -> %p\n", key.data(), method.fnPtr);
     data->registeredNatives.insert_or_assign(key, method.fnPtr);
   }
 
   // for (auto [k, v] : data->registeredNatives) {
-  //   printf("%s -> %p\n", k.data(), v);
+  //   log_printf("%s -> %p\n", k.data(), v);
   // }
 
   return 0;
@@ -45,7 +45,7 @@ jboolean ExceptionCheck(JNIEnv* env) {
 
 jint EnsureLocalCapacity(JNIEnv* env, jint capacity) {
   JVMData* data = getData(env);
-  printf("jni: EnsureLocalCapacity %d\n", capacity);
+  log_printf("jni: EnsureLocalCapacity %d\n", capacity);
 
   data->frames.back().localReferences.reserve(capacity);
 
@@ -56,12 +56,12 @@ jclass FindClass(JNIEnv* env, const char* name) {
   CAMLparam0();
   CAMLlocal2(caml_name, result);
   JVMData* data = getData(env);
-  printf("jni: FindClass %s\n", name);
+  log_printf("jni: FindClass %s\n", name);
 
   caml_name = caml_copy_string(name);
   result = caml_callback(data->find_class_callback(), caml_name);
   auto ref = data->make_local_reference(result);
-  printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
+  log_printf("jni: FindClass %s -> %lx (%p)\n", name, result, ref.get());
 
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
@@ -73,7 +73,7 @@ auto local_reference_iterator(std::vector<std::shared_ptr<value>>& localRefs,
 
 jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
   JVMData* data = getData(env);
-  printf("jni: NewGlobalRef %p\n", lobj);
+  log_printf("jni: NewGlobalRef %p\n", lobj);
 
   auto& localRefs = data->frames.back().localReferences;
   auto it = local_reference_iterator(localRefs, std::bit_cast<value*>(lobj));
@@ -87,7 +87,7 @@ jobject NewGlobalRef(JNIEnv* env, jobject lobj) {
 void DeleteLocalRef(JNIEnv* env, jobject obj) {
   JVMData* data = getData(env);
 
-  printf("jni: DeleteLocalRef %p\n", obj);
+  log_printf("jni: DeleteLocalRef %p\n", obj);
 
   auto& refs = data->frames.back().localReferences;
   auto it = local_reference_iterator(refs, std::bit_cast<value*>(obj));
@@ -100,11 +100,11 @@ jstring NewStringUTF(JNIEnv* env, const char* utf) {
   CAMLparam0();
   CAMLlocal1(result);
   JVMData* data = getData(env);
-  printf("jni: NewStringUTF %s\n", utf);
+  log_printf("jni: NewStringUTF %s\n", utf);
 
   result = caml_callback(data->make_string_callback(), caml_copy_string(utf));
   auto ref = data->make_local_reference(result);
-  printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, result, ref.get());
+  log_printf("jni: NewStringUTF %s -> %lx (%p)\n", utf, result, ref.get());
 
   CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
 }
@@ -114,7 +114,7 @@ jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) {
   CAMLlocal1(result);
   JVMData* data = getData(env);
 
-  printf("jni: NewString ");
+  log_printf("jni: NewString ");
 
   mbstate_t state{};
   char* buf = std::bit_cast<char*>(calloc(MB_CUR_MAX * len + 1, 1)); // leave space for null terminator, just in
@@ -122,14 +122,14 @@ jstring NewString(JNIEnv* env, const jchar* unicode, jsize len) {
 
   for (int i = 0; i < len; i++) {
     auto s = wcrtomb(p, unicode[i], &state);
-    printf("%lc", unicode[i]);
+    log_printf("%lc", unicode[i]);
     p += s;
   }
-  printf("\n");
+  log_printf("\n");
 
   result = caml_callback(data->make_string_callback(), caml_copy_string(buf));
   auto ref = data->make_local_reference(result);
-  printf("jni: NewString %s -> %lx (%p)\n", buf, result, ref.get());
+  log_printf("jni: NewString %s -> %lx (%p)\n", buf, result, ref.get());
   free(buf);
 
   CAMLreturnT(jstring, std::bit_cast<jstring>(ref.get()));
@@ -141,7 +141,7 @@ jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const cha
   CAMLlocal4(caml_cls, caml_name, caml_desc, result);
   JVMData* data = getData(env);
   const char* className = data->class_name(clazz);
-  printf("jni: %s %s %s %s\n", jni_name, className, name, sig);
+  log_printf("jni: %s %s %s %s\n", jni_name, className, name, sig);
 
   auto key = jvmilia::registerKey(className, name, sig);
   auto iter = data->cachedJMethods.find(key);
@@ -156,12 +156,12 @@ jmethodID getMethodCommon(JNIEnv* env, jclass clazz, const char* name, const cha
     data->cachedJMethods.insert_or_assign(key, ptr);
     caml_register_global_root(ptr);
 
-    printf("jni: %s %s %s %s -> %lx (new)\n", jni_name, className, name, sig, result);
+    log_printf("jni: %s %s %s %s -> %lx (new)\n", jni_name, className, name, sig, result);
 
     CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(ptr));
   }
 
-  printf("jni: %s %s %s %s -> %lx (cached)\n", jni_name, className, name, sig, *iter->second);
+  log_printf("jni: %s %s %s %s -> %lx (cached)\n", jni_name, className, name, sig, *iter->second);
 
   CAMLreturnT(jmethodID, std::bit_cast<jmethodID>(iter->second));
 }
@@ -179,11 +179,11 @@ jobject CallStaticObjectMethodV(JNIEnv* env, jclass clazz, jmethodID methodID, v
   CAMLlocal4(list, r, result, method);
   JVMData* data = getData(env);
 
-  printf("jni: CallStaticObjectMethodV %s\n", data->class_name(clazz));
+  log_printf("jni: CallStaticObjectMethodV %s\n", data->class_name(clazz));
   method = *std::bit_cast<value*>(methodID);
   dump_value(method, 4);
   long nargs = Long_val(Field(method, 4));
-  printf("nargs %ld\n", nargs);
+  log_printf("nargs %ld\n", nargs);
 
   list = Val_emptylist;
   for (int i = 0; i < nargs; i++) {
@@ -215,7 +215,7 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
   dump_value(name, 4);
   result = caml_callback(data->find_class_callback(), name);
   auto ref = data->make_local_reference(result);
-  printf("jni: GetObjectClass %s -> %lx (%p)\n", String_val(name), result, ref.get());
+  log_printf("jni: GetObjectClass %s -> %lx (%p)\n", String_val(name), result, ref.get());
 
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
@@ -226,7 +226,7 @@ jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig
 
   // TODO: make_global_reference is a bandaid fix, need to do what jmethod lookup does
   auto ref = data->make_global_reference(caml_copy_string(name));
-  printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
+  log_printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
 }
@@ -235,7 +235,7 @@ jfieldID GetStaticFieldID(JNIEnv* env, jclass clazz, const char* name, const cha
 
   // TODO: make_global_reference is a bandaid fix, need to do what jmethod lookup does
   auto ref = data->make_global_reference(caml_copy_string(name));
-  printf("jni: GetStaticFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
+  log_printf("jni: GetStaticFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
 }
@@ -248,7 +248,7 @@ void SetStaticObjectField(JNIEnv* env, jclass clazz, jfieldID fieldID, jobject n
   field_name = *std::bit_cast<value*>(fieldID);
   val = coerce_null(newValue);
 
-  printf("jni: SetStaticObjectField %s %s %lx\n", data->class_name(clazz), String_val(field_name), val);
+  log_printf("jni: SetStaticObjectField %s %s %lx\n", data->class_name(clazz), String_val(field_name), val);
   dump_value(val, 4);
   assert(Is_block(val) && Tag_val(val) == EVALUE_OBJECT_TAG);
 
@@ -264,7 +264,7 @@ jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) 
   CAMLparam0();
   CAMLlocal1(result);
   JVMData* data = getData(env);
-  printf("jni: NewObjectArray %d %s %p\n", len, data->class_name(clazz), init);
+  log_printf("jni: NewObjectArray %d %s %p\n", len, data->class_name(clazz), init);
 
   result = caml_callback3(data->make_object_array_callback(), Val_int(len), caml_copy_string(data->class_name(clazz)),
                           coerce_null(init));
@@ -276,7 +276,7 @@ jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) 
 void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject val) {
   CAMLparam0();
   JVMData* data = getData(env);
-  printf("jni: SetObjectArrayElement %p %d %p\n", array, index, val);
+  log_printf("jni: SetObjectArrayElement %p %d %p\n", array, index, val);
 
   caml_callback3(data->set_object_array_callback(), *std::bit_cast<value*>(array), Val_int(index),
                  *std::bit_cast<value*>(val));
@@ -287,7 +287,7 @@ void SetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index, jobject
 // todo: i dont have exception yet
 jthrowable ExceptionOccurred(JNIEnv* env) {
   (void)env;
-  printf("jni: ExceptionOccurred\n");
+  log_printf("jni: ExceptionOccurred\n");
   return nullptr;
 }
 
@@ -301,7 +301,7 @@ const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) {
   }
 
   const char* val = data->string_content(str);
-  printf("jni: GetStringUTFChars: %s\n", val);
+  log_printf("jni: GetStringUTFChars: %s\n", val);
 
   CAMLreturnT(const char*, val);
 }
@@ -320,13 +320,13 @@ jsize GetArrayLength(JNIEnv* env, jarray array) {
   JVMData* data = getData(env);
   (void)data;
 
-  printf("jni: GetArrayLength %p\n", array);
+  log_printf("jni: GetArrayLength %p\n", array);
 
   arr_val = coerce_null(array);
   assert(Is_block(arr_val));
   if (Tag_val(arr_val) == EVALUE_BYTEARRAY_TAG) {
     auto len = caml_string_length(Field(arr_val, 0));
-    printf("jni: GetArrayLength %p %s -> %ld\n", array, Bytes_val(Field(arr_val, 0)), len);
+    log_printf("jni: GetArrayLength %p %s -> %ld\n", array, Bytes_val(Field(arr_val, 0)), len);
     CAMLreturnT(jsize, len);
   } else {
     assert(false);
@@ -344,7 +344,7 @@ void GetByteArrayRegion(JNIEnv* env, jbyteArray array, jsize start, jsize len, j
   arr_val = coerce_null(array);
   assert(Is_block(arr_val) && Tag_val(arr_val) == EVALUE_BYTEARRAY_TAG);
 
-  printf("jni: GetByteArrayRegion %p %s %d %d -> %p\n", array, Bytes_val(Field(arr_val, 0)), start, len, buf);
+  log_printf("jni: GetByteArrayRegion %p %s %d %d -> %p\n", array, Bytes_val(Field(arr_val, 0)), start, len, buf);
   memmove(buf, Bytes_val(Field(arr_val, 0)) + start, len);
 
   CAMLreturn0;
@@ -357,7 +357,7 @@ jobject GetObjectField(JNIEnv* env, jobject obj, jfieldID fieldID) {
 
   const char* field_name = String_val(*std::bit_cast<value*>(fieldID));
 
-  printf("jni: GetObjectField %s %s\n", data->object_type_name(obj), field_name);
+  log_printf("jni: GetObjectField %s %s\n", data->object_type_name(obj), field_name);
 
   result = Field(data->get_object_field(coerce_null(obj), field_name), 0);
 
@@ -370,11 +370,11 @@ jint GetIntField(JNIEnv* env, jobject obj, jfieldID fieldID) {
 
   const char* field_name = String_val(*std::bit_cast<value*>(fieldID));
 
-  printf("jni: GetIntField %s %s\n", data->object_type_name(obj), field_name);
+  log_printf("jni: GetIntField %s %s\n", data->object_type_name(obj), field_name);
 
   int result = Int32_val(Field(Field(data->get_object_field(coerce_null(obj), field_name), 0), 0));
 
-  printf("jni: GetIntField %s %s -> %d\n", data->object_type_name(obj), field_name, result);
+  log_printf("jni: GetIntField %s %s -> %d\n", data->object_type_name(obj), field_name, result);
 
   CAMLreturnT(jint, result);
 }

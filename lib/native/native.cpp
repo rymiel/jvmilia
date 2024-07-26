@@ -8,6 +8,7 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <elf.h>
@@ -47,7 +48,7 @@ CAMLprim value load_library_native(value path) {
 
   const char* err = dlerror();
   if (err != nullptr) {
-    printf("error: load_library_native: dlopen: %s: %s\n", path_str, err);
+    log_printf("error: load_library_native: dlopen: %s: %s\n", path_str, err);
     std::exit(1);
   }
 
@@ -139,7 +140,7 @@ void build_source(std::vector<ntype>& args, ntype ret, std::ostream& os, int key
 
 void compile_shared_library(std::filesystem::path& src_path, std::filesystem::path& dst_path) {
   auto child = fork();
-  std::printf("fork: %d\n", child);
+  log_printf("fork: %d\n", child);
   if (child == 0) {
     execlp("clang++", "clang++", src_path.c_str(), "-std=c++20", "-shared", "-o", dst_path.c_str(), nullptr);
     std::exit(1);
@@ -161,14 +162,14 @@ auto load_and_cache_bridge_function(std::filesystem::path& lib_path, std::string
 
   const char* err = dlerror();
   if (err != nullptr) {
-    printf("error: load_bridge_function: dlopen: %s: %s\n", lib_path.c_str(), err);
+    log_printf("error: load_bridge_function: dlopen: %s: %s\n", lib_path.c_str(), err);
     std::exit(1);
   }
 
   void* bridge_ptr = dlsym(library, bridge_name.data());
   err = dlerror();
   if (err != nullptr) {
-    printf("error: load_bridge_function: dlsym: %s: %s\n", lib_path.c_str(), err);
+    log_printf("error: load_bridge_function: dlsym: %s: %s\n", lib_path.c_str(), err);
     std::exit(1);
   }
 
@@ -180,6 +181,10 @@ auto load_and_cache_bridge_function(std::filesystem::path& lib_path, std::string
 } // namespace codegen
 
 CAMLprim value make_native_interface_native(value interface_data) {
+  const char* env = getenv("JVMILIA_NATIVE_LOG");
+  if (env != nullptr && strcmp(env, "silent") == 0) {
+    silent = true;
+  }
 
   JNINativeInterface* interface = new JNINativeInterface;
   *interface = {
@@ -431,7 +436,7 @@ CAMLprim value make_native_interface_native(value interface_data) {
   context->data = data;
 
   // __builtin_dump_struct(context, printf);
-  printf("interface: %p; data: %p; context: %p\n", interface, data, context);
+  log_printf("interface: %p; data: %p; context: %p\n", interface, data, context);
 
   using enum ntype;
   const std::tuple<std::vector<ntype>, ntype> to_preload[] = {
@@ -457,7 +462,7 @@ CAMLprim value make_native_interface_native(value interface_data) {
   for (auto [args, ret] : to_preload) {
     auto bridge_name = codegen::build_bridge_name(args, ret);
     auto* bridge = codegen::load_and_cache_bridge_function(dst_path, bridge_name, context->data->cachedBridges);
-    printf("%s: %p\n", bridge_name.c_str(), bridge);
+    log_printf("%s: %p\n", bridge_name.c_str(), bridge);
   }
 
   unlink(src_path.c_str());
@@ -493,11 +498,11 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
 
   auto param_vtypes = list_vector_map(param_types, &ntype_of_dtype);
   for (auto v : param_vtypes) {
-    std::printf("<- %s\n", ntype_string(v).data());
+    log_printf("<- %s\n", ntype_string(v).data());
   }
 
   auto ret_vtype = ntype_of_dtype(ret_type);
-  std::printf("-> %s\n", ntype_string(ret_vtype).data());
+  log_printf("-> %s\n", ntype_string(ret_vtype).data());
 
   auto bridge_name = codegen::build_bridge_name(param_vtypes, ret_vtype);
   bridge_t* bridge;
@@ -505,7 +510,7 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   auto& map = context->data->cachedBridges;
   auto iter = map.find(bridge_name);
   if (iter != map.end()) {
-    printf("found cached bridge for %s: %p\n", bridge_name.c_str(), iter->second);
+    log_printf("found cached bridge for %s: %p\n", bridge_name.c_str(), iter->second);
     bridge = iter->second;
   } else {
     codegen::build_source(param_vtypes, ret_vtype, std::cout);
@@ -521,7 +526,7 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
     unlink(dst_path.c_str());
   }
 
-  std::printf("bridge: %p\n", bridge);
+  log_printf("bridge: %p\n", bridge);
 
   auto arg_evalues = list_vector_map(params, [&context](value v) {
     auto ref = context->data->frames.back().localReferences.emplace_back(make_reference(v));
@@ -529,7 +534,7 @@ CAMLprim value execute_native_auto_native(value interface, value params, value p
   });
   auto result = bridge(value_to_handle(fn_ptr), &context->interface, arg_evalues);
 
-  std::printf("result: %lx\n", result.j);
+  log_printf("result: %lx\n", result.j);
 
   if (ret_vtype == ntype::Void) {
     context->data->frames.pop_back();
@@ -550,19 +555,31 @@ CAMLprim value get_registered_fnptr_native(value interface_int, value class_name
   const char* sig_string = String_val(signature);
 
   auto key = jvmilia::registerKey(cls_string, mth_string, sig_string);
-  printf("get_registered_fnptr_native: looking up: %s\n", key.data());
+  log_printf("get_registered_fnptr_native: looking up: %s\n", key.data());
   auto& map = context->data->registeredNatives;
   auto iter = map.find(key);
   if (iter == map.end()) {
-    printf("get_registered_fnptr_native: didn't find %s\n", key.data());
+    log_printf("get_registered_fnptr_native: didn't find %s\n", key.data());
     CAMLreturn(Val_none);
   }
 
   void* fnptr = iter->second;
-  printf("get_registered_fnptr_native: found %s: %p\n", key.data(), fnptr);
+  log_printf("get_registered_fnptr_native: found %s: %p\n", key.data(), fnptr);
   auto fnptr_value = handle_to_value(fnptr);
   auto return_value = caml_alloc_some(fnptr_value);
   CAMLreturn(return_value);
+}
+
+bool silent = false;
+int log_printf(const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  if (!silent)
+    return vprintf(format, args);
+
+  va_end(args);
+  return 0;
 }
 
 } // namespace jvmilia

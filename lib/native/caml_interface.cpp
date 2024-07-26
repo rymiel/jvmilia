@@ -39,20 +39,20 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
       if (flag) {
         std::putchar('.');
       }
-      printf("%d", i);
+      log_printf("%d", i);
       flag = true;
     }
-    std::printf("] ");
+    log_printf("] ");
   }
 
   if (Is_block(input)) {
     auto tag = Tag_val(input);
     if (tag == Closure_tag) {
-      std::printf("closure (wosize=%lu, p=%p, code=%p)\n", Wosize_val(input), std::bit_cast<void*>(input),
+      log_printf("closure (wosize=%lu, p=%p, code=%p)\n", Wosize_val(input), std::bit_cast<void*>(input),
                   Code_val(input));
     } else if (tag < No_scan_tag) {
       auto wosize = Wosize_val(input);
-      std::printf("block (tag=%d, wosize=%lu, p=%p)", tag, wosize, std::bit_cast<void*>(input));
+      log_printf("block (tag=%d, wosize=%lu, p=%p)", tag, wosize, std::bit_cast<void*>(input));
       if (max_depth == 0) {
         std::puts(" <...>");
         CAMLreturn0;
@@ -65,14 +65,14 @@ void dump_value(value input, int max_depth, std::vector<int> depth) {
         }
       }
     } else if (tag == String_tag) {
-      std::printf("string (%lu) \"%s\"\n", caml_string_length(input), String_val(input));
+      log_printf("string (%lu) \"%s\"\n", caml_string_length(input), String_val(input));
     } else if (tag == Double_tag) {
-      std::printf("double %f\n", Double_val(input));
+      log_printf("double %f\n", Double_val(input));
     } else {
-      std::printf("raw block (tag=%d, p=%p)\n", tag, std::bit_cast<void*>(input));
+      log_printf("raw block (tag=%d, p=%p)\n", tag, std::bit_cast<void*>(input));
     }
   } else {
-    std::printf("int %ld\n", Long_val(input));
+    log_printf("int %ld\n", Long_val(input));
   }
 
   CAMLreturn0;

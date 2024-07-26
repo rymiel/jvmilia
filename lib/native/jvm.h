@@ -6,6 +6,7 @@
 #include "caml/mlvalues.h"
 #include "caml_interface.h"
 #include "jni.h"
+#include "native.h"
 #include <cassert>
 #include <cstring>
 #include <deque>
@@ -99,7 +100,7 @@ struct JVMData {
 
 inline auto make_reference(value v) -> std::shared_ptr<value> {
   static auto deleter = [](value* p) {
-    printf("reference deleting: %p\n", p);
+    log_printf("reference deleting: %p\n", p);
     caml_remove_global_root(p);
     delete p;
   };

@@ -1,6 +1,7 @@
 #include "../../native/caml_interface.h"
 #include "../../native/jni.h"
 #include "../../native/jvm.h"
+#include "../../native/native.h"
 #include "caml/alloc.h"
 #include "caml/callback.h"
 #include "caml/memory.h"
@@ -10,20 +11,22 @@
 #include <cstdlib>
 #include <cstring>
 
+using jvmilia::log_printf;
+
 [[noreturn]] void unimplemented(const char* methodName) {
-  printf("libjvm: Unimplemented libjvm method %s\n", methodName);
+  log_printf("libjvm: Unimplemented libjvm method %s\n", methodName);
   std::exit(1);
 }
 
 [[noreturn]] void unimplemented_unsafe(const char* methodName) {
-  printf("libjvm shim: Unsafe: unimplemented %s\n", methodName);
+  log_printf("libjvm shim: Unsafe: unimplemented %s\n", methodName);
   std::exit(1);
 }
 
 jint unsafe_arrayBaseOffset0(JNIEnv* env, jobject unsafe, jclass clazz) {
   (void)unsafe;
   jvmilia::JVMData* data = jvmilia::getData(env);
-  printf("libjvm shim: Unsafe: arrayBaseOffset0: %s\n", data->class_name(clazz));
+  log_printf("libjvm shim: Unsafe: arrayBaseOffset0: %s\n", data->class_name(clazz));
 
   return 0;
 }
@@ -31,7 +34,7 @@ jint unsafe_arrayBaseOffset0(JNIEnv* env, jobject unsafe, jclass clazz) {
 jint unsafe_arrayIndexScale0(JNIEnv* env, jobject unsafe, jclass clazz) {
   (void)unsafe;
   jvmilia::JVMData* data = jvmilia::getData(env);
-  printf("libjvm shim: Unsafe: arrayIndexScale0: %s\n", data->class_name(clazz));
+  log_printf("libjvm shim: Unsafe: arrayIndexScale0: %s\n", data->class_name(clazz));
 
   return 1;
 }
@@ -43,12 +46,12 @@ jlong unsafe_objectFieldOffset1(JNIEnv* env, jobject unsafe, jclass clazz, jstri
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
-  printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s\n", data->class_name(clazz), data->string_content(name));
+  log_printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s\n", data->class_name(clazz), data->string_content(name));
 
   offset = caml_callback(data->string_hash_callback(), data->string_value(name));
 
-  printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s -> %lx\n", data->class_name(clazz), data->string_content(name),
-         Long_val(offset));
+  log_printf("libjvm shim: Unsafe: objectFieldOffset1: %s %s -> %lx\n", data->class_name(clazz),
+             data->string_content(name), Long_val(offset));
 
   CAMLreturnT(jlong, Long_val(offset));
 }
@@ -119,7 +122,7 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
-  printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx (%d -> %d)\n", data->object_type_name(obj), offset, e, x);
+  log_printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx (%d -> %d)\n", data->object_type_name(obj), offset, e, x);
 
   auto field = offset_field(data, obj, offset);
 
@@ -127,8 +130,8 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
   assert(field.is_int());
   int actual = field.as_int();
 
-  printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx %d -> %d, actual %d\n", data->object_type_name(obj), offset, e,
-         x, actual);
+  log_printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx %d -> %d, actual %d\n", data->object_type_name(obj), offset,
+             e, x, actual);
 
   if (e == actual) {
     field.set(evalue_int32(x));
@@ -149,8 +152,8 @@ jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlon
   assert(field.is_long());
   long actual = field.as_long();
 
-  printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx %ld -> %ld, actual %ld\n", data->object_type_name(obj), offset,
-         e, x, actual);
+  log_printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx %ld -> %ld, actual %ld\n", data->object_type_name(obj),
+             offset, e, x, actual);
 
   if (e == actual) {
     field.set(evalue_int64(x));
@@ -168,8 +171,8 @@ jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj,
 
   e_v = jvmilia::coerce_null(e);
   x_v = jvmilia::coerce_null(x);
-  printf("libjvm shim: Unsafe: compareAndSetReference: %s %lx (%lx %s -> %lx %s)\n", data->object_type_name(obj),
-         offset, e_v, data->object_type_name(e), x_v, data->object_type_name(x));
+  log_printf("libjvm shim: Unsafe: compareAndSetReference: %s %lx (%lx %s -> %lx %s)\n", data->object_type_name(obj),
+             offset, e_v, data->object_type_name(e), x_v, data->object_type_name(x));
 
   auto field = offset_field(data, obj, offset);
 
@@ -191,7 +194,7 @@ jlong unsafe_getLongVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong off
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
-  printf("libjvm shim: Unsafe: getLongVolatile: %s %lx\n", data->object_type_name(obj), offset);
+  log_printf("libjvm shim: Unsafe: getLongVolatile: %s %lx\n", data->object_type_name(obj), offset);
 
   auto field = offset_field(data, obj, offset);
 
@@ -206,7 +209,7 @@ jobject unsafe_getReferenceVolatile(JNIEnv* env, jobject unsafe, jobject obj, jl
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
-  printf("libjvm shim: Unsafe: getReferenceVolatile: %s %lx\n", data->object_type_name(obj), offset);
+  log_printf("libjvm shim: Unsafe: getReferenceVolatile: %s %lx\n", data->object_type_name(obj), offset);
 
   auto field = offset_field(data, obj, offset);
 
@@ -234,13 +237,13 @@ static JNINativeMethod sma_native_methods[] = {};
 
 extern "C" {
 void Java_jdk_internal_misc_Unsafe_registerNatives(JNIEnv* env, jclass unsafecls) {
-  printf("libjvm shim: jdk.internal.misc.Unsafe registerNatives\n");
+  log_printf("libjvm shim: jdk.internal.misc.Unsafe registerNatives\n");
   (*env)->RegisterNatives(env, unsafecls, unsafe_native_methods,
                           sizeof(unsafe_native_methods) / sizeof(JNINativeMethod));
 }
 
 void Java_jdk_internal_misc_ScopedMemoryAccess_registerNatives(JNIEnv* env, jclass smaclass) {
-  printf("libjvm shim: jdk.internal.misc.ScopedMemoryAccess registerNatives\n");
+  log_printf("libjvm shim: jdk.internal.misc.ScopedMemoryAccess registerNatives\n");
   (*env)->RegisterNatives(env, smaclass, sma_native_methods, sizeof(sma_native_methods) / sizeof(JNINativeMethod));
 }
 
@@ -254,13 +257,13 @@ jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
   jvmilia::JVMData* data = jvmilia::getData(env);
   auto* unused_name = data->class_name(unused);
   auto* cls_name = data->class_name(cls);
-  std::printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
+  log_printf("libjvm: JVM_DesiredAssertionStatus: %s, %s\n", unused_name, cls_name);
 
   return 0;
 }
 
 jobjectArray JVM_GetProperties(JNIEnv* env) {
-  std::printf("libjvm: JVM_GetProperties\n");
+  log_printf("libjvm: JVM_GetProperties\n");
   jclass string = jvmilia::FindClass(env, "java/lang/String");
   auto array = jvmilia::NewObjectArray(env, 3, string, nullptr);
   auto element0 = jvmilia::NewStringUTF(env, "java.home");
@@ -274,7 +277,7 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
   CAMLparam0();
   CAMLlocal2(n, result);
   jvmilia::JVMData* data = jvmilia::getData(env);
-  printf("libjvm: JVM_FindPrimitiveClass: %s\n", utf);
+  log_printf("libjvm: JVM_FindPrimitiveClass: %s\n", utf);
   if (strcmp(utf, "float") == 0) {
     n = caml_copy_string("/float");
   } else if (strcmp(utf, "int") == 0) {
@@ -286,12 +289,12 @@ jclass JVM_FindPrimitiveClass(JNIEnv* env, const char* utf) {
   } else if (strcmp(utf, "char") == 0) {
     n = caml_copy_string("/char");
   } else {
-    printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
+    log_printf("libjvm: JVM_FindPrimitiveClass: unimplemented primitive class %s\n", utf);
     assert(false);
   }
   result = caml_callback(data->make_class_direct_callback(), n);
   auto ref = data->make_local_reference(result);
-  printf("libjvm: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
+  log_printf("libjvm: JVM_FindPrimitiveClass %s -> %lx (%p)\n", utf, result, ref.get());
   CAMLreturnT(jclass, std::bit_cast<jclass>(ref.get()));
 }
 
@@ -305,9 +308,9 @@ void print_array(unsigned char* arr, unsigned long len) {
   for (unsigned long i = 0; i < len; i++) {
     unsigned char v = arr[i];
     if (v == 0) {
-      printf("\\0");
+      log_printf("\\0");
     } else {
-      printf("%c", v);
+      log_printf("%c", v);
     }
   }
 }
@@ -318,7 +321,7 @@ void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobje
   (void)env;
   (void)ignored;
 
-  printf("libjvm: JVM_ArrayCopy: %d -> %d, length %d\n", src_pos, dst_pos, length);
+  log_printf("libjvm: JVM_ArrayCopy: %d -> %d, length %d\n", src_pos, dst_pos, length);
   src_val = *std::bit_cast<value*>(src);
   dst_val = *std::bit_cast<value*>(dst);
 
@@ -331,16 +334,16 @@ void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobje
   auto dst_len = caml_string_length(Field(dst_val, 0));
 
   print_array(src_bytes, src_len);
-  printf(" -> ");
+  log_printf(" -> ");
   print_array(dst_bytes, dst_len);
-  printf("\n");
+  log_printf("\n");
 
   memmove(dst_bytes + dst_pos, src_bytes + src_pos, length);
 
   print_array(src_bytes, src_len);
-  printf(" -> ");
+  log_printf(" -> ");
   print_array(dst_bytes, dst_len);
-  printf("\n");
+  log_printf("\n");
 
   CAMLreturn0;
 }
@@ -355,15 +358,15 @@ struct signal_def {
 static constexpr signal_def SIGNALS[] = {{SIGHUP, "HUP"}, {SIGINT, "INT"}, {SIGTERM, "TERM"}};
 
 jint JVM_FindSignal(const char* name) {
-  printf("libjvm: JVM_FindSignal: %s\n", name);
+  log_printf("libjvm: JVM_FindSignal: %s\n", name);
   for (signal_def def : SIGNALS) {
     if (strcmp(def.name, name) == 0) {
-      printf("libjvm: JVM_FindSignal: %s -> %d\n", name, def.signal);
+      log_printf("libjvm: JVM_FindSignal: %s -> %d\n", name, def.signal);
       return def.signal;
     }
   }
 
-  printf("libjvm: JVM_FindSignal: %s: not found\n", name);
+  log_printf("libjvm: JVM_FindSignal: %s: not found\n", name);
   assert(false);
 }
 
@@ -374,7 +377,7 @@ void* JVM_RegisterSignal(jint sig, void* handler) {
       name = def.name;
     }
   }
-  printf("libjvm: JVM_RegisterSignal: %d (%s) %p\n", sig, name, handler);
+  log_printf("libjvm: JVM_RegisterSignal: %d (%s) %p\n", sig, name, handler);
 
   if (std::bit_cast<long>(handler) == 2) {
     // User handler. Do nothing for now.
@@ -388,32 +391,32 @@ void* JVM_RegisterSignal(jint sig, void* handler) {
 // NOTE: removed after jdk 22
 jboolean JVM_IsDumpingClassList(JNIEnv* env) {
   (void)env;
-  printf("libjvm: JVM_IsDumpingClassList\n");
+  log_printf("libjvm: JVM_IsDumpingClassList\n");
   return false;
 }
 
 // NOTE: removed after jdk 22
 jboolean JVM_IsCDSDumpingEnabled(JNIEnv* env) {
   (void)env;
-  printf("libjvm: JVM_IsCDSDumpingEnabled\n");
+  log_printf("libjvm: JVM_IsCDSDumpingEnabled\n");
   return false;
 }
 
 // NOTE: removed after jdk 22
 jboolean JVM_IsSharingEnabled(JNIEnv* env) {
   (void)env;
-  printf("libjvm: JVM_IsSharingEnabled\n");
+  log_printf("libjvm: JVM_IsSharingEnabled\n");
   return false;
 }
 
 void JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
-  printf("libjvm: JVM_InitializeFromArchive: %s\n", jvmilia::getData(env)->class_name(cls));
+  log_printf("libjvm: JVM_InitializeFromArchive: %s\n", jvmilia::getData(env)->class_name(cls));
   return;
 }
 
 jboolean JVM_IsFinalizationEnabled(JNIEnv* env) {
   (void)env;
-  printf("libjvm: JVM_IsFinalizationEnabled\n");
+  log_printf("libjvm: JVM_IsFinalizationEnabled\n");
   return false;
 }
 
@@ -435,14 +438,14 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   (void)threadClass;
   jvmilia::JVMData* data = jvmilia::getData(env);
 
-  printf("libjvm: JVM_CurrentThread\n");
+  log_printf("libjvm: JVM_CurrentThread\n");
 
   if (data->primoridal_thread) {
-    printf("libjvm: JVM_CurrentThread: existing %p\n", data->primoridal_thread.get());
+    log_printf("libjvm: JVM_CurrentThread: existing %p\n", data->primoridal_thread.get());
     CAMLreturnT(jobject, std::bit_cast<jobject>(data->primoridal_thread.get()));
   }
 
-  printf("libjvm: JVM_CurrentThread: initializing primordial thread\n");
+  log_printf("libjvm: JVM_CurrentThread: initializing primordial thread\n");
 
   thread_val = caml_callback(data->make_new_callback(), data->class_name_value(threadClass));
 
@@ -472,7 +475,7 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   // caml_callback(data->print_evalue_detailed_callback(), thread_val);
   auto ref = data->make_local_reference(thread_val);
   data->primoridal_thread = ref;
-  printf("libjvm: JVM_CurrentThread: initialized primordial thread: %p\n", ref.get());
+  log_printf("libjvm: JVM_CurrentThread: initialized primordial thread: %p\n", ref.get());
 
   CAMLreturnT(jobject, std::bit_cast<jobject>(ref.get()));
 }
@@ -483,19 +486,19 @@ jlong JVM_GetNextThreadIdOffset(JNIEnv* env, jclass threadClass) {
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)threadClass;
 
-  printf("libjvm: JVM_GetNextThreadIdOffset\n");
+  log_printf("libjvm: JVM_GetNextThreadIdOffset\n");
 
   name = caml_copy_string("__jvmilia_next_tid");
   offset = caml_callback(data->string_hash_callback(), name);
 
-  printf("libjvm: JVM_GetNextThreadIdOffset -> %lx\n", Long_val(offset));
+  log_printf("libjvm: JVM_GetNextThreadIdOffset -> %lx\n", Long_val(offset));
   CAMLreturnT(jlong, Long_val(offset));
 }
 
 jobject JVM_GetStackAccessControlContext(JNIEnv* env, jclass cls) {
   (void)env;
   (void)cls;
-  printf("libjvm: JVM_GetStackAccessControlContext\n");
+  log_printf("libjvm: JVM_GetStackAccessControlContext\n");
   return nullptr; // I don't know what else to do
 }
 
@@ -504,8 +507,8 @@ void JVM_SetThreadPriority(JNIEnv* env, jobject jthread, jint prio) {
   CAMLlocal1(name);
   jvmilia::JVMData* data = jvmilia::getData(env);
   name = data->get_object_field(jvmilia::coerce_null(jthread), "name");
-  printf("libjvm: JVM_SetThreadPriority: %s <- %d\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))),
-         prio);
+  log_printf("libjvm: JVM_SetThreadPriority: %s <- %d\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))),
+             prio);
   CAMLreturn0;
 }
 
@@ -514,7 +517,7 @@ void JVM_StartThread(JNIEnv* env, jobject jthread) {
   CAMLlocal1(name);
   jvmilia::JVMData* data = jvmilia::getData(env);
   name = data->get_object_field(jvmilia::coerce_null(jthread), "name");
-  printf("libjvm: JVM_StartThread: %s\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))));
+  log_printf("libjvm: JVM_StartThread: %s\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))));
   CAMLreturn0;
 }
 

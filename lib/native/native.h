@@ -4,6 +4,9 @@
 extern "C" {
 namespace jvmilia {
 
+extern bool silent;
+int log_printf(const char* format, ...) __attribute__((format(printf, 1, 2)));
+
 CAMLprim value load_library_native(value name);
 CAMLprim value load_method_native(value library, value name);
 CAMLprim value make_native_interface_native(value interface_data);
