@@ -486,6 +486,13 @@ jlong JVM_GetNextThreadIdOffset(JNIEnv* env, jclass threadClass) {
   CAMLreturnT(jlong, Long_val(offset));
 }
 
+jobject JVM_GetStackAccessControlContext(JNIEnv* env, jclass cls) {
+  (void)env;
+  (void)cls;
+  printf("libjvm: JVM_GetStackAccessControlContext\n");
+  return nullptr; // I don't know what else to do
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -565,7 +572,6 @@ void JVM_GetProtectionDomain() { unimplemented("JVM_GetProtectionDomain"); }
 void JVM_GetRandomSeedForDumping() { unimplemented("JVM_GetRandomSeedForDumping"); }
 void JVM_GetRecordComponents() { unimplemented("JVM_GetRecordComponents"); }
 void JVM_GetSimpleBinaryName() { unimplemented("JVM_GetSimpleBinaryName"); }
-void JVM_GetStackAccessControlContext() { unimplemented("JVM_GetStackAccessControlContext"); }
 void JVM_GetStackTrace() { unimplemented("JVM_GetStackTrace"); }
 void JVM_GetSystemPackage() { unimplemented("JVM_GetSystemPackage"); }
 void JVM_GetSystemPackages() { unimplemented("JVM_GetSystemPackages"); }
