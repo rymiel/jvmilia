@@ -429,7 +429,7 @@ class jvm libjava =
           | _ -> failwith "Can't put field of non-object type")
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
-      | Ireturn | Areturn | Lreturn ->
+      | Ireturn | Areturn | Lreturn | Freturn ->
           let value = self#pop () in
           self#curframe.retval <- Some value
       | New class_desc ->
