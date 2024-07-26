@@ -229,6 +229,34 @@ jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig
 
   return std::bit_cast<jfieldID>(ref.get());
 }
+jfieldID GetStaticFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+  JVMData* data = getData(env);
+
+  auto ref = data->make_local_reference(caml_copy_string(name));
+  printf("jni: GetStaticFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
+
+  return std::bit_cast<jfieldID>(ref.get());
+}
+
+void SetStaticObjectField(JNIEnv* env, jclass clazz, jfieldID fieldID, jobject newValue) {
+  CAMLparam0();
+  CAMLlocal3(field_name, val, field_ref);
+  JVMData* data = getData(env);
+
+  field_name = *std::bit_cast<value*>(fieldID);
+  val = coerce_null(newValue);
+
+  printf("jni: SetStaticObjectField %s %s %lx\n", data->class_name(clazz), String_val(field_name), val);
+  dump_value(val, 4);
+  assert(Is_block(val) && Tag_val(val) == EVALUE_OBJECT_TAG);
+
+  field_ref = caml_callback2(data->class_static_field_callback(), coerce_null(clazz), field_name);
+  dump_value(field_ref, 4);
+
+  Store_field(field_ref, 0, val);
+
+  CAMLreturn0;
+}
 
 jobjectArray NewObjectArray(JNIEnv* env, jsize len, jclass clazz, jobject init) {
   CAMLparam0();
@@ -567,9 +595,6 @@ void CallStaticVoidMethodV(JNIEnv* env, jclass cls, jmethodID methodID, va_list 
 void CallStaticVoidMethodA(JNIEnv* env, jclass cls, jmethodID methodID, const jvalue* args) {
   unimplemented("CallStaticVoidMethodA");
 }
-jfieldID GetStaticFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
-  unimplemented("GetStaticFieldID");
-}
 jobject GetStaticObjectField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticObjectField"); }
 jboolean GetStaticBooleanField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticBooleanField"); }
 jbyte GetStaticByteField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticByteField"); }
@@ -579,9 +604,6 @@ jint GetStaticIntField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemen
 jlong GetStaticLongField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticLongField"); }
 jfloat GetStaticFloatField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticFloatField"); }
 jdouble GetStaticDoubleField(JNIEnv* env, jclass clazz, jfieldID fieldID) { unimplemented("GetStaticDoubleField"); }
-void SetStaticObjectField(JNIEnv* env, jclass clazz, jfieldID fieldID, jobject value) {
-  unimplemented("SetStaticObjectField");
-}
 void SetStaticBooleanField(JNIEnv* env, jclass clazz, jfieldID fieldID, jboolean value) {
   unimplemented("SetStaticBooleanField");
 }

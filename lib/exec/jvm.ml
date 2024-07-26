@@ -95,6 +95,7 @@ let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
   | _ -> failwith "Not an array");
   Printf.printf "%s\n%!" (string_of_evalue_detailed array)
 
+(*TODO: remove*)
 let get_field_by_hash (v : evalue) (hash : int) : evalue ref =
   match v with
   | Object o ->
@@ -145,6 +146,7 @@ class jvm libjava =
           make_class_direct = self#make_class_instance;
           string_hash = (fun x -> Bytes.to_string x |> String.hash);
           get_field_by_hash;
+          class_static_field = self#class_static_field;
         }
       in
       interface <- Native.make_native_interface interface_data
@@ -254,6 +256,12 @@ class jvm libjava =
              (ref (ByteArray (Bytes.of_string class_name)))
       in
       Object { cls = self#load_class "java/lang/Class"; fields }
+
+    method private class_static_field (v : evalue) (name : string) : evalue ref
+        =
+      let cls_name = java_lang_Class_name v in
+      let cls = self#load_class cls_name in
+      StringMap.find name cls.static
 
     (* bad method*)
     (* todo: remove*)

@@ -11,10 +11,12 @@ type native_interface = {
   make_object_array : int -> string -> Basic.evalue -> Basic.evalue;
   set_object_array : Basic.evalue -> int -> Basic.evalue -> unit;
   reference_type_name : Basic.evalue -> string;
-  object_instance_field : Basic.evalue -> string -> Basic.evalue;
+  object_instance_field :
+    Basic.evalue -> string -> Basic.evalue (* TODO: make ref *);
   make_class_direct : string -> Basic.evalue;
   string_hash : bytes -> int;
   get_field_by_hash : Basic.evalue -> int -> Basic.evalue ref;
+  class_static_field : Basic.evalue -> string -> Basic.evalue ref;
 }
 
 external make_native_interface : native_interface -> int

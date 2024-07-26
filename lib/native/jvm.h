@@ -45,6 +45,7 @@ struct JVMData {
   value make_class_direct_callback() { return Field(callbacks, 10); };
   value string_hash_callback() { return Field(callbacks, 11); }
   value get_field_by_hash_callback() { return Field(callbacks, 12); }
+  value class_static_field_callback() { return Field(callbacks, 13); }
 
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
