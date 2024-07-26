@@ -67,11 +67,11 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
 
   printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx (%d -> %d)\n", data->object_type_name(obj), offset, e, x);
 
-  ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
+  ref = caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset));
 
   jvmilia::dump_value(ref, 4);
 
-  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 1); // assert it's an integer
+  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == jvmilia::EVALUE_INT_TAG); // assert it's an integer
 
   int actual = Int32_val(Field(Field(ref, 0), 0));
 
@@ -97,11 +97,11 @@ jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlon
 
   printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx (%ld -> %ld)\n", data->object_type_name(obj), offset, e, x);
 
-  ref = caml_callback2(data->get_field_by_hash_callback(), *std::bit_cast<value*>(obj), Val_int(offset));
+  ref = caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset));
 
   jvmilia::dump_value(ref, 4);
 
-  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == 3); // assert it's a long
+  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == jvmilia::EVALUE_LONG_TAG); // assert it's a long
 
   long actual = Int64_val(Field(Field(ref, 0), 0));
 
@@ -131,7 +131,7 @@ jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj,
   printf("libjvm shim: Unsafe: compareAndSetReference: %s %lx (%lx %s -> %lx %s)\n", data->object_type_name(obj),
          offset, e_v, data->object_type_name(e), x_v, data->object_type_name(x));
 
-  value obj_val = *std::bit_cast<value*>(obj);
+  value obj_val = jvmilia::coerce_null(obj);
 
   if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
     ref = Field(Field(obj_val, 0), 1);
@@ -154,14 +154,31 @@ jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj,
   }
 }
 
+jlong unsafe_getLongVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong offset) {
+  CAMLparam0();
+  CAMLlocal1(val);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  (void)unsafe;
+
+  printf("libjvm shim: Unsafe: getLongVolatile: %s %lx\n", data->object_type_name(obj), offset);
+
+  val = Field(caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset)), 0);
+
+  jvmilia::dump_value(val, 4);
+
+  assert(Is_block(val) && Tag_val(val) == jvmilia::EVALUE_LONG_TAG); // assert it's a long
+
+  CAMLreturnT(jlong, Int64_val(Field(val, 0)));
+}
+
 jobject unsafe_getReferenceVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong offset) {
   CAMLparam0();
-  CAMLlocal2(val, new_val);
+  CAMLlocal1(val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
   printf("libjvm shim: Unsafe: getReferenceVolatile: %s %lx\n", data->object_type_name(obj), offset);
-  value obj_val = *std::bit_cast<value*>(obj);
+  value obj_val = jvmilia::coerce_null(obj);
 
   if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
     val = Field(Field(Field(obj_val, 0), 1), offset);
@@ -185,6 +202,8 @@ static JNINativeMethod unsafe_native_methods[] = {
     {"compareAndSetLong", "(Ljava/lang/Object;JJJ)Z", std::bit_cast<void*>(&unsafe_compareAndSetLong)},
     {"compareAndSetReference", "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
      std::bit_cast<void*>(&unsafe_compareAndSetReference)},
+    {"getLongVolatile", "(Ljava/lang/Object;J)J",
+     std::bit_cast<void*>(&unsafe_getLongVolatile)},
     {"getReferenceVolatile", "(Ljava/lang/Object;J)Ljava/lang/Object;",
      std::bit_cast<void*>(&unsafe_getReferenceVolatile)},
 };
@@ -428,6 +447,13 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   CAMLreturnT(jobject, std::bit_cast<jobject>(ref.get()));
 }
 
+jlong JVM_GetNextThreadIdOffset(JNIEnv* env, jclass threadClass) {
+  (void)env;
+  (void)threadClass;
+  printf("libjvm: JVM_GetNextThreadIdOffset\n");
+  return 0x12345678; // TODO
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -501,7 +527,6 @@ void JVM_GetMethodTypeAnnotations() { unimplemented("JVM_GetMethodTypeAnnotation
 void JVM_GetNanoTimeAdjustment() { unimplemented("JVM_GetNanoTimeAdjustment"); }
 void JVM_GetNestHost() { unimplemented("JVM_GetNestHost"); }
 void JVM_GetNestMembers() { unimplemented("JVM_GetNestMembers"); }
-void JVM_GetNextThreadIdOffset() { unimplemented("JVM_GetNextThreadIdOffset"); }
 void JVM_GetPermittedSubclasses() { unimplemented("JVM_GetPermittedSubclasses"); }
 void JVM_GetPrimitiveArrayElement() { unimplemented("JVM_GetPrimitiveArrayElement"); }
 void JVM_GetProtectionDomain() { unimplemented("JVM_GetProtectionDomain"); }
