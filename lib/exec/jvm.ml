@@ -112,6 +112,8 @@ let compare_cond (a : int32) (b : int32) cond =
 
 let size v = match v with Long _ | Double _ -> 2 | _ -> 1
 
+let pick_fst _ v1 _ = v1
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -206,13 +208,22 @@ class jvm libjava =
       let safe = Verify.Main.classIsTypeSafe cls in
       if not safe then
         failwith (Printf.sprintf "Class %S failed verification" class_name);
-      let fields = static_fields cls |> fields_default_mapped in
+      (* Make sure parent is class-loaded and take the static fields *)
+      let parent_static_fields =
+        match cls.superclass with
+        | Some superclass_name -> (self#load_class superclass_name).static
+        | None -> StringMap.empty
+      in
+      let this_static_fields = static_fields cls |> fields_default_mapped in
+      let merged_static_fields =
+        StringMap.merge pick_fst this_static_fields parent_static_fields
+      in
       Printf.printf "%s %s\n" class_name
         (String.concat ", "
            (List.map
               (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
-              (StringMap.to_list fields)));
-      let ecls = { raw = cls; static = fields } in
+              (StringMap.to_list merged_static_fields)));
+      let ecls = { raw = cls; static = merged_static_fields } in
       self#mark_loaded ecls;
       (* mark as loaded before clinit, otherwise we recurse *)
       (match find_method cls "<clinit>" "()V" with
