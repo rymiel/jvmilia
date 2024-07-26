@@ -18,38 +18,42 @@ let concise =
   | Some "concise" | Some "silent" -> true
   | Some _ | None -> false
 
-let _silent =
+let silent =
   match Sys.getenv_opt "JVMILIA_EXEC_LOG" with
   | Some "silent" -> true
   | Some _ | None -> false
 
 let push (ctx : string) (s : string) : unit =
-  print_string (String.make (!depth * indent) ' ');
-  print_string "\027[34m>>\027[0m ";
-  let prefix = Printf.sprintf "%s: %s" ctx s in
-  print_string prefix;
-  print_newline ();
-  stack_push prefix;
-  incr depth
+  if not silent then (
+    print_string (String.make (!depth * indent) ' ');
+    print_string "\027[34m>>\027[0m ";
+    let prefix = Printf.sprintf "%s: %s" ctx s in
+    print_string prefix;
+    print_newline ();
+    stack_push prefix;
+    incr depth)
 
 let pop () : unit =
-  let top = stack_pop () in
-  decr depth;
-  print_string (String.make (!depth * indent) ' ');
-  print_string "\027[34m<<\027[0m ";
-  print_string top;
-  print_newline ();
-  ()
+  if not silent then (
+    let top = stack_pop () in
+    decr depth;
+    print_string (String.make (!depth * indent) ' ');
+    print_string "\027[34m<<\027[0m ";
+    print_string top;
+    print_newline ();
+    ())
 
 let instr (i : Instr.instrbody) (offset : int) : unit =
-  print_string (String.make (!depth * indent) ' ');
-  Printf.printf "** %4d: \027[36m%s\027[0m\n" offset (Instr.string_of_instr i)
+  if not silent then (
+    print_string (String.make (!depth * indent) ' ');
+    Printf.printf "** %4d: \027[36m%s\027[0m\n" offset (Instr.string_of_instr i))
 
 let frame (f : Basic.exec_frame) : unit =
-  print_string (String.make (!depth * indent) ' ');
-  print_string "::";
-  print_string (Basic.string_of_frame f);
-  print_newline ()
+  if not silent then (
+    print_string (String.make (!depth * indent) ' ');
+    print_string "::";
+    print_string (Basic.string_of_frame f);
+    print_newline ())
 
 let frame_detailed (f : Basic.exec_frame) : unit =
   if not concise then (
