@@ -111,8 +111,7 @@ let compare_cond (a : int32) (b : int32) cond =
   | Instr.Le -> a <= b
 
 let size v = match v with Long _ | Double _ -> 2 | _ -> 1
-
-let pick_fst _ v1 _ = v1
+let pick_fst _ v1 _ = Some v1
 
 class jvm libjava =
   object (self)
@@ -239,9 +238,9 @@ class jvm libjava =
       in
       let this_static_fields = static_fields cls |> fields_default_mapped in
       let merged_static_fields =
-        StringMap.merge pick_fst this_static_fields parent_static_fields
+        StringMap.union pick_fst this_static_fields parent_static_fields
       in
-      Printf.printf "%s %s\n" class_name
+      Printf.printf "[static fields] %s: %s\n" class_name
         (String.concat ", "
            (List.map
               (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
