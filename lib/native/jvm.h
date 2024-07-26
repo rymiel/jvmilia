@@ -4,6 +4,7 @@
 #include "caml/callback.h"
 #include "caml/memory.h"
 #include "caml/mlvalues.h"
+#include "caml_interface.h"
 #include "jni.h"
 #include <cassert>
 #include <cstring>
@@ -82,7 +83,7 @@ struct JVMData {
     CAMLparam0();
     CAMLlocal3(str_obj, name_obj, val_obj);
 
-    str_obj = *std::bit_cast<value*>(str);
+    str_obj = coerce_null(str);
     name_obj = caml_callback(this->reference_type_name_callback(), str_obj);
     assert(strcmp(String_val(name_obj), "java/lang/String") == 0);
     val_obj = this->get_object_field(str_obj, "value");

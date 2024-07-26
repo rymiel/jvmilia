@@ -244,6 +244,12 @@ void Java_jdk_internal_misc_ScopedMemoryAccess_registerNatives(JNIEnv* env, jcla
   (*env)->RegisterNatives(env, smaclass, sma_native_methods, sizeof(sma_native_methods) / sizeof(JNINativeMethod));
 }
 
+void Java_java_lang_Object_notifyAll(JNIEnv* env, jobject object) {
+  // we don't have threading!
+  (void)env;
+  (void)object;
+}
+
 jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
   jvmilia::JVMData* data = jvmilia::getData(env);
   auto* unused_name = data->class_name(unused);
@@ -493,6 +499,25 @@ jobject JVM_GetStackAccessControlContext(JNIEnv* env, jclass cls) {
   return nullptr; // I don't know what else to do
 }
 
+void JVM_SetThreadPriority(JNIEnv* env, jobject jthread, jint prio) {
+  CAMLparam0();
+  CAMLlocal1(name);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  name = data->get_object_field(jvmilia::coerce_null(jthread), "name");
+  printf("libjvm: JVM_SetThreadPriority: %s <- %d\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))),
+         prio);
+  CAMLreturn0;
+}
+
+void JVM_StartThread(JNIEnv* env, jobject jthread) {
+  CAMLparam0();
+  CAMLlocal1(name);
+  jvmilia::JVMData* data = jvmilia::getData(env);
+  name = data->get_object_field(jvmilia::coerce_null(jthread), "name");
+  printf("libjvm: JVM_StartThread: %s\n", data->string_content(std::bit_cast<jstring>(&Field(name, 0))));
+  CAMLreturn0;
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -623,9 +648,7 @@ void JVM_SetNativeThreadName() { unimplemented("JVM_SetNativeThreadName"); }
 void JVM_SetPrimitiveArrayElement() { unimplemented("JVM_SetPrimitiveArrayElement"); }
 void JVM_SetScopedValueCache() { unimplemented("JVM_SetScopedValueCache"); }
 void JVM_SetStackWalkContinuation() { unimplemented("JVM_SetStackWalkContinuation"); }
-void JVM_SetThreadPriority() { unimplemented("JVM_SetThreadPriority"); }
 void JVM_SleepNanos() { unimplemented("JVM_SleepNanos"); }
-void JVM_StartThread() { unimplemented("JVM_StartThread"); }
 void JVM_TotalMemory() { unimplemented("JVM_TotalMemory"); }
 void JVM_UnloadLibrary() { unimplemented("JVM_UnloadLibrary"); }
 void JVM_VirtualThreadEnd() { unimplemented("JVM_VirtualThreadEnd"); }
