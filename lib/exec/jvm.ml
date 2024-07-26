@@ -248,11 +248,7 @@ class jvm libjava =
       let merged_static_fields =
         StringMap.union pick_fst this_static_fields parent_static_fields
       in
-      Printf.printf "[static fields] %s: %s\n" class_name
-        (String.concat ", "
-           (List.map
-              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
-              (StringMap.to_list merged_static_fields)));
+      Debug.fields "static fields" class_name merged_static_fields;
       let ecls = { raw = cls; static = merged_static_fields } in
       self#mark_loaded ecls;
       (* mark as loaded before clinit, otherwise we recurse *)
@@ -344,11 +340,7 @@ class jvm libjava =
     method private make_new (name : string) : evalue =
       let cls = self#load_class name in
       let fields = self#instance_fields cls.raw |> fields_default_mapped in
-      Printf.printf "%s %s\n" name
-        (String.concat ", "
-           (List.map
-              (fun (k, v) -> Printf.sprintf "%s %s" k (string_of_evalue !v))
-              (StringMap.to_list fields)));
+      Debug.fields "instance fields" name fields;
       Object { cls; fields }
 
     method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
@@ -770,12 +762,8 @@ class jvm libjava =
               let filtered_name =
                 Str.global_replace (Str.regexp "\\$") "_00024" native_name
               in
-              Printf.printf "Native method %s.%s -> %s\n" mth.cls mth.name
-                filtered_name;
               Native.load_method libjava filtered_name
         in
-        Printf.printf "%s %s %s -> %#x\n%!" mth.cls mth.name mth.desc
-          method_handle;
         if method_handle = 0 then failwith "Method handle is null";
         let args_real =
           if mth.access_flags.is_static then
@@ -783,10 +771,7 @@ class jvm libjava =
             receiver :: args
           else args
         in
-        Printf.printf "%#x ((%s) -> %s) [%s]\n%!" method_handle
-          (String.concat ", " (List.map Type.string_of_dtype mth.arg_types))
-          (Type.string_of_dtype mth.ret_type)
-          (String.concat ", " (List.map string_of_evalue_detailed args_real));
+        Debug.native_call method_handle mth.arg_types mth.ret_type args_real;
         let result =
           Native.execute_native_auto interface args_real mth.arg_types
             mth.ret_type method_handle

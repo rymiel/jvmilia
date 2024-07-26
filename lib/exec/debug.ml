@@ -77,3 +77,25 @@ let args (arr : Basic.evalue list) : unit =
     print_string "\027[93m>>>>\027[0m ";
     Printf.printf "[%s]\n"
       (String.concat ", " (List.map Basic.string_of_evalue arr)))
+
+let fields (kind : string) (name : string)
+    (fields : Basic.evalue ref Basic.StringMap.t) : unit =
+  if not silent then (
+    print_string (String.make (!depth * indent) ' ');
+    Printf.printf "[%s] %s: %s\n" kind name
+      (String.concat ", "
+         (List.map
+            (fun (k, v) -> Printf.sprintf "%s %s" k (Basic.string_of_evalue !v))
+            (Basic.StringMap.to_list fields))))
+
+let native_call (handle : int) (arg_types : Type.dtype list)
+    (ret_type : Type.dtype) (values : Basic.evalue list) : unit =
+  if not silent then
+    Printf.printf "%#x ((%s) -> %s) [%s]\n%!" handle
+      (String.concat ", " (List.map Type.string_of_dtype arg_types))
+      (Type.string_of_dtype ret_type)
+      (String.concat ", "
+         (List.map
+            (if concise then Basic.string_of_evalue
+             else Basic.string_of_evalue_detailed ~seen:Basic.IntSet.empty)
+            values))
