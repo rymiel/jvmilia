@@ -253,13 +253,6 @@ class jvm libjava =
           self#exec clinit [];
           ()
       | None -> ());
-      (* openjdk is special *)
-      (if cls.name = "java/lang/System" then
-         match find_method cls "initPhase1" "()V" with
-         | Some init ->
-             self#exec init [];
-             ()
-         | None -> ());
       (* todo other verification/linking stuff idk *)
       ecls
 
@@ -814,6 +807,26 @@ class jvm libjava =
       | result -> self#push result
 
     method exec_main (main_class_name : string) : unit =
+      (* expected by openjdk *)
+      let required_classes =
+        [ "java/lang/System"; "java/lang/ref/Finalizer" ]
+      in
+      List.iter
+        (fun x ->
+          let _ignored = self#load_class x in
+          ())
+        required_classes;
+      (* openjdk is special *)
+      (match
+         find_method
+           (self#load_class_definition "java/lang/System")
+           "initPhase1" "()V"
+       with
+      | Some init ->
+          self#exec init [];
+          ()
+      | None -> ());
+
       let main_class = self#load_class main_class_name in
       match find_method main_class.raw "main" "([Ljava/lang/String;)V" with
       | Some main_method ->
