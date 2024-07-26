@@ -1,4 +1,0 @@
-#!/bin/sh
-
-dune build;
-LD_LIBRARY_PATH="_build/install/default/lib/jvmilia/;_build/default/lib/" JVMILIA_VERIFY_LOG="silent" JVMILIA_EXEC_LOG="silent" JVMILIA_BOOTSTRAP_LOG="silent" JVMILIA_NATIVE_LOG="silent" OCAMLRUNPARAM="b" dune exec jvmilia -- $@
