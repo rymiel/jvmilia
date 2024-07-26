@@ -484,10 +484,7 @@ class jvm libjava =
             | Add -> Int32.add a b
             | Sub -> Int32.sub a b
             | Mul -> Int32.mul a b
-            | _ ->
-                failwith
-                  (Printf.sprintf "iarith unimplemented %s"
-                     (Instr.string_of_arith_op op)))
+            | Rem -> Int32.rem a b)
           |> self#push
       | Ishl ->
           let b = self#pop () |> as_int in
@@ -528,10 +525,7 @@ class jvm libjava =
             | Add -> Int64.add a b
             | Sub -> Int64.sub a b
             | Mul -> Int64.mul a b
-            | _ ->
-                failwith
-                  (Printf.sprintf "iarith unimplemented %s"
-                     (Instr.string_of_arith_op op)))
+            | Rem -> Int64.rem a b)
           |> self#push
       | Lshr ->
           let b = self#pop () |> as_int in
@@ -561,10 +555,7 @@ class jvm libjava =
             | Add -> a +. b
             | Sub -> a -. b
             | Mul -> a *. b
-            | _ ->
-                failwith
-                  (Printf.sprintf "farith unimplemented %s"
-                     (Instr.string_of_arith_op op)))
+            | Rem -> Float.rem a b)
           |> self#push
       | Fneg ->
           let a = self#pop () |> as_float in
@@ -578,10 +569,7 @@ class jvm libjava =
             | Add -> a +. b
             | Sub -> a -. b
             | Mul -> a *. b
-            | _ ->
-                failwith
-                  (Printf.sprintf "darith unimplemented %s"
-                     (Instr.string_of_arith_op op)))
+            | Rem -> Float.rem a b)
           |> self#push
       | Ifnonnull target -> (
           match self#pop () with
