@@ -377,7 +377,7 @@ class jvm libjava =
             | _ -> false);
           (* todo frame stuff *)
           self#exec def_mth (objectref :: args)
-      | Invokevirtual desc | Invokeinterface (desc, _) ->
+      | Invokevirtual desc | Invokeinterface (desc, _) -> (
           let base_mth =
             self#find_virtual_method desc.cls desc.name desc.desc
           in
@@ -386,19 +386,25 @@ class jvm libjava =
           Printf.printf ">>>>>>>>>>>>>>>>> [%s]\n"
             (String.concat ", " (List.map string_of_evalue args));
           let objectref = self#pop () in
-          (* todo remove this constraint *)
-          let clsref =
-            match objectref with
-            | Object x ->
-                assert (self#is_indirect_superclass x.cls desc.cls);
-                x.cls.raw
-            | _ -> failwith "not an object 4"
-          in
-          let resolved_mth =
-            self#find_virtual_method clsref.name desc.name desc.desc
-          in
-          (* todo frame stuff *)
-          self#exec resolved_mth (objectref :: args)
+          match objectref with
+          | Object x ->
+              (* todo remove this constraint *)
+              assert (self#is_indirect_superclass x.cls desc.cls);
+              let clsref = x.cls.raw in
+              let resolved_mth =
+                self#find_virtual_method clsref.name desc.name desc.desc
+              in
+              (* todo frame stuff *)
+              self#exec resolved_mth (objectref :: args)
+          | ByteArray ba ->
+              (* TODO extract someone else? *)
+              if
+                base_mth.cls = "java/lang/Object"
+                && base_mth.name = "clone"
+                && base_mth.desc = "()Ljava/lang/Object;"
+              then self#push (ByteArray (Bytes.copy ba))
+              else failwith "invokevirtual on bytearray"
+          | _ -> failwith "not an object 4")
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> ( ! ) |> self#push
