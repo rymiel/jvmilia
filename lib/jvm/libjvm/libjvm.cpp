@@ -301,9 +301,7 @@ struct signal_def {
   int signal;
   const char* name;
 };
-static constexpr signal_def SIGNALS[] = {
-    {SIGHUP, "HUP"},
-};
+static constexpr signal_def SIGNALS[] = {{SIGHUP, "HUP"}, {SIGINT, "INT"}, {SIGTERM, "TERM"}};
 
 jint JVM_FindSignal(const char* name) {
   printf("libjvm: JVM_FindSignal: %s\n", name);
