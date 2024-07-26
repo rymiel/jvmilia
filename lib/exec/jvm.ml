@@ -423,17 +423,11 @@ class jvm libjava =
       | Putstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           let value = self#pop () in
-          StringMap.find field_desc.name def_cls.static := value;
-          Printf.printf "putstatic %s %s %s %s\n" def_cls.raw.name
-            field_desc.name field_desc.desc (string_of_evalue value)
+          StringMap.find field_desc.name def_cls.static := value
       | Putfield field_desc -> (
           let value = self#pop () in
           match self#pop () with
-          | Object x ->
-              StringMap.find field_desc.name x.fields := value;
-              Printf.printf "putfield %s %s %s %s\n"
-                (string_of_evalue (Object x))
-                field_desc.name field_desc.desc (string_of_evalue value)
+          | Object x -> StringMap.find field_desc.name x.fields := value
           | _ -> failwith "Can't put field of non-object type")
       | Aconst_null -> self#push Null
       | Return -> self#curframe.retval <- Some Void
