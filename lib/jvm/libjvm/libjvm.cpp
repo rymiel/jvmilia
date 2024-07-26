@@ -336,6 +336,32 @@ void* JVM_RegisterSignal(jint sig, void* handler) {
   return nullptr;
 }
 
+// NOTE: removed after jdk 22
+jboolean JVM_IsDumpingClassList(JNIEnv* env) {
+  (void)env;
+  printf("libjvm: JVM_IsDumpingClassList\n");
+  return false;
+}
+
+// NOTE: removed after jdk 22
+jboolean JVM_IsCDSDumpingEnabled(JNIEnv* env) {
+  (void)env;
+  printf("libjvm: JVM_IsCDSDumpingEnabled\n");
+  return false;
+}
+
+// NOTE: removed after jdk 22
+jboolean JVM_IsSharingEnabled(JNIEnv* env) {
+  (void)env;
+  printf("libjvm: JVM_IsSharingEnabled\n");
+  return false;
+}
+
+void JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
+  printf("libjvm: JVM_InitializeFromArchive: %s\n", jvmilia::getData(env)->class_name(cls));
+  return;
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -429,23 +455,19 @@ void JVM_HoldsLock() { unimplemented("JVM_HoldsLock"); }
 void JVM_IHashCode() { unimplemented("JVM_IHashCode"); }
 void JVM_InitAgentProperties() { unimplemented("JVM_InitAgentProperties"); }
 void JVM_InitClassName() { unimplemented("JVM_InitClassName"); }
-void JVM_InitializeFromArchive() { unimplemented("JVM_InitializeFromArchive"); }
 void JVM_InitStackTraceElement() { unimplemented("JVM_InitStackTraceElement"); }
 void JVM_InitStackTraceElementArray() { unimplemented("JVM_InitStackTraceElementArray"); }
 void JVM_InternString() { unimplemented("JVM_InternString"); }
 void JVM_Interrupt() { unimplemented("JVM_Interrupt"); }
 void JVM_InvokeMethod() { unimplemented("JVM_InvokeMethod"); }
 void JVM_IsArrayClass() { unimplemented("JVM_IsArrayClass"); }
-void JVM_IsCDSDumpingEnabled() { unimplemented("JVM_IsCDSDumpingEnabled"); }
 void JVM_IsContinuationsSupported() { unimplemented("JVM_IsContinuationsSupported"); }
-void JVM_IsDumpingClassList() { unimplemented("JVM_IsDumpingClassList"); }
 void JVM_IsFinalizationEnabled() { unimplemented("JVM_IsFinalizationEnabled"); }
 void JVM_IsForeignLinkerSupported() { unimplemented("JVM_IsForeignLinkerSupported"); }
 void JVM_IsHiddenClass() { unimplemented("JVM_IsHiddenClass"); }
 void JVM_IsInterface() { unimplemented("JVM_IsInterface"); }
 void JVM_IsPreviewEnabled() { unimplemented("JVM_IsPreviewEnabled"); }
 void JVM_IsRecord() { unimplemented("JVM_IsRecord"); }
-void JVM_IsSharingEnabled() { unimplemented("JVM_IsSharingEnabled"); }
 void JVM_IsSupportedJNIVersion() { unimplemented("JVM_IsSupportedJNIVersion"); }
 void JVM_IsUseContainerSupport() { unimplemented("JVM_IsUseContainerSupport"); }
 void JVM_LatestUserDefinedLoader() { unimplemented("JVM_LatestUserDefinedLoader"); }
