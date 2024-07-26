@@ -59,30 +59,79 @@ void unsafe_fullFence(JNIEnv* env, jobject unsafe) {
   (void)unsafe;
 }
 
+struct field_ref {
+  value ref;
+  long offset;
+
+  auto get() -> value { return Field(ref, offset); }
+  void set(value v) { Store_field(ref, offset, v); }
+
+  // some of this could go into caml_interface or that file should be removed
+  auto is_int() -> bool { return Is_block(get()) && Tag_val(get()) == jvmilia::EVALUE_INT_TAG; }
+  auto as_int() -> int { return Int32_val(Field(get(), 0)); }
+
+  auto is_long() -> bool { return Is_block(get()) && Tag_val(get()) == jvmilia::EVALUE_LONG_TAG; }
+  auto as_long() -> long { return Int64_val(Field(get(), 0)); }
+
+  auto is_reference() -> bool {
+    return (Is_block(get()) && Tag_val(get()) == jvmilia::EVALUE_OBJECT_TAG) || get() == jvmilia::EVALUE_NULL;
+  }
+  auto as_jobject(jvmilia::JVMData* data) -> jobject { return jvmilia::coerce_null(get(), data); }
+};
+
+field_ref offset_field(jvmilia::JVMData* data, jobject obj, jlong offset) {
+  CAMLparam0();
+  value obj_val = jvmilia::coerce_null(obj);
+  value ref;
+  long field_offset;
+
+  if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
+    ref = Field(Field(obj_val, 0), 1);
+    field_offset = offset;
+  } else {
+    ref = caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset));
+    field_offset = 0;
+  }
+
+  CAMLreturnT(field_ref, (field_ref{ref, field_offset}));
+}
+
+// some of this could go into caml_interface or that file should be removed
+value evalue_int32(int i) {
+  CAMLparam0();
+  CAMLlocal2(int32, val);
+  int32 = caml_copy_int32(i);
+  val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
+  Store_field(val, 0, int32);
+  CAMLreturn(val);
+}
+value evalue_int64(long i) {
+  CAMLparam0();
+  CAMLlocal2(int64, val);
+  int64 = caml_copy_int64(i);
+  val = caml_alloc(1, jvmilia::EVALUE_LONG_TAG);
+  Store_field(val, 0, int64);
+  CAMLreturn(val);
+}
+
 jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jint e, jint x) {
   CAMLparam0();
-  CAMLlocal3(ref, new_int, new_val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
   printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx (%d -> %d)\n", data->object_type_name(obj), offset, e, x);
 
-  ref = caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset));
+  auto field = offset_field(data, obj, offset);
 
-  jvmilia::dump_value(ref, 4);
-
-  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == jvmilia::EVALUE_INT_TAG); // assert it's an integer
-
-  int actual = Int32_val(Field(Field(ref, 0), 0));
+  jvmilia::dump_value(field.get(), 4);
+  assert(field.is_int());
+  int actual = field.as_int();
 
   printf("libjvm shim: Unsafe: compareAndSetInt: %s %lx %d -> %d, actual %d\n", data->object_type_name(obj), offset, e,
          x, actual);
 
   if (e == actual) {
-    new_int = caml_copy_int32(x);
-    new_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
-    Store_field(new_val, 0, new_int);
-    Store_field(ref, 0, new_val);
+    field.set(evalue_int32(x));
     CAMLreturnT(jboolean, true);
   } else {
     CAMLreturnT(jboolean, false);
@@ -91,28 +140,20 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
 
 jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x) {
   CAMLparam0();
-  CAMLlocal3(ref, new_int, new_val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
-  printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx (%ld -> %ld)\n", data->object_type_name(obj), offset, e, x);
+  auto field = offset_field(data, obj, offset);
 
-  ref = caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset));
-
-  jvmilia::dump_value(ref, 4);
-
-  assert(Is_block(Field(ref, 0)) && Tag_val(Field(ref, 0)) == jvmilia::EVALUE_LONG_TAG); // assert it's a long
-
-  long actual = Int64_val(Field(Field(ref, 0), 0));
+  jvmilia::dump_value(field.get(), 4);
+  assert(field.is_long());
+  long actual = field.as_long();
 
   printf("libjvm shim: Unsafe: compareAndSetLong: %s %lx %ld -> %ld, actual %ld\n", data->object_type_name(obj), offset,
          e, x, actual);
 
   if (e == actual) {
-    new_int = caml_copy_int64(x);
-    new_val = caml_alloc(1, jvmilia::EVALUE_LONG_TAG);
-    Store_field(new_val, 0, new_int);
-    Store_field(ref, 0, new_val);
+    field.set(evalue_int64(x));
     CAMLreturnT(jboolean, true);
   } else {
     CAMLreturnT(jboolean, false);
@@ -121,32 +162,23 @@ jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlon
 
 jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jobject e, jobject x) {
   CAMLparam0();
-  CAMLlocal4(ref, val, e_v, x_v);
+  CAMLlocal3(val, e_v, x_v);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
-  long field_offset = 0;
 
   e_v = jvmilia::coerce_null(e);
   x_v = jvmilia::coerce_null(x);
   printf("libjvm shim: Unsafe: compareAndSetReference: %s %lx (%lx %s -> %lx %s)\n", data->object_type_name(obj),
          offset, e_v, data->object_type_name(e), x_v, data->object_type_name(x));
 
-  value obj_val = jvmilia::coerce_null(obj);
+  auto field = offset_field(data, obj, offset);
 
-  if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
-    ref = Field(Field(obj_val, 0), 1);
-    field_offset = offset;
-  } else {
-    ref = caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset));
-  }
-
-  val = Field(ref, field_offset);
+  val = field.get();
   jvmilia::dump_value(val, 4);
-  assert((Is_block(val) && Tag_val(val) == 0) || val == jvmilia::EVALUE_NULL); // assert it's a reference
+  assert(field.is_reference()); // assert it's a reference
 
   if (val == jvmilia::EVALUE_NULL && e_v == jvmilia::EVALUE_NULL) { // i dont actually handle objects yet
-    Store_field(ref, field_offset, x_v);
-    jvmilia::dump_value(ref, 4);
+    field.set(x_v);
     CAMLreturnT(jboolean, true);
   } else {
     assert(false);
@@ -156,41 +188,32 @@ jboolean unsafe_compareAndSetReference(JNIEnv* env, jobject unsafe, jobject obj,
 
 jlong unsafe_getLongVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong offset) {
   CAMLparam0();
-  CAMLlocal1(val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
   printf("libjvm shim: Unsafe: getLongVolatile: %s %lx\n", data->object_type_name(obj), offset);
 
-  val = Field(caml_callback2(data->get_field_by_hash_callback(), jvmilia::coerce_null(obj), Val_int(offset)), 0);
+  auto field = offset_field(data, obj, offset);
 
-  jvmilia::dump_value(val, 4);
+  jvmilia::dump_value(field.get(), 4);
+  assert(field.is_long());
 
-  assert(Is_block(val) && Tag_val(val) == jvmilia::EVALUE_LONG_TAG); // assert it's a long
-
-  CAMLreturnT(jlong, Int64_val(Field(val, 0)));
+  CAMLreturnT(jlong, field.as_long());
 }
 
 jobject unsafe_getReferenceVolatile(JNIEnv* env, jobject unsafe, jobject obj, jlong offset) {
   CAMLparam0();
-  CAMLlocal1(val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
   printf("libjvm shim: Unsafe: getReferenceVolatile: %s %lx\n", data->object_type_name(obj), offset);
-  value obj_val = jvmilia::coerce_null(obj);
 
-  if (Is_block(obj_val) && Tag_val(obj_val) == jvmilia::EVALUE_ARRAY_TAG) {
-    val = Field(Field(Field(obj_val, 0), 1), offset);
-  } else {
-    val = Field(caml_callback2(data->get_field_by_hash_callback(), obj_val, Val_int(offset)), 0);
-  }
+  auto field = offset_field(data, obj, offset);
 
-  jvmilia::dump_value(val, 4);
+  jvmilia::dump_value(field.get(), 4);
+  assert(field.is_reference());
 
-  assert((Is_block(val) && Tag_val(val) == 0) || val == jvmilia::EVALUE_NULL); // assert it's a reference
-
-  CAMLreturnT(jobject, jvmilia::coerce_null(val, data));
+  CAMLreturnT(jobject, field.as_jobject(data));
 }
 
 static JNINativeMethod unsafe_native_methods[] = {
@@ -202,8 +225,7 @@ static JNINativeMethod unsafe_native_methods[] = {
     {"compareAndSetLong", "(Ljava/lang/Object;JJJ)Z", std::bit_cast<void*>(&unsafe_compareAndSetLong)},
     {"compareAndSetReference", "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
      std::bit_cast<void*>(&unsafe_compareAndSetReference)},
-    {"getLongVolatile", "(Ljava/lang/Object;J)J",
-     std::bit_cast<void*>(&unsafe_getLongVolatile)},
+    {"getLongVolatile", "(Ljava/lang/Object;J)J", std::bit_cast<void*>(&unsafe_getLongVolatile)},
     {"getReferenceVolatile", "(Ljava/lang/Object;J)Ljava/lang/Object;",
      std::bit_cast<void*>(&unsafe_getReferenceVolatile)},
 };
