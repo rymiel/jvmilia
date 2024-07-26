@@ -15,11 +15,6 @@ let find_method (cls : jclass) (name : string) (desc : string) : jmethod option
   let matches (m : jmethod) = m.desc = desc && m.name = name in
   List.find_opt matches cls.methods
 
-let instance_fields (cls : jclass) : jfield list =
-  List.filter (fun (m : jfield) -> not m.access_flags.is_static) cls.fields
-
-let (instance_fields [@deprecated]) = instance_fields
-
 let static_fields (cls : jclass) : jfield list =
   List.filter (fun (m : jfield) -> m.access_flags.is_static) cls.fields
 
