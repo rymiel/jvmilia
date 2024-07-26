@@ -61,7 +61,7 @@ void unsafe_fullFence(JNIEnv* env, jobject unsafe) {
 
 jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jint e, jint x) {
   CAMLparam0();
-  CAMLlocal2(ref, new_val);
+  CAMLlocal3(ref, new_int, new_val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
@@ -80,7 +80,9 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
 
   if (e == actual) {
     new_val = caml_copy_int32(x);
-    Store_field(Field(ref, 0), 0, new_val);
+    new_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
+    Store_field(new_val, 0, new_int);
+    Store_field(ref, 0, new_val);
     CAMLreturnT(jboolean, true);
   } else {
     CAMLreturnT(jboolean, false);
@@ -89,7 +91,7 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
 
 jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x) {
   CAMLparam0();
-  CAMLlocal2(ref, new_val);
+  CAMLlocal3(ref, new_int, new_val);
   jvmilia::JVMData* data = jvmilia::getData(env);
   (void)unsafe;
 
@@ -107,8 +109,10 @@ jboolean unsafe_compareAndSetLong(JNIEnv* env, jobject unsafe, jobject obj, jlon
          e, x, actual);
 
   if (e == actual) {
-    new_val = caml_copy_int64(x);
-    Store_field(Field(ref, 0), 0, new_val);
+    new_int = caml_copy_int64(x);
+    new_val = caml_alloc(1, jvmilia::EVALUE_LONG_TAG);
+    Store_field(new_val, 0, new_int);
+    Store_field(ref, 0, new_val);
     CAMLreturnT(jboolean, true);
   } else {
     CAMLreturnT(jboolean, false);

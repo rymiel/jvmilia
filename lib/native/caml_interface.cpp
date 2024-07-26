@@ -115,27 +115,31 @@ jvalue evalue_conversion(value* v) {
 
 value reconstruct_evalue(jvalue j, ntype ty) {
   CAMLparam0();
-  CAMLlocal1(result);
+  CAMLlocal2(val, result);
 
   switch (ty) {
   case ntype::Int: {
     result = caml_alloc(1, EVALUE_INT_TAG);
-    Store_field(result, 0, caml_copy_int32(j.i));
+    val = caml_copy_int32(j.i);
+    Store_field(result, 0, val);
     CAMLreturn(result);
   }
   case ntype::Long: {
     result = caml_alloc(1, EVALUE_LONG_TAG);
-    Store_field(result, 0, caml_copy_int64(j.j));
+    val = caml_copy_int64(j.j);
+    Store_field(result, 0, val);
     CAMLreturn(result);
   }
   case ntype::Float: {
     result = caml_alloc(1, EVALUE_FLOAT_TAG);
-    Store_field(result, 0, caml_copy_double(j.f));
+    val = caml_copy_double(j.f);
+    Store_field(result, 0, val);
     CAMLreturn(result);
   }
   case ntype::Double: {
     result = caml_alloc(1, EVALUE_DOUBLE_TAG);
-    Store_field(result, 0, caml_copy_double(j.d));
+    val = caml_copy_double(j.d);
+    Store_field(result, 0, val);
     CAMLreturn(result);
   }
   case ntype::Reference:
