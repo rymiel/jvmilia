@@ -224,7 +224,8 @@ jclass GetObjectClass(JNIEnv* env, jobject obj) {
 jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
   JVMData* data = getData(env);
 
-  auto ref = data->make_local_reference(caml_copy_string(name));
+  // TODO: make_global_reference is a bandaid fix, need to do what jmethod lookup does
+  auto ref = data->make_global_reference(caml_copy_string(name));
   printf("jni: GetFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
@@ -232,7 +233,8 @@ jfieldID GetFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig
 jfieldID GetStaticFieldID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
   JVMData* data = getData(env);
 
-  auto ref = data->make_local_reference(caml_copy_string(name));
+  // TODO: make_global_reference is a bandaid fix, need to do what jmethod lookup does
+  auto ref = data->make_global_reference(caml_copy_string(name));
   printf("jni: GetStaticFieldID %s %s %s -> %lx (%p)\n", data->class_name(clazz), name, sig, *ref, ref.get());
 
   return std::bit_cast<jfieldID>(ref.get());
@@ -299,7 +301,7 @@ const char* GetStringUTFChars(JNIEnv* env, jstring str, jboolean* isCopy) {
   }
 
   const char* val = data->string_content(str);
-  printf("GetStringUTFChars: %s\n", val);
+  printf("jni: GetStringUTFChars: %s\n", val);
 
   CAMLreturnT(const char*, val);
 }
@@ -310,6 +312,71 @@ void ReleaseStringUTFChars(JNIEnv* env, jstring str, const char* chars) {
   (void)str;
   (void)chars;
   return;
+}
+
+jsize GetArrayLength(JNIEnv* env, jarray array) {
+  CAMLparam0();
+  CAMLlocal1(arr_val);
+  JVMData* data = getData(env);
+  (void)data;
+
+  printf("jni: GetArrayLength %p\n", array);
+
+  arr_val = coerce_null(array);
+  assert(Is_block(arr_val));
+  if (Tag_val(arr_val) == EVALUE_BYTEARRAY_TAG) {
+    auto len = caml_string_length(Field(arr_val, 0));
+    printf("jni: GetArrayLength %p %s -> %ld\n", array, Bytes_val(Field(arr_val, 0)), len);
+    CAMLreturnT(jsize, len);
+  } else {
+    assert(false);
+  }
+
+  CAMLreturnT(jsize, 0);
+}
+
+void GetByteArrayRegion(JNIEnv* env, jbyteArray array, jsize start, jsize len, jbyte* buf) {
+  CAMLparam0();
+  CAMLlocal1(arr_val);
+  JVMData* data = getData(env);
+  (void)data;
+
+  arr_val = coerce_null(array);
+  assert(Is_block(arr_val) && Tag_val(arr_val) == EVALUE_BYTEARRAY_TAG);
+
+  printf("jni: GetByteArrayRegion %p %s %d %d -> %p\n", array, Bytes_val(Field(arr_val, 0)), start, len, buf);
+  memmove(buf, Bytes_val(Field(arr_val, 0)) + start, len);
+
+  CAMLreturn0;
+}
+
+jobject GetObjectField(JNIEnv* env, jobject obj, jfieldID fieldID) {
+  CAMLparam0();
+  CAMLlocal1(result);
+  JVMData* data = getData(env);
+
+  const char* field_name = String_val(*std::bit_cast<value*>(fieldID));
+
+  printf("jni: GetObjectField %s %s\n", data->object_type_name(obj), field_name);
+
+  result = Field(data->get_object_field(coerce_null(obj), field_name), 0);
+
+  CAMLreturnT(jobject, coerce_null(result, data));
+}
+
+jint GetIntField(JNIEnv* env, jobject obj, jfieldID fieldID) {
+  CAMLparam0();
+  JVMData* data = getData(env);
+
+  const char* field_name = String_val(*std::bit_cast<value*>(fieldID));
+
+  printf("jni: GetIntField %s %s\n", data->object_type_name(obj), field_name);
+
+  int result = Int32_val(Field(Field(data->get_object_field(coerce_null(obj), field_name), 0), 0));
+
+  printf("jni: GetIntField %s %s -> %d\n", data->object_type_name(obj), field_name, result);
+
+  CAMLreturnT(jint, result);
 }
 
 #pragma clang diagnostic push
@@ -494,12 +561,10 @@ void CallNonvirtualVoidMethodV(JNIEnv* env, jobject obj, jclass clazz, jmethodID
 void CallNonvirtualVoidMethodA(JNIEnv* env, jobject obj, jclass clazz, jmethodID methodID, const jvalue* args) {
   unimplemented("CallNonvirtualVoidMethodA");
 }
-jobject GetObjectField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetObjectField"); }
 jboolean GetBooleanField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetBooleanField"); }
 jbyte GetByteField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetByteField"); }
 jchar GetCharField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetCharField"); }
 jshort GetShortField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetShortField"); }
-jint GetIntField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetIntField"); }
 jlong GetLongField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetLongField"); }
 jfloat GetFloatField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetFloatField"); }
 jdouble GetDoubleField(JNIEnv* env, jobject obj, jfieldID fieldID) { unimplemented("GetDoubleField"); }
@@ -630,7 +695,6 @@ jsize GetStringLength(JNIEnv* env, jstring str) { unimplemented("GetStringLength
 const jchar* GetStringChars(JNIEnv* env, jstring str, jboolean* isCopy) { unimplemented("GetStringChars"); }
 void ReleaseStringChars(JNIEnv* env, jstring str, const jchar* chars) { unimplemented("ReleaseStringChars"); }
 jsize GetStringUTFLength(JNIEnv* env, jstring str) { unimplemented("GetStringUTFLength"); }
-jsize GetArrayLength(JNIEnv* env, jarray array) { unimplemented("GetArrayLength"); }
 jobject GetObjectArrayElement(JNIEnv* env, jobjectArray array, jsize index) { unimplemented("GetObjectArrayElement"); }
 jbooleanArray NewBooleanArray(JNIEnv* env, jsize len) { unimplemented("NewBooleanArray"); }
 jbyteArray NewByteArray(JNIEnv* env, jsize len) { unimplemented("NewByteArray"); }
@@ -682,9 +746,6 @@ void ReleaseDoubleArrayElements(JNIEnv* env, jdoubleArray array, jdouble* elems,
 }
 void GetBooleanArrayRegion(JNIEnv* env, jbooleanArray array, jsize start, jsize l, jboolean* buf) {
   unimplemented("GetBooleanArrayRegion");
-}
-void GetByteArrayRegion(JNIEnv* env, jbyteArray array, jsize start, jsize len, jbyte* buf) {
-  unimplemented("GetByteArrayRegion");
 }
 void GetCharArrayRegion(JNIEnv* env, jcharArray array, jsize start, jsize len, jchar* buf) {
   unimplemented("GetCharArrayRegion");

@@ -55,6 +55,9 @@ struct JVMData {
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
   }
+  auto make_global_reference(value v) -> std::shared_ptr<value>& {
+    return globalReferences.emplace_back(make_reference(v));
+  }
 
   // little helper to avoid allocating the field name
   auto get_object_field(value evalue, const char* field_name) -> value {
