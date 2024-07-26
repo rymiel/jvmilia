@@ -4,7 +4,8 @@ open Jvmilia
 
 let parse (path : string) =
   let ch = In_channel.open_bin path in
-  Classfile.read_class_file ch
+  let _ = Classfile.read_class_file ch in
+  ()
 
 let verify (name : string) =
   Loader.initialize_bootstrap_loader Testclasses.test_loader;
@@ -18,19 +19,20 @@ let exec (name : string) =
   jvm#exec_main name;
   jvm#free
 
+let exec_stat (name : string) =
+  let jvm = Exec.Jvm.create_jvm Testclasses.test_loader in
+  jvm#exec_main name;
+  jvm#print_stats ();
+  jvm#free
+
 let () =
   if Array.length Sys.argv <= 2 then print_endline "usage: <action> <param>"
   else
     let action = Sys.argv.(1) in
     let param = Sys.argv.(2) in
     match action with
-    | "verify" ->
-        let _ = verify param in
-        ()
-    | "parse" ->
-        let _ = parse param in
-        ()
-    | "exec" ->
-        let _ = exec param in
-        ()
+    | "verify" -> verify param
+    | "parse" -> parse param
+    | "exec" -> exec param
+    | "exec_stat" -> exec_stat param
     | _ -> print_endline "error: Action must be verify, parse, or exec"

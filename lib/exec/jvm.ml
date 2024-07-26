@@ -117,6 +117,14 @@ let compare_cond (a : int32) (b : int32) cond =
 let size v = match v with Long _ | Double _ -> 2 | _ -> 1
 let pick_fst _ v1 _ = Some v1
 
+type stats = {
+  instructions_executed : int ref;
+  total_methods_executed : int ref;
+  native_methods_executed : int ref;
+  java_methods_executed : int ref;
+  classes_loaded : int ref;
+}
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -124,6 +132,15 @@ class jvm libjava =
     val mutable string_pool : evalue StringMap.t = StringMap.empty
     val libjava : int = libjava
     val mutable interface : int = 0
+
+    val stats =
+      {
+        instructions_executed = ref 0;
+        total_methods_executed = ref 0;
+        native_methods_executed = ref 0;
+        java_methods_executed = ref 0;
+        classes_loaded = ref 0;
+      }
 
     method init : unit =
       let interface_data =
@@ -233,6 +250,7 @@ class jvm libjava =
       else Loader.load_class class_name Loader.bootstrap_loader
 
     method private perform_class_load (class_name : string) : eclass =
+      incr stats.classes_loaded;
       let cls = self#load_class_definition class_name in
       let safe = Verify.Main.classIsTypeSafe cls in
       if not safe then
@@ -347,6 +365,7 @@ class jvm libjava =
       Debug.frame self#curframe;
       Debug.frame_detailed self#curframe;
       Debug.instr instr self#curframe.pc;
+      incr stats.instructions_executed;
       match instr with
       | Invokestatic desc ->
           let def_mth = self#find_static_method desc.cls desc.name desc.desc in
@@ -721,6 +740,7 @@ class jvm libjava =
         (args : evalue list) : evalue =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" mth.cls mth.name mth.desc);
+      incr stats.java_methods_executed;
       self#add_frame code.frame_size;
       Debug.frame self#curframe;
       self#initialize_locals args;
@@ -746,7 +766,9 @@ class jvm libjava =
       let find_code (attr : Attr.attribute) : Attr.code_attribute option =
         match attr with Code x -> Some x | _ -> None
       in
+      incr stats.total_methods_executed;
       if mth.access_flags.is_native then (
+        incr stats.native_methods_executed;
         let registered =
           Native.get_registered_fnptr interface mth.cls mth.name mth.desc
         in
@@ -828,6 +850,20 @@ class jvm libjava =
           (* todo: the String[] argument *)
           self#exec main_method []
       | None -> failwith "This class does not have a main method"
+
+    method print_stats () : unit =
+      Printf.printf
+        "= execution stats =\n\
+         * instructions executed: %d\n\
+         * methods executed: %d\n\
+        \   of which native: %d\n\
+        \        non-native: %d\n\
+         * classes loaded: %d\n"
+        !(stats.instructions_executed)
+        !(stats.total_methods_executed)
+        !(stats.native_methods_executed)
+        !(stats.java_methods_executed)
+        !(stats.classes_loaded)
   end
 
 let create_jvm (loader : string -> jclass) : jvm =
