@@ -49,6 +49,8 @@ struct JVMData {
   value make_new_callback() { return Field(callbacks, 14); }
   value print_evalue_detailed_callback() { return Field(callbacks, 15); }
 
+  std::shared_ptr<value> primoridal_thread;
+
   auto make_local_reference(value v) -> std::shared_ptr<value>& {
     return frames.back().localReferences.emplace_back(make_reference(v));
   }

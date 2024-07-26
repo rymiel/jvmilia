@@ -425,12 +425,18 @@ void store_object_field(jvmilia::JVMData* data, value object, const char* name, 
 jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   CAMLparam0();
   CAMLlocal5(thread_val, thread_holder_name, thread_holder_val, main_name, main_name_val);
-  CAMLlocal5(status_int, status_val, thread_group_name, thread_group_val, system_name);
-  CAMLlocal3(system_name_val, max_priority_int, max_priority_val);
+  CAMLlocal4(thread_group_name, thread_group_val, system_name, system_name_val);
   (void)threadClass;
   jvmilia::JVMData* data = jvmilia::getData(env);
 
   printf("libjvm: JVM_CurrentThread\n");
+
+  if (data->primoridal_thread) {
+    printf("libjvm: JVM_CurrentThread: existing %p\n", data->primoridal_thread.get());
+    CAMLreturnT(jobject, std::bit_cast<jobject>(data->primoridal_thread.get()));
+  }
+
+  printf("libjvm: JVM_CurrentThread: initializing primordial thread\n");
 
   thread_val = caml_callback(data->make_new_callback(), data->class_name_value(threadClass));
 
@@ -441,10 +447,7 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   thread_holder_name = caml_copy_string("java/lang/Thread$FieldHolder");
   thread_holder_val = caml_callback(data->make_new_callback(), thread_holder_name);
 
-  status_int = caml_copy_int32(0x4 | 0x1); // runnable | alive
-  status_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
-  Store_field(status_val, 0, status_int);
-  store_object_field(data, thread_holder_val, "threadStatus", status_val);
+  store_object_field(data, thread_holder_val, "threadStatus", evalue_int32(0x4 + 0x1)); // runnable + alive
 
   // TODO: I should be calling the constructor instead of doing all this
   thread_group_name = caml_copy_string("java/lang/ThreadGroup");
@@ -454,10 +457,7 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
   system_name_val = caml_callback(data->make_string_callback(), system_name);
   store_object_field(data, thread_group_val, "name", system_name_val);
 
-  max_priority_int = caml_copy_int32(10); // magic value
-  max_priority_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
-  Store_field(max_priority_val, 0, max_priority_int);
-  store_object_field(data, thread_group_val, "maxPriority", max_priority_val);
+  store_object_field(data, thread_group_val, "maxPriority", evalue_int32(10)); // magic value
 
   store_object_field(data, thread_holder_val, "group", thread_group_val);
 
@@ -465,6 +465,8 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
 
   // caml_callback(data->print_evalue_detailed_callback(), thread_val);
   auto ref = data->make_local_reference(thread_val);
+  data->primoridal_thread = ref;
+  printf("libjvm: JVM_CurrentThread: initialized primordial thread: %p\n", ref.get());
 
   CAMLreturnT(jobject, std::bit_cast<jobject>(ref.get()));
 }
