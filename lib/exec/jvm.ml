@@ -90,16 +90,21 @@ let set_object_array (array : Basic.evalue) (index : int) (value : Basic.evalue)
   | _ -> failwith "Not an array");
   Printf.printf "%s\n%!" (string_of_evalue_detailed array)
 
+(* TODO: kinda bad *)
+let shared_counters =
+  StringMap.empty |> StringMap.add "__jvmilia_next_tid" (ref (Long 2L))
+
 (*TODO: remove*)
 let get_field_by_hash (v : evalue) (hash : int) : evalue ref =
-  match v with
-  | Object o ->
-      let _, r =
-        o.fields |> StringMap.bindings
-        |> List.find (fun (n, _) -> String.hash n = hash)
-      in
-      r
-  | _ -> failwith "Not an object 3"
+  let _, r =
+    (match v with
+    | Object o -> o.fields
+    | Null -> shared_counters
+    | _ -> failwith "Not an object 3")
+    |> StringMap.bindings
+    |> List.find (fun (n, _) -> String.hash n = hash)
+  in
+  r
 
 let compare_cond (a : int32) (b : int32) cond =
   match cond with
@@ -811,7 +816,12 @@ class jvm libjava =
     method exec_main (main_class_name : string) : unit =
       (* expected by openjdk *)
       let required_classes =
-        [ "java/lang/System"; "java/lang/ThreadGroup"; "java/lang/Thread"; "java/lang/ref/Finalizer" ]
+        [
+          "java/lang/System";
+          "java/lang/ThreadGroup";
+          "java/lang/Thread";
+          "java/lang/ref/Finalizer";
+        ]
       in
       List.iter
         (fun x ->

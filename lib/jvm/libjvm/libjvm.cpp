@@ -470,10 +470,18 @@ jobject JVM_CurrentThread(JNIEnv* env, jclass threadClass) {
 }
 
 jlong JVM_GetNextThreadIdOffset(JNIEnv* env, jclass threadClass) {
-  (void)env;
+  CAMLparam0();
+  CAMLlocal2(name, offset);
+  jvmilia::JVMData* data = jvmilia::getData(env);
   (void)threadClass;
+
   printf("libjvm: JVM_GetNextThreadIdOffset\n");
-  return 0x12345678; // TODO
+
+  name = caml_copy_string("__jvmilia_next_tid");
+  offset = caml_callback(data->string_hash_callback(), name);
+
+  printf("libjvm: JVM_GetNextThreadIdOffset -> %lx\n", Long_val(offset));
+  CAMLreturnT(jlong, Long_val(offset));
 }
 
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
