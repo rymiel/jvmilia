@@ -201,7 +201,30 @@ class jvm libjava =
 
     (* note: doesn't need to be a method, but if we move the loader inside the class, then maybe*)
     method private load_class_definition (class_name : string) : jclass =
-      Loader.load_class class_name Loader.bootstrap_loader
+      if class_name.[0] = '[' then (
+        (* TODO: component type stuff *)
+        assert (class_name.[1] = 'B');
+        {
+          name = class_name;
+          superclass = Some "java/lang/Object";
+          superinterfaces = [ "java/lang/Cloneable"; "java/io/Serializable" ];
+          loader = Loader.bootstrap_loader;
+          methods = [];
+          fields = [];
+          access_flags =
+            {
+              is_public = true;
+              is_final = true;
+              is_super = true;
+              is_interface = false;
+              is_abstract = true;
+              is_synthetic = false;
+              is_annotation = false;
+              is_enum = false;
+              is_module = false;
+            };
+        })
+      else Loader.load_class class_name Loader.bootstrap_loader
 
     method private perform_class_load (class_name : string) : eclass =
       let cls = self#load_class_definition class_name in
