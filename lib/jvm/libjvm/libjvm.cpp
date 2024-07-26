@@ -184,11 +184,18 @@ static JNINativeMethod unsafe_native_methods[] = {
      std::bit_cast<void*>(&unsafe_getReferenceVolatile)},
 };
 
+static JNINativeMethod sma_native_methods[] = {};
+
 extern "C" {
 void Java_jdk_internal_misc_Unsafe_registerNatives(JNIEnv* env, jclass unsafecls) {
-  printf("libjvm shim: jdk.internal.misc.Unsafe registerNatives");
+  printf("libjvm shim: jdk.internal.misc.Unsafe registerNatives\n");
   (*env)->RegisterNatives(env, unsafecls, unsafe_native_methods,
                           sizeof(unsafe_native_methods) / sizeof(JNINativeMethod));
+}
+
+void Java_jdk_internal_misc_ScopedMemoryAccess_registerNatives(JNIEnv* env, jclass smaclass) {
+  printf("libjvm shim: jdk.internal.misc.ScopedMemoryAccess registerNatives\n");
+  (*env)->RegisterNatives(env, smaclass, sma_native_methods, sizeof(sma_native_methods) / sizeof(JNINativeMethod));
 }
 
 jboolean JVM_DesiredAssertionStatus(JNIEnv* env, jclass unused, jclass cls) {
