@@ -79,7 +79,7 @@ jboolean unsafe_compareAndSetInt(JNIEnv* env, jobject unsafe, jobject obj, jlong
          x, actual);
 
   if (e == actual) {
-    new_val = caml_copy_int32(x);
+    new_int = caml_copy_int32(x);
     new_val = caml_alloc(1, jvmilia::EVALUE_INT_TAG);
     Store_field(new_val, 0, new_int);
     Store_field(ref, 0, new_val);
