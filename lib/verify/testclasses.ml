@@ -10,8 +10,8 @@ let class_sub_dirs = [ "lib/"; "test/"; "extern/" ] (* in order of priority *)
 
 let silent =
   match Sys.getenv_opt "JVMILIA_BOOTSTRAP_LOG" with
-  | Some "silent" -> true
-  | Some _ | None -> false
+  | Some "full" -> false
+  | Some _ | None -> true
 
 let test_loader (name : string) : jclass =
   let make_path subdir = (class_base_dir ^ subdir ^ name ^ ".class", subdir) in

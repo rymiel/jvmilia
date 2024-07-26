@@ -17,13 +17,13 @@ let stack_top () : entry = List.hd !stack
 
 let concise =
   match Sys.getenv_opt "JVMILIA_VERIFY_LOG" with
-  | Some "concise" | Some "silent" -> true
-  | Some _ | None -> false
+  | Some "full" -> false
+  | Some _ | None -> true
 
 let silent =
   match Sys.getenv_opt "JVMILIA_VERIFY_LOG" with
-  | Some "silent" -> true
-  | Some _ | None -> false
+  | Some "full" | Some "concise" -> false
+  | Some _ | None -> true
 
 let class_diagnostic (cls : Java.jclass) : string = cls.name
 

@@ -15,13 +15,13 @@ let stack_pop () : entry =
 
 let concise =
   match Sys.getenv_opt "JVMILIA_EXEC_LOG" with
-  | Some "concise" | Some "silent" -> true
-  | Some _ | None -> false
+  | Some "full" -> false
+  | Some _ | None -> true
 
 let silent =
   match Sys.getenv_opt "JVMILIA_EXEC_LOG" with
-  | Some "silent" -> true
-  | Some _ | None -> false
+  | Some "full" | Some "concise" -> false
+  | Some _ | None -> true
 
 let push (ctx : string) (s : string) : unit =
   if not silent then (

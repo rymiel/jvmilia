@@ -180,8 +180,8 @@ auto load_and_cache_bridge_function(std::filesystem::path& lib_path, std::string
 
 CAMLprim value make_native_interface_native(value interface_data) {
   const char* env = getenv("JVMILIA_NATIVE_LOG");
-  if (env != nullptr && strcmp(env, "silent") == 0) {
-    silent = true;
+  if (env != nullptr && strcmp(env, "full") == 0) {
+    silent = false;
   }
 
   JNINativeInterface* interface = new JNINativeInterface;
@@ -587,7 +587,7 @@ CAMLprim value get_registered_fnptr_native(value interface_int, value class_name
   CAMLreturn(return_value);
 }
 
-bool silent = false;
+bool silent = true;
 int log_printf(const char* format, ...) {
   va_list args;
   va_start(args, format);
