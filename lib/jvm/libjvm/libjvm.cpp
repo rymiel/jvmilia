@@ -5,6 +5,7 @@
 #include "caml/callback.h"
 #include "caml/memory.h"
 #include <cassert>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -296,6 +297,45 @@ void JVM_ArrayCopy(JNIEnv* env, jclass ignored, jobject src, jint src_pos, jobje
 jlong JVM_MaxMemory() { return 9223372036854775807l; }
 jint JVM_ActiveProcessorCount() { return 1; }
 
+struct signal_def {
+  int signal;
+  const char* name;
+};
+static constexpr signal_def SIGNALS[] = {
+    {SIGHUP, "HUP"},
+};
+
+jint JVM_FindSignal(const char* name) {
+  printf("libjvm: JVM_FindSignal: %s\n", name);
+  for (signal_def def : SIGNALS) {
+    if (strcmp(def.name, name) == 0) {
+      printf("libjvm: JVM_FindSignal: %s -> %d\n", name, def.signal);
+      return def.signal;
+    }
+  }
+
+  printf("libjvm: JVM_FindSignal: %s: not found\n", name);
+  assert(false);
+}
+
+void* JVM_RegisterSignal(jint sig, void* handler) {
+  const char* name = "unknown";
+  for (signal_def def : SIGNALS) {
+    if (def.signal == sig) {
+      name = def.name;
+    }
+  }
+  printf("libjvm: JVM_RegisterSignal: %d (%s) %p\n", sig, name, handler);
+
+  if (std::bit_cast<long>(handler) == 2) {
+    // User handler. Do nothing for now.
+    return nullptr;
+  }
+
+  unimplemented("JVM_RegisterSignal");
+  return nullptr;
+}
+
 void JVM_AddModuleExports() { unimplemented("JVM_AddModuleExports"); }
 void JVM_AddModuleExportsToAll() { unimplemented("JVM_AddModuleExportsToAll"); }
 void JVM_AddModuleExportsToAllUnnamed() { unimplemented("JVM_AddModuleExportsToAllUnnamed"); }
@@ -339,7 +379,6 @@ void JVM_FindClassFromCaller() { unimplemented("JVM_FindClassFromCaller"); }
 void JVM_FindLibraryEntry() { unimplemented("JVM_FindLibraryEntry"); }
 void JVM_FindLoadedClass() { unimplemented("JVM_FindLoadedClass"); }
 void JVM_FindScopedValueBindings() { unimplemented("JVM_FindScopedValueBindings"); }
-void JVM_FindSignal() { unimplemented("JVM_FindSignal"); }
 void JVM_FreeMemory() { unimplemented("JVM_FreeMemory"); }
 void JVM_GC() { unimplemented("JVM_GC"); }
 void JVM_GetAllThreads() { unimplemented("JVM_GetAllThreads"); }
@@ -425,7 +464,6 @@ void JVM_ReferenceClear() { unimplemented("JVM_ReferenceClear"); }
 void JVM_ReferenceRefersTo() { unimplemented("JVM_ReferenceRefersTo"); }
 void JVM_RegisterContinuationMethods() { unimplemented("JVM_RegisterContinuationMethods"); }
 void JVM_RegisterLambdaProxyClassForArchiving() { unimplemented("JVM_RegisterLambdaProxyClassForArchiving"); }
-void JVM_RegisterSignal() { unimplemented("JVM_RegisterSignal"); }
 void JVM_ReportFinalizationComplete() { unimplemented("JVM_ReportFinalizationComplete"); }
 void JVM_ScopedValueCache() { unimplemented("JVM_ScopedValueCache"); }
 void JVM_SetArrayElement() { unimplemented("JVM_SetArrayElement"); }
