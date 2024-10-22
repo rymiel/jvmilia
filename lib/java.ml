@@ -28,5 +28,6 @@ type jclass = {
   superinterfaces : string list;
   methods : jmethod list;
   fields : jfield list;
+  attributes : attribute list;
   loader : jloader;
 }

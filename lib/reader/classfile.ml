@@ -161,6 +161,7 @@ let convert_class_file (file : class_file) (loader : jloader) : jclass =
     superinterfaces = file.interfaces;
     methods = file.methods;
     fields = file.fields;
+    attributes = file.attributes;
     loader;
   }
 

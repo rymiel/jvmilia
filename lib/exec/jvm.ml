@@ -241,6 +241,7 @@ class jvm libjava =
           loader = Loader.bootstrap_loader;
           methods = [];
           fields = [];
+          attributes = [];
           access_flags =
             {
               is_public = true;
