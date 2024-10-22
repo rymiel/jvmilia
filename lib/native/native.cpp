@@ -48,7 +48,7 @@ CAMLprim value load_library_native(value path) {
 
   const char* err = dlerror();
   if (err != nullptr) {
-    log_printf("error: load_library_native: dlopen: %s: %s\n", path_str, err);
+    printf("error: load_library_native: dlopen: %s: %s\n", path_str, err);
     std::exit(1);
   }
 
@@ -160,14 +160,14 @@ auto load_and_cache_bridge_function(std::filesystem::path& lib_path, std::string
 
   const char* err = dlerror();
   if (err != nullptr) {
-    log_printf("error: load_bridge_function: dlopen: %s: %s\n", lib_path.c_str(), err);
+    printf("error: load_bridge_function: dlopen: %s: %s\n", lib_path.c_str(), err);
     std::exit(1);
   }
 
   void* bridge_ptr = dlsym(library, bridge_name.data());
   err = dlerror();
   if (err != nullptr) {
-    log_printf("error: load_bridge_function: dlsym: %s: %s\n", lib_path.c_str(), err);
+    printf("error: load_bridge_function: dlsym: %s: %s\n", lib_path.c_str(), err);
     std::exit(1);
   }
 
