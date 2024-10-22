@@ -297,7 +297,7 @@ let string_of_instr (i : instrbody) : string =
     | Instanceof i -> ("instanceof", i.name)
     | Monitorenter -> ("monitorenter", "")
     | Monitorexit -> ("monitorexit", "")
-    | Multianewarray (c, i) -> ("dreturn", Printf.sprintf "%s %d" c.name i)
+    | Multianewarray (c, i) -> ("multianewarray", Printf.sprintf "%s %d" c.name i)
     | Ifnull i -> ("ifnull", string_of_int i)
     | Ifnonnull i -> ("ifnonnull", string_of_int i)
   in
