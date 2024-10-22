@@ -148,14 +148,21 @@ class jvm libjava =
           Native.find_class =
             (fun name ->
               (self#load_class name).raw.name |> self#make_class_instance);
-          get_static_method = self#find_static_method;
+          get_static_method =
+            (fun a b c ->
+              let _, mth = self#find_static_method a b c in
+              mth);
           class_name = java_lang_Class_name;
           make_string = self#make_string_instance;
-          invoke_method = self#exec_with_return;
+          invoke_method =
+            (fun mth args ->
+              let cls = self#load_class mth.cls in
+              self#exec_with_return cls.raw mth args);
           get_virtual_method =
             (fun a b c ->
               let cls = self#load_class a in
-              self#find_virtual_method cls.raw.name b c);
+              let _, mth = self#find_virtual_method cls.raw.name b c in
+              mth);
           make_object_array;
           set_object_array;
           reference_type_name;
@@ -271,7 +278,7 @@ class jvm libjava =
       (* mark as loaded before clinit, otherwise we recurse *)
       (match find_method cls "<clinit>" "()V" with
       | Some clinit ->
-          self#exec clinit [];
+          self#exec cls clinit [];
           ()
       | None -> ());
       (* todo other verification/linking stuff idk *)
@@ -320,7 +327,7 @@ class jvm libjava =
                   self#is_indirect_superclass (self#load_class super) target)
 
     method private find_static_method (cls : string) (name : string)
-        (desc : string) : jmethod =
+        (desc : string) : jclass * jmethod =
       let def_cls = self#load_class cls in
       let def_mth =
         match find_method def_cls.raw name desc with
@@ -329,17 +336,17 @@ class jvm libjava =
             m
         | None -> failwith "Cannot find method (TODO add more info)"
       in
-      def_mth
+      (def_cls.raw, def_mth)
 
     (* note: only a method because load_class_definition is,
        but load_class_definition doesn't have to be *)
     method private find_virtual_method (cls : string) (name : string)
-        (desc : string) : jmethod =
+        (desc : string) : jclass * jmethod =
       let def_cls = self#load_class_definition cls in
       match find_method def_cls name desc with
       | Some m ->
           assert (not_static m);
-          m
+          (def_cls, m)
       | None -> (
           match def_cls.superclass with
           | Some super -> self#find_virtual_method super name desc
@@ -360,20 +367,22 @@ class jvm libjava =
       Debug.fields "instance fields" name fields;
       Object { cls; fields }
 
-    method private exec_instr (_mth : jmethod) (_code : Attr.code_attribute)
-        (instr : Instr.instrbody) : unit =
+    method private exec_instr (_cls : jclass) (_mth : jmethod)
+        (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
       Debug.frame_detailed self#curframe;
       Debug.instr instr self#curframe.pc;
       incr stats.instructions_executed;
       match instr with
       | Invokestatic desc ->
-          let def_mth = self#find_static_method desc.cls desc.name desc.desc in
+          let def_cls, def_mth =
+            self#find_static_method desc.cls desc.name desc.desc
+          in
           assert (is_static def_mth);
           (* todo frame stuff *)
           let args = self#pop_list def_mth.nargs in
           Debug.args args;
-          self#exec def_mth args
+          self#exec def_cls def_mth args
       | Invokespecial method_desc ->
           let def_cls = self#load_class method_desc.cls in
           (* todo proper method resolution *)
@@ -394,9 +403,9 @@ class jvm libjava =
             | Object x -> self#is_indirect_superclass x.cls method_desc.cls
             | _ -> false);
           (* todo frame stuff *)
-          self#exec def_mth (objectref :: args)
+          self#exec def_cls.raw def_mth (objectref :: args)
       | Invokevirtual desc | Invokeinterface (desc, _) -> (
-          let base_mth =
+          let _, base_mth =
             self#find_virtual_method desc.cls desc.name desc.desc
           in
           assert (not_static base_mth);
@@ -408,11 +417,11 @@ class jvm libjava =
               (* todo remove this constraint *)
               assert (self#is_indirect_superclass x.cls desc.cls);
               let clsref = x.cls.raw in
-              let resolved_mth =
+              let resolved_cls, resolved_mth =
                 self#find_virtual_method clsref.name desc.name desc.desc
               in
               (* todo frame stuff *)
-              self#exec resolved_mth (objectref :: args)
+              self#exec resolved_cls resolved_mth (objectref :: args)
           | ByteArray ba ->
               (* TODO extract someone else? *)
               if
@@ -611,7 +620,9 @@ class jvm libjava =
                   string_pool <- StringMap.add s v string_pool;
                   self#push v)
           | Shared.Float f -> Float f |> self#push
-          | Shared.Integer i -> Int i |> self#push)
+          | Shared.Integer i -> Int i |> self#push
+          | Shared.MethodType _ -> failwith "TODO: method type ldc"
+          | Shared.MethodHandle _ -> failwith "TODO: method handle ldc")
       | Ldc2_w x -> (
           match x with
           | Shared.Long l -> self#push (Long l)
@@ -736,8 +747,8 @@ class jvm libjava =
           i := !i + size v)
         args
 
-    method private exec_code (mth : jmethod) (code : Attr.code_attribute)
-        (args : evalue list) : evalue =
+    method private exec_code (cls : jclass) (mth : jmethod)
+        (code : Attr.code_attribute) (args : evalue list) : evalue =
       Debug.push "jvm_exec_code"
         (Printf.sprintf "%s.%s %s" mth.cls mth.name mth.desc);
       incr stats.java_methods_executed;
@@ -755,14 +766,14 @@ class jvm libjava =
       while frame.pc <> -1 && Option.is_none frame.retval do
         let m = Instr.IntMap.find frame.pc map in
         frame.nextpc <- m.next;
-        self#exec_instr mth code m.body;
+        self#exec_instr cls mth code m.body;
         frame.pc <- frame.nextpc
       done;
       Debug.pop ();
       self#pop_frame ()
 
-    method private exec_with_return (mth : jmethod) (args : evalue list)
-        : evalue =
+    method private exec_with_return (cls : jclass) (mth : jmethod)
+        (args : evalue list) : evalue =
       let find_code (attr : Attr.attribute) : Attr.code_attribute option =
         match attr with Code x -> Some x | _ -> None
       in
@@ -804,14 +815,15 @@ class jvm libjava =
              mth.name mth.desc)
       else
         match List.find_map find_code mth.attributes with
-        | Some code_attr -> self#exec_code mth code_attr args
+        | Some code_attr -> self#exec_code cls mth code_attr args
         | None ->
             failwith
               (Printf.sprintf "Can't execute non-code method %s %s %s" mth.cls
                  mth.name mth.desc)
 
-    method private exec (mth : jmethod) (args : evalue list) : unit =
-      match self#exec_with_return mth args with
+    method private exec (cls : jclass) (mth : jmethod) (args : evalue list)
+        : unit =
+      match self#exec_with_return cls mth args with
       | Void -> ()
       | result -> self#push result
 
@@ -831,13 +843,10 @@ class jvm libjava =
           ())
         required_classes;
       (* openjdk is special *)
-      (match
-         find_method
-           (self#load_class_definition "java/lang/System")
-           "initPhase1" "()V"
-       with
+      let system = self#load_class_definition "java/lang/System" in
+      (match find_method system "initPhase1" "()V" with
       | Some init ->
-          self#exec init [];
+          self#exec system init [];
           ()
       | None -> ());
 
@@ -848,7 +857,7 @@ class jvm libjava =
           if not flags.is_static then failwith "Main method is not static";
           if not flags.is_public then failwith "Main method is not public";
           (* todo: the String[] argument *)
-          self#exec main_method []
+          self#exec main_class.raw main_method []
       | None -> failwith "This class does not have a main method"
 
     method print_stats () : unit =
