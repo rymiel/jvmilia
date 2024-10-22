@@ -787,6 +787,15 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
   | Fcmpl | Fcmpg -> validTypeTransition env [ Float; Float ] Int frame |> next
   | Dcmpl | Dcmpg ->
       validTypeTransition env [ Double; Double ] Int frame |> next
+  | Multianewarray (cls, dim) ->
+      let dimensionality =
+        match String.rindex_opt cls.name '[' with Some i -> i + 1 | None -> 0
+      in
+      assert (dim > 0);
+      assert (dimensionality >= 0);
+      let res = parse_class_internal_name cls.name in
+      let int_list = List.init dim (fun _ -> Int : _ -> vtype) in
+      validTypeTransition env int_list res frame |> next
   | unimplemented ->
       failwith
         (Printf.sprintf "unimplemented instruction verification %s"
