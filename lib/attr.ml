@@ -10,6 +10,11 @@ type frame_desc =
 
 type delta_frame = int * frame_desc
 
+type bootstrap_method = {
+  ref : method_handle_desc;
+  args : loadable_constant list;
+}
+
 type code_attribute = {
   frame_size : int;
   max_stack : int;
@@ -21,4 +26,5 @@ type code_attribute = {
 and attribute =
   | Code of code_attribute
   | StackMapTable of delta_frame list
+  | BootstrapMethods of bootstrap_method list
   | Unknown of string * bytes

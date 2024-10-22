@@ -118,7 +118,7 @@ type cp_entry =
   | MethodRef of Shared.method_desc
   | InterfaceMethodRef of Shared.method_desc
   | NameAndType of Shared.name_and_type_desc
-  | MethodHandle of int * Shared.method_desc
+  | MethodHandle of Shared.method_handle_desc
   | MethodType of Shared.method_type_desc
   | InvokeDynamic of Shared.dynamic_desc
 
@@ -172,14 +172,17 @@ let rec resolve_cp_info (pool : cp_info array) (info : cp_info) : cp_entry =
         }
   | MethodHandleInfo x ->
       MethodHandle
-        ( x.ref_kind,
-          (match x.ref_kind with
-          | 1 | 2 | 3 | 4 -> resolve_field
-          | 5 | 8 -> resolve_method
-          | 6 | 7 -> resolve_method_or_interface_method
-          | 9 -> resolve_inteface_method
-          | _ -> failwith "Invalid method handle ref kind")
-            pool x.ref_idx )
+        {
+          kind = x.ref_kind;
+          ref =
+            (match x.ref_kind with
+            | 1 | 2 | 3 | 4 -> resolve_field
+            | 5 | 8 -> resolve_method
+            | 6 | 7 -> resolve_method_or_interface_method
+            | 9 -> resolve_inteface_method
+            | _ -> failwith "Invalid method handle ref kind")
+              pool x.ref_idx;
+        }
   | MethodTypeInfo x -> MethodType { desc = resolve_utf8 pool x.desc_idx }
   | InvokeDynamicInfo x ->
       let nat = resolve_nat pool x.nat_idx in
@@ -293,6 +296,8 @@ let const_pool_loadable_constant (cp : const_pool) (index : int) :
   | Float x -> Float x
   | String s -> String s
   | Class s -> Class s.name
+  | MethodType s -> MethodType s.desc
+  | MethodHandle m -> MethodHandle m
   | _ ->
       failwith
         (Printf.sprintf "%s is not a loadable constant" (cp_entry_name entry))
@@ -312,3 +317,9 @@ let const_pool_invokedynamic (cp : const_pool) (index : int) :
   match Array.get cp (index - 1) with
   | InvokeDynamic x -> x
   | _ -> failwith "Expected InvokeDynamic in constant pool"
+
+let const_pool_method_handle (cp : const_pool) (index : int) :
+    Shared.method_handle_desc =
+  match Array.get cp (index - 1) with
+  | MethodHandle x -> x
+  | _ -> failwith "Expected MethodHandle in constant pool"

@@ -75,6 +75,20 @@ let read_stack_map_table_attribute (pool : const_pool) (r : Io.reader) :
   let () = Io.assert_end_of_file r in
   out
 
+let read_bootstrap_method (pool : const_pool) (r : Io.reader) : bootstrap_method
+    =
+  let ref = Io.read_u2 r |> const_pool_method_handle pool in
+  let args =
+    Io.read_list r (fun r -> Io.read_u2 r |> const_pool_loadable_constant pool)
+  in
+  { ref; args }
+
+let read_bootstrap_methods (pool : const_pool) (r : Io.reader) :
+    bootstrap_method list =
+  let out = Io.read_list r (read_bootstrap_method pool) in
+  let () = Io.assert_end_of_file r in
+  out
+
 let rec read_code_attribute (pool : const_pool) (r : Io.reader) : code_attribute
     =
   let max_stack = Io.read_u2 r in
@@ -102,6 +116,9 @@ and read_attribute (pool : const_pool) (r : Io.reader) : attribute =
   | "StackMapTable" ->
       let table = read_stack_map_table_attribute pool bytes_reader in
       StackMapTable table
+  | "BootstrapMethods" ->
+      let methods = read_bootstrap_methods pool bytes_reader in
+      BootstrapMethods methods
   | _ -> Unknown (name, bytes)
 
 let read_field_info (pool : const_pool) (cls : string) (r : Io.reader) : jfield

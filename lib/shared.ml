@@ -85,6 +85,7 @@ type method_desc = { cls : string; name : string; desc : string }
 type field_desc = method_desc
 type method_type_desc = { desc : string }
 type dynamic_desc = { bootstrap_idx : int; name : string; desc : string }
+type method_handle_desc = { kind : int; ref : method_desc }
 
 type exception_handler = {
   starti : int;
@@ -100,6 +101,8 @@ type loadable_constant =
   | Float of float
   | String of string
   | Class of string
+  | MethodType of string
+  | MethodHandle of method_handle_desc
 
 type loadable_constant2 = Long of int64 | Double of float
 
@@ -109,6 +112,10 @@ let string_of_loadable_constant (c : loadable_constant) : string =
   | Float f -> Printf.sprintf "float %f" f
   | String s -> Printf.sprintf "string %S" s
   | Class s -> Printf.sprintf "class %S" s
+  | MethodType s -> Printf.sprintf "method type %S" s
+  | MethodHandle m ->
+      Printf.sprintf "method handle [%d] %s %s %s" m.kind m.ref.cls m.ref.name
+        m.ref.desc
 
 let string_of_loadable_constant2 (c : loadable_constant2) : string =
   match c with

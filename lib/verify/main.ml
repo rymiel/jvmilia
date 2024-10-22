@@ -438,6 +438,10 @@ let loadable_vtype (c : loadable_constant) : vtype =
   | Float _ -> Float
   | String _ -> Class ("java/lang/String", Loader.bootstrap_loader)
   | Class _ -> Class ("java/lang/Class", Loader.bootstrap_loader)
+  | MethodType _ ->
+      Class ("java/lang/invoke/MethodType", Loader.bootstrap_loader)
+  | MethodHandle _ ->
+      Class ("java/lang/invoke/MethodHandle", Loader.bootstrap_loader)
 
 let loadable_vtype2 (c : loadable_constant2) : vtype =
   match c with Long _ -> Long | Double _ -> Double
