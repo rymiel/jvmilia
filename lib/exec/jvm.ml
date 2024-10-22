@@ -125,6 +125,14 @@ type stats = {
   classes_loaded : int ref;
 }
 
+let get_bootstrap_methods (cls : jclass) : Attr.bootstrap_method list =
+  let v =
+    List.find_map
+      (function Attr.BootstrapMethods x -> Some x | _ -> None)
+      cls.attributes
+  in
+  match v with Some x -> x | None -> []
+
 class jvm libjava =
   object (self)
     val mutable frames : exec_frame list = []
@@ -368,7 +376,7 @@ class jvm libjava =
       Debug.fields "instance fields" name fields;
       Object { cls; fields }
 
-    method private exec_instr (_cls : jclass) (_mth : jmethod)
+    method private exec_instr (cls : jclass) (_mth : jmethod)
         (_code : Attr.code_attribute) (instr : Instr.instrbody) : unit =
       Debug.frame self#curframe;
       Debug.frame_detailed self#curframe;
@@ -432,6 +440,27 @@ class jvm libjava =
               then self#push (ByteArray (Bytes.copy ba))
               else failwith "invokevirtual on bytearray"
           | _ -> failwith "not an object 4")
+      | Invokedynamic desc ->
+          let bootstrap_methods = get_bootstrap_methods cls in
+          let bootstrap = List.nth bootstrap_methods desc.bootstrap_idx in
+          (fun (b : Attr.bootstrap_method) ->
+            Printf.printf "[%d] %s %s %s (%s)\n%!" b.ref.kind b.ref.ref.cls
+              b.ref.ref.name b.ref.ref.desc
+              (String.concat ", "
+                 (List.map Shared.string_of_loadable_constant b.args)))
+            bootstrap;
+          let ref = bootstrap.ref.ref in
+          (match bootstrap.ref.kind with
+          | 6 ->
+              let def_cls, def_mth =
+                self#find_static_method ref.cls ref.name ref.desc
+              in
+              Printf.printf "%s %s\n%!" def_cls.name def_mth.name
+          | x ->
+              failwith
+                (Printf.sprintf
+                   "Unimplemented method handle bytecode behaviour %d" x));
+          failwith "TODO"
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> ( ! ) |> self#push
