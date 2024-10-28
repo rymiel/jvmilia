@@ -32,7 +32,9 @@ let read_stack_map_vtype (pool : const_pool) (r : Io.reader) : Type.vtype =
   | 6 -> UninitializedThis
   | 7 ->
       let cls = Io.read_u2 r |> const_pool_class pool in
-      let name = Type.parse_class_internal_name cls.name in
+      let name =
+        Type.parse_class_internal_name cls.name |> Type.vtype_of_dtype
+      in
       name
   | 8 ->
       let offset = Io.read_u2 r in

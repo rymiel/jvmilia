@@ -523,7 +523,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       (*oh no*)
       let _loader = currentClassLoader env in
       let op_args, r = parse_method_descriptor m.desc |> map_vtype_method in
-      let cls = Type.parse_class_internal_name m.cls in
+      let cls = Type.parse_class_internal_name m.cls |> Type.vtype_of_dtype in
       let stack_arg_list = List.rev (cls :: op_args) in
       let n = validTypeTransition env stack_arg_list r frame in
       (* let arg_list = List.rev op_args in *)
@@ -704,15 +704,15 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       assert (List.nth frame.locals i = Int);
       next frame
   | Checkcast c ->
-      let t = Type.parse_class_internal_name c.name in
+      let t = Type.parse_class_internal_name c.name |> Type.vtype_of_dtype in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] t frame |> next
   | Instanceof c ->
-      let _ = Type.parse_class_internal_name c.name in
+      let _ = Type.parse_class_internal_name c.name |> Type.vtype_of_dtype in
       let obj = Class ("java/lang/Object", Loader.bootstrap_loader) in
       validTypeTransition env [ obj ] Int frame |> next
   | Anewarray c ->
-      let t = Type.parse_class_internal_name c.name in
+      let t = Type.parse_class_internal_name c.name |> Type.vtype_of_dtype in
       validTypeTransition env [ Int ] (Array (T t)) frame |> next
   | Newarray t ->
       validTypeTransition env [ Int ] (Array (Type.arraytype_of_dtype t)) frame
@@ -797,7 +797,7 @@ let next_frame_of_instr (i : Instr.instrbody) (env : jenvironment)
       in
       assert (dim > 0);
       assert (dimensionality >= 0);
-      let res = parse_class_internal_name cls.name in
+      let res = parse_class_internal_name cls.name |> Type.vtype_of_dtype in
       let int_list = List.init dim (fun _ -> Int : _ -> vtype) in
       validTypeTransition env int_list res frame |> next
   | unimplemented ->

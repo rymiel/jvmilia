@@ -116,14 +116,13 @@ let rec parse_dtype (s : string) (offset : int ref) : dtype =
       Object classname
   | c -> failwith (Printf.sprintf "Invalid descriptor %c" c)
 
-let parse_class_internal_name (s : string) : vtype =
+let parse_class_internal_name (s : string) : dtype =
   if String.starts_with ~prefix:"[" s then (
     let offset = ref 0 in
     let t = parse_dtype s offset in
     assert (!offset = String.length s);
-    vtype_of_dtype t
-    (* kissing owner this a good idea *))
-  else Class (s, Bootstrap)
+    t)
+  else Object s
 
 let parse_method_descriptor (desc : string) : dtype list * dtype =
   let s = desc in
