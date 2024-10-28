@@ -460,7 +460,7 @@ class jvm libjava =
               failwith
                 (Printf.sprintf
                    "Unimplemented method handle bytecode behaviour %d" x));
-          failwith "TODO"
+          failwith "TODO: invokedynamic"
       | Getstatic field_desc ->
           let def_cls = self#load_class field_desc.cls in
           StringMap.find field_desc.name def_cls.static |> ( ! ) |> self#push
@@ -675,6 +675,24 @@ class jvm libjava =
       | Anewarray c ->
           let size = self#pop () |> as_int |> Int32.to_int in
           make_object_array size c.name Null |> self#push
+      | Multianewarray (c, dim) ->
+          let rec level (ty : Type.dtype) dim =
+            let inner_ty =
+              match ty with
+              | Array Byte -> failwith "Unsupported"
+              | Array t -> t
+              | _ -> failwith "Invalid nesting"
+            in
+            let size = self#pop () |> as_int |> Int32.to_int in
+            let init =
+              if dim > 1 then level inner_ty (dim - 1)
+              else fun () -> default_value inner_ty
+            in
+            fun () ->
+              let arr = Array.init size (fun _ -> init ()) in
+              Array { ty = inner_ty; arr }
+          in
+          level (Type.parse_class_internal_name c.name) dim () |> self#push
       | Newarray ty ->
           let size = self#pop () |> as_int |> Int32.to_int in
           (match ty with
